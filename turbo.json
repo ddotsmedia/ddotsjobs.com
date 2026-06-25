@@ -1,0 +1,36 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "globalDependencies": [".env.production", ".env"],
+  "globalEnv": [
+    "NODE_ENV",
+    "DATABASE_URL",
+    "REDIS_URL",
+    "REDIS_KEY_PREFIX",
+    "MEILISEARCH_URL",
+    "MEILISEARCH_MASTER_KEY",
+    "ANTHROPIC_API_KEY",
+    "NEXTAUTH_URL",
+    "NEXTAUTH_SECRET",
+    "NEXT_PUBLIC_APP_URL",
+    "NEXT_PUBLIC_R2_PUBLIC_URL"
+  ],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "lint": {
+      "dependsOn": ["^build"]
+    },
+    "typecheck": {
+      "dependsOn": ["^build"]
+    },
+    "clean": {
+      "cache": false
+    }
+  }
+}

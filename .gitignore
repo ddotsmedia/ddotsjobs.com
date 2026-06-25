@@ -1,0 +1,28 @@
+node_modules/
+.next/
+dist/
+.turbo/
+out/
+coverage/
+
+# env
+.env
+.env.local
+.env.production
+.env*.local
+!.env.example
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# os / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# pm2
+.pm2/
