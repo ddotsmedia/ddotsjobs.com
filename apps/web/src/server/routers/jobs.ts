@@ -298,6 +298,7 @@ export const jobsRouter = router({
           valuesGulfExperience: j.valuesGulfExperience,
           categorySlug: j.categorySlug,
           employerId: j.employerId,
+          employerSlug: e.slug,
           displayNameEn: e.displayNameEn,
           legalNameEn: e.legalNameEn,
           verificationStatus: e.verificationStatus,

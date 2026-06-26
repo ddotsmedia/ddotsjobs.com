@@ -328,6 +328,11 @@ export default async function JobDetailPage({ params }: Props) {
               <Link href={`/jobs?employer=${job.employerId}`} style={s.companyLink}>
                 View all jobs from this employer
               </Link>
+              {job.employerSlug && (
+                <Link href={`/companies/${job.employerSlug}`} style={s.companyLink}>
+                  See reviews →
+                </Link>
+              )}
             </div>
           </aside>
         </div>

@@ -78,6 +78,11 @@ export const companyReviews = pgTable(
       .references(() => users.id, { onDelete: 'restrict' }),
     // 1..5
     rating: smallint('rating').notNull(),
+    // Sub-rating dimensions (D6) — 1..5, nullable.
+    ratingWorkCulture: smallint('rating_work_culture'),
+    ratingWorkLifeBalance: smallint('rating_work_life_balance'),
+    ratingPay: smallint('rating_pay'),
+    ratingWomenFriendly: smallint('rating_women_friendly'),
     titleMl: varchar('title_ml', { length: 255 }),
     titleEn: varchar('title_en', { length: 255 }),
     bodyMl: text('body_ml'),
