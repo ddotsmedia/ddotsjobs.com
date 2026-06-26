@@ -17,6 +17,21 @@ export function generateMetadata(): Metadata {
   };
 }
 
+// Sector slug → icon (Phase 6 design).
+const SECTOR_ICONS: Record<string, string> = {
+  nursing: '🏥',
+  it: '💻',
+  teaching: '📚',
+  government: '🏛️',
+  gulf_return: '✈️',
+  banking: '🏦',
+  construction: '🏗️',
+  retail: '🛒',
+};
+
+// Deterministic logo-placeholder palette (no randomness — stable per company).
+const LOGO_COLORS = ['#f5a800', '#007d77', '#c0392b', '#2e7d32', '#6a4fb3', '#b8860b', '#0277bd', '#d2691e'];
+
 function rupees(paise: number | null): string {
   if (paise == null) return 'Salary undisclosed';
   return `₹${Math.round(paise / 100).toLocaleString('en-IN')}/mo`;
@@ -40,6 +55,21 @@ function titleCase(s: string | null): string {
   return s.charAt(0).toUpperCase() + s.slice(1).replace(/_/g, ' ');
 }
 
+function companyInitials(name: string | null): string {
+  if (!name) return '?';
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return '?';
+  if (words.length === 1) return words[0]!.slice(0, 2).toUpperCase();
+  return (words[0]![0]! + words[1]![0]!).toUpperCase();
+}
+
+function logoColor(name: string | null): string {
+  const key = name ?? '';
+  let h = 0;
+  for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0;
+  return LOGO_COLORS[h % LOGO_COLORS.length]!;
+}
+
 export default async function HomePage() {
   const [stats, sectorCounts, latest] = await Promise.all([
     getHomeStats(),
@@ -59,6 +89,7 @@ export default async function HomePage() {
       {/* ── Hero ── */}
       <section style={s.hero}>
         <div style={s.container}>
+          <p style={s.kicker}>Kerala&rsquo;s career platform</p>
           <h1 style={s.headline}>Kerala&rsquo;s jobs, beautifully found</h1>
           <p style={s.subtext}>
             Verified jobs across all 14 districts. Salary upfront. Malayalam and English.
@@ -68,23 +99,27 @@ export default async function HomePage() {
       </section>
 
       {/* ── Stats strip ── */}
-      <section style={s.container}>
-        <div style={s.statGrid}>
-          {statCards.map((c) => (
-            <div key={c.label} style={s.statCard}>
-              <span style={s.statValue}>{c.value}</span>
-              <span style={s.statLabel}>{c.label}</span>
-            </div>
-          ))}
+      <section style={s.statSection}>
+        <div style={s.container}>
+          <div style={s.statStrip}>
+            {statCards.map((c, i) => (
+              <div key={c.label} style={{ ...s.statCell, ...(i > 0 ? s.statDivider : {}) }}>
+                <span style={s.statValue}>{c.value}</span>
+                <span style={s.statLabel}>{c.label}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
       {/* ── Sector grid ── */}
       <section style={s.container}>
+        <p style={s.eyebrow}>Explore</p>
         <h2 style={s.h2}>Browse by sector</h2>
         <div style={s.sectorGrid}>
           {SECTORS.map((sec) => (
-            <Link key={sec.slug} href={`/jobs?category=${sec.slug}`} style={s.sectorCard}>
+            <Link key={sec.slug} href={`/jobs?category=${sec.slug}`} className="hp-sector" style={s.sectorCard}>
+              <span style={s.sectorIcon} aria-hidden>{SECTOR_ICONS[sec.slug] ?? '📌'}</span>
               <span style={s.sectorLabel}>{sec.label}</span>
               <span style={s.sectorCount}>{(sectorCounts[sec.slug] ?? 0).toLocaleString('en-IN')} jobs</span>
             </Link>
@@ -94,6 +129,7 @@ export default async function HomePage() {
 
       {/* ── Latest jobs ── */}
       <section style={s.container}>
+        <p style={s.eyebrow}>Fresh</p>
         <h2 style={s.h2}>Latest jobs</h2>
         {latest.length === 0 ? (
           <div style={s.empty}>
@@ -101,22 +137,27 @@ export default async function HomePage() {
             <p style={{ color: '#6b6b66' }}>
               Set a WhatsApp alert and we&rsquo;ll message you the moment a match is posted.
             </p>
-            <Link href="/seeker/alerts" style={s.emptyBtn}>
+            <Link href="/seeker/alerts" className="hp-btn" style={s.emptyBtn}>
               Get WhatsApp alerts
             </Link>
           </div>
         ) : (
           <div style={s.jobList}>
             {latest.map((j: LatestJob) => (
-              <Link key={j.id} href={`/jobs/${j.slug ?? j.id}`} style={s.jobCard}>
-                <div style={s.jobTop}>
-                  <span style={s.jobTitle}>{j.titleEn}</span>
-                  <span style={s.jobTime}>{relativeTime(j.publishedAt)}</span>
+              <Link key={j.id} href={`/jobs/${j.slug ?? j.id}`} className="hp-job" style={s.jobCard}>
+                <div style={{ ...s.logo, background: logoColor(j.company) }} aria-hidden>
+                  {companyInitials(j.company)}
                 </div>
-                <span style={s.jobCompany}>{j.company}</span>
-                <div style={s.jobMeta}>
-                  <span style={s.jobSalary}>{rupees(j.salaryMinPaise)}</span>
-                  {j.district && <span style={s.jobDistrict}>{titleCase(j.district)}</span>}
+                <div style={s.jobBody}>
+                  <div style={s.jobTop}>
+                    <span style={s.jobTitle}>{j.titleEn}</span>
+                    <span style={s.jobTime}>{relativeTime(j.publishedAt)}</span>
+                  </div>
+                  <span style={s.jobCompany}>{j.company}</span>
+                  <div style={s.jobMeta}>
+                    <span style={s.jobSalary}>{rupees(j.salaryMinPaise)}</span>
+                    {j.district && <span style={s.jobDistrict}>{titleCase(j.district)}</span>}
+                  </div>
                 </div>
               </Link>
             ))}
@@ -127,11 +168,12 @@ export default async function HomePage() {
       {/* ── WhatsApp alert banner ── */}
       <section style={s.container}>
         <div style={s.waBanner}>
-          <div>
+          <span style={s.waIcon} aria-hidden>💬</span>
+          <div style={s.waText}>
             <p style={s.waTitle}>Get job alerts on WhatsApp</p>
             <p style={s.waSub}>Malayalam or English — your choice.</p>
           </div>
-          <Link href="/seeker/alerts" style={s.waBtn}>
+          <Link href="/seeker/alerts" className="hp-btn" style={s.waBtn}>
             Set alerts
           </Link>
         </div>
@@ -140,11 +182,15 @@ export default async function HomePage() {
       {/* ── Footer ── */}
       <footer style={s.footer}>
         <div style={{ ...s.container, ...s.footerInner }}>
+          <div style={s.footerBrand}>
+            <span style={s.wordmark}>ddotsjobs</span>
+            <span style={s.footerTagline}>Kerala&rsquo;s career platform</span>
+          </div>
           <nav style={s.footerNav}>
-            <Link href="/about" style={s.footerLink}>About</Link>
-            <Link href="/employer/register" style={s.footerLink}>For Employers</Link>
-            <Link href="/psc" style={s.footerLink}>PSC Tracker</Link>
-            <Link href="/privacy" style={s.footerLink}>Privacy</Link>
+            <Link href="/about" className="hp-link" style={s.footerLink}>About</Link>
+            <Link href="/employer/register" className="hp-link" style={s.footerLink}>For Employers</Link>
+            <Link href="/psc" className="hp-link" style={s.footerLink}>PSC Tracker</Link>
+            <Link href="/privacy" className="hp-link" style={s.footerLink}>Privacy</Link>
           </nav>
           <p style={s.copyright}>© 2026 ddotsjobs.com · Ddotsmedia IT Solutions</p>
         </div>
@@ -156,12 +202,26 @@ export default async function HomePage() {
 const s: Record<string, React.CSSProperties> = {
   page: { background: 'var(--color-neutral)', minHeight: '100dvh', paddingBottom: 'var(--space-5)' },
   container: { width: '100%', maxWidth: 1040, margin: '0 auto', padding: '0 var(--space-2)' },
-  hero: { padding: 'var(--space-5) 0 var(--space-4)' },
+  hero: {
+    padding: 'var(--space-5) 0 var(--space-5)',
+    background: 'linear-gradient(135deg, #FAFAF8 0%, #FFF8ED 50%, #FAFAF8 100%)',
+  },
+  kicker: {
+    display: 'inline-block',
+    borderLeft: '3px solid var(--color-brand)',
+    paddingLeft: 12,
+    margin: '0 0 var(--space-2)',
+    fontSize: 13,
+    fontWeight: 600,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+    color: '#7a6a3a',
+  },
   headline: {
     fontFamily: 'var(--font-display)',
     fontStyle: 'italic',
-    fontSize: 'clamp(2.25rem, 8vw, 4rem)',
-    lineHeight: 1.05,
+    fontSize: 'clamp(42px, 6vw, 72px)',
+    lineHeight: 1.04,
     color: 'var(--color-dark)',
     margin: 0,
   },
@@ -171,61 +231,92 @@ const s: Record<string, React.CSSProperties> = {
     margin: 'var(--space-2) 0 var(--space-3)',
     maxWidth: 560,
   },
-  statGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-    gap: 'var(--space-1)',
-    marginTop: 'var(--space-2)',
+  // Stats strip — bordered band with dividers.
+  statSection: { marginTop: 'var(--space-3)' },
+  statStrip: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    background: '#fff',
+    borderTop: '1px solid #ececdf',
+    borderBottom: '1px solid #ececdf',
   },
-  statCard: {
+  statCell: {
+    flex: '1 1 140px',
     display: 'flex',
     flexDirection: 'column',
-    gap: 4,
-    padding: 'var(--space-2)',
-    background: '#fff',
-    borderRadius: 'var(--radius-card)',
-    border: '1px solid #efefe9',
+    gap: 2,
+    padding: 'var(--space-3) var(--space-2)',
   },
-  statValue: { fontSize: '1.6rem', fontWeight: 700, color: 'var(--color-accent)' },
+  statDivider: { borderLeft: '1px solid #f1f1ec' },
+  statValue: {
+    fontFamily: 'var(--font-display)',
+    fontStyle: 'italic',
+    fontSize: 36,
+    lineHeight: 1,
+    color: 'var(--color-brand)',
+  },
   statLabel: { fontSize: 13, color: '#6b6b66' },
+  eyebrow: {
+    margin: 'var(--space-5) 0 4px',
+    fontSize: 12,
+    fontWeight: 700,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+    color: '#9a9a92',
+  },
   h2: {
     fontFamily: 'var(--font-display)',
     fontStyle: 'italic',
-    fontSize: '1.6rem',
-    margin: 'var(--space-4) 0 var(--space-2)',
+    fontSize: 'clamp(1.6rem, 4vw, 2.1rem)',
+    margin: '0 0 var(--space-2)',
+    color: 'var(--color-dark)',
   },
   sectorGrid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-    gap: 'var(--space-1)',
+    gap: 'var(--space-2)',
   },
   sectorCard: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 4,
-    padding: 'var(--space-2)',
+    gap: 6,
+    padding: 'var(--space-3) var(--space-2)',
     background: '#fff',
     borderRadius: 'var(--radius-card)',
     border: '1px solid #efefe9',
   },
+  sectorIcon: { fontSize: 28, lineHeight: 1 },
   sectorLabel: { fontSize: 15, fontWeight: 600, color: 'var(--color-dark)' },
-  sectorCount: { fontSize: 13, color: '#6b6b66' },
-  jobList: { display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' },
+  sectorCount: { fontSize: 13, fontWeight: 600, color: 'var(--color-accent)' },
+  jobList: { display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' },
   jobCard: {
     display: 'flex',
-    flexDirection: 'column',
-    gap: 6,
+    gap: 'var(--space-2)',
+    alignItems: 'flex-start',
     padding: 'var(--space-2)',
     background: '#fff',
     borderRadius: 'var(--radius-card)',
     border: '1px solid #efefe9',
   },
+  logo: {
+    flex: '0 0 44px',
+    width: 44,
+    height: 44,
+    borderRadius: '9999px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: '#fff',
+    fontWeight: 700,
+    fontSize: 15,
+  },
+  jobBody: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 6 },
   jobTop: { display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'baseline' },
   jobTitle: { fontSize: 16, fontWeight: 600, color: 'var(--color-dark)' },
   jobTime: { fontSize: 12, color: '#9a9a92', whiteSpace: 'nowrap' },
   jobCompany: { fontSize: 14, color: '#55554f' },
   jobMeta: { display: 'flex', gap: 'var(--space-1)', alignItems: 'center', flexWrap: 'wrap' },
-  jobSalary: { fontSize: 14, fontWeight: 600, color: 'var(--color-accent)' },
+  jobSalary: { fontSize: 14, fontWeight: 700, color: 'var(--color-brand)' },
   jobDistrict: {
     fontSize: 12,
     color: '#6b6b66',
@@ -252,35 +343,47 @@ const s: Record<string, React.CSSProperties> = {
     background: 'var(--color-brand)',
     borderRadius: 'var(--radius-pill)',
   },
+  // WhatsApp banner — green-tinted.
   waBanner: {
     display: 'flex',
     flexWrap: 'wrap',
     gap: 'var(--space-2)',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 'var(--space-4)',
+    marginTop: 'var(--space-5)',
     padding: 'var(--space-3)',
-    background: 'var(--color-accent)',
+    background: 'rgba(37,211,102,0.08)',
+    borderLeft: '3px solid #25D366',
     borderRadius: 'var(--radius-card)',
   },
-  waTitle: { fontSize: '1.2rem', fontWeight: 700, color: '#fff', margin: 0 },
-  waSub: { fontSize: 14, color: 'rgba(255,255,255,0.85)', margin: '4px 0 0' },
+  waIcon: { fontSize: 30, lineHeight: 1 },
+  waText: { flex: 1, minWidth: 180 },
+  waTitle: { fontSize: '1.2rem', fontWeight: 700, color: 'var(--color-dark)', margin: 0 },
+  waSub: { fontSize: 14, color: '#55554f', margin: '4px 0 0' },
   waBtn: {
-    padding: '12px 22px',
-    fontWeight: 600,
-    color: '#0f0e0c',
-    background: 'var(--color-brand)',
+    padding: '12px 24px',
+    fontWeight: 700,
+    color: '#fff',
+    background: '#25D366',
     borderRadius: 'var(--radius-pill)',
   },
   footer: { marginTop: 'var(--space-5)', borderTop: '1px solid #ececdf' },
   footerInner: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 'var(--space-1)',
-    paddingTop: 'var(--space-3)',
-    paddingBottom: 'var(--space-3)',
+    gap: 'var(--space-2)',
+    paddingTop: 'var(--space-4)',
+    paddingBottom: 'var(--space-4)',
   },
-  footerNav: { display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' },
+  footerBrand: { display: 'flex', flexDirection: 'column', gap: 2 },
+  wordmark: {
+    fontFamily: 'var(--font-display)',
+    fontStyle: 'italic',
+    fontSize: '1.6rem',
+    color: 'var(--color-accent)',
+    lineHeight: 1,
+  },
+  footerTagline: { fontSize: 13, color: '#9a9a92' },
+  footerNav: { display: 'flex', flexWrap: 'wrap', gap: 'var(--space-3)' },
   footerLink: { fontSize: 14, color: '#55554f' },
   copyright: { fontSize: 13, color: '#9a9a92' },
 };

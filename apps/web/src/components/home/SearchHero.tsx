@@ -37,32 +37,36 @@ export function SearchHero() {
 
   return (
     <div style={s.wrap}>
-      <div style={s.searchRow}>
-        <input
-          type="text"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && submit()}
-          placeholder="Job title, skill or company"
-          aria-label="Search jobs"
-          style={s.input}
-        />
-        <select
-          value={district}
-          onChange={(e) => setDistrict(e.target.value)}
-          aria-label="District"
-          style={s.select}
-        >
-          <option value="">All districts</option>
-          {DISTRICTS.map((d) => (
-            <option key={d.value} value={d.value}>
-              {d.label}
-            </option>
-          ))}
-        </select>
-        <button type="button" onClick={submit} style={s.btn}>
-          Search
-        </button>
+      <div style={s.searchShell}>
+        <div style={s.searchRow}>
+          <input
+            type="text"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && submit()}
+            placeholder="Job title, skill or company"
+            aria-label="Search jobs"
+            style={s.input}
+          />
+          <div style={s.searchControls}>
+            <select
+              value={district}
+              onChange={(e) => setDistrict(e.target.value)}
+              aria-label="District"
+              style={s.select}
+            >
+              <option value="">All districts</option>
+              {DISTRICTS.map((d) => (
+                <option key={d.value} value={d.value}>
+                  {d.label}
+                </option>
+              ))}
+            </select>
+            <button type="button" onClick={submit} className="hp-btn" style={s.btn}>
+              Search
+            </button>
+          </div>
+        </div>
       </div>
 
       <div style={s.chips}>
@@ -73,11 +77,13 @@ export function SearchHero() {
               key={c.key}
               type="button"
               onClick={() => toggleChip(c.key, c.kind, c.value)}
+              className="hp-chip"
               style={{
                 ...s.chip,
-                background: on ? 'var(--color-accent)' : '#fff',
-                color: on ? '#fff' : '#0f0e0c',
-                borderColor: on ? 'var(--color-accent)' : '#e2e2dc',
+                background: on ? 'var(--color-brand)' : '#fff',
+                color: on ? '#0f0e0c' : '#0f0e0c',
+                borderColor: on ? 'var(--color-brand)' : '#e2e2dc',
+                fontWeight: on ? 700 : 500,
               }}
             >
               {c.label}
@@ -91,39 +97,53 @@ export function SearchHero() {
 
 const s: Record<string, React.CSSProperties> = {
   wrap: { width: '100%', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' },
-  searchRow: { display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' },
-  input: {
-    height: 52,
-    padding: '0 16px',
-    fontSize: 16,
+  // Pill-shaped search shell with soft elevation.
+  searchShell: {
     background: '#fff',
-    border: '1px solid #e2e2dc',
-    borderRadius: 'var(--radius-input)',
+    borderRadius: 50,
+    boxShadow: '0 2px 20px rgba(0,0,0,0.08)',
+    border: '1px solid #efefe9',
+    padding: 6,
+  },
+  searchRow: { display: 'flex', flexDirection: 'column', gap: 6 },
+  searchControls: { display: 'flex', gap: 6 },
+  input: {
+    height: 58,
+    padding: '0 22px',
+    fontSize: 16,
+    background: 'transparent',
+    border: 'none',
+    borderRadius: 50,
     outline: 'none',
+    width: '100%',
   },
   select: {
-    height: 52,
-    padding: '0 12px',
+    height: 58,
+    flex: 1,
+    minWidth: 0,
+    padding: '0 16px',
     fontSize: 16,
-    background: '#fff',
+    background: '#faf9f5',
     border: '1px solid #e2e2dc',
-    borderRadius: 'var(--radius-input)',
+    borderRadius: 50,
     outline: 'none',
   },
   btn: {
-    height: 52,
+    height: 58,
+    flex: '0 0 auto',
+    padding: '0 28px',
     fontSize: 16,
-    fontWeight: 600,
+    fontWeight: 700,
     color: '#0f0e0c',
     background: 'var(--color-brand)',
     border: 'none',
-    borderRadius: 'var(--radius-input)',
+    borderRadius: 50,
     cursor: 'pointer',
   },
   chips: { display: 'flex', flexWrap: 'wrap', gap: 8 },
   chip: {
     minHeight: 44,
-    padding: '0 16px',
+    padding: '0 18px',
     fontSize: 14,
     fontWeight: 500,
     border: '1px solid #e2e2dc',
