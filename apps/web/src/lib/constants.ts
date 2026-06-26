@@ -46,6 +46,58 @@ export const SALARY_MIN_RUPEES = 10_000;
 export const SALARY_MAX_RUPEES = 100_000;
 export const SALARY_STEP_RUPEES = 5_000;
 
+// Seeker profile setup options.
+export const PROFESSIONS = [
+  'Nursing', 'Teaching', 'IT/Software', 'Engineering', 'Accounting', 'Management',
+  'Construction', 'Hospitality', 'Retail', 'Government', 'Other',
+] as const;
+
+export const SEEKER_CATEGORIES = [
+  { slug: 'nursing', label: 'Nursing' },
+  { slug: 'it', label: 'IT/Tech' },
+  { slug: 'teaching', label: 'Teaching' },
+  { slug: 'government', label: 'Government/PSC' },
+  { slug: 'gulf_return', label: 'Gulf Return' },
+  { slug: 'banking', label: 'Banking/Coop' },
+  { slug: 'construction', label: 'Construction' },
+  { slug: 'retail', label: 'Retail' },
+  { slug: 'other', label: 'Other' },
+] as const;
+
+export const SEEKER_JOB_TYPES = [
+  { value: 'full_time', label: 'Full-time' },
+  { value: 'part_time', label: 'Part-time' },
+  { value: 'walk_in', label: 'Walk-in' },
+  { value: 'contract', label: 'Contract' },
+] as const;
+
+export const EXPERIENCE_OPTIONS = [
+  { months: 0, label: 'Fresher' },
+  { months: 6, label: '<1 year' },
+  { months: 18, label: '1–2 years' },
+  { months: 48, label: '3–5 years' },
+  { months: 84, label: '5–10 years' },
+  { months: 132, label: '10+ years' },
+] as const;
+
+export const VISIBILITY_OPTIONS = [
+  {
+    value: 'private',
+    en: 'Nobody — I will apply directly',
+    ml: 'ആരും കാണില്ല — ഞാൻ നേരിട്ട് apply ചെയ്യും',
+  },
+  {
+    value: 'selective',
+    en: 'Verified employers in my district only',
+    ml: 'എന്റെ ജില്ലയിലെ verified employers മാത്രം',
+  },
+  {
+    value: 'open',
+    en: 'All verified employers in Kerala',
+    ml: 'Kerala-ലെ എല്ലാ verified employers-ഉം',
+  },
+] as const;
+
 // Category SEO pages: URL param -> DB category_slug + display name.
 export const CATEGORY_SEO = [
   { param: 'nursing', db: 'nursing', display: 'Nursing Jobs' },

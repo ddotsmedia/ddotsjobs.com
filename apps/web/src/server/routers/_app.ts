@@ -4,6 +4,7 @@ import { itParksRouter } from './it-parks.js';
 import { jobsRouter } from './jobs.js';
 import { pravasiRouter } from './pravasi.js';
 import { pscRouter } from './psc.js';
+import { seekerRouter } from './seeker.js';
 
 // Root tRPC router. Feature routers merge here.
 export const appRouter = router({
@@ -13,6 +14,7 @@ export const appRouter = router({
   jobs: jobsRouter,
   pravasi: pravasiRouter,
   psc: pscRouter,
+  seeker: seekerRouter,
 });
 
 export type AppRouter = typeof appRouter;
