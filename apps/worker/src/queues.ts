@@ -22,6 +22,7 @@ const baseQueueOptions: QueueOptions = {
 // Canonical queue names. One queue per async domain.
 export const QUEUE_NAMES = {
   ai: 'ai', // AI-bound jobs (PSC scrape, gulf translate, knmc, ...)
+  alerts: 'alerts', // job -> matching subscriptions
   dispatch: 'dispatch', // outbound WhatsApp/notification dispatch
   maintenance: 'maintenance', // periodic housekeeping (stat rollups, ...)
   jobEmbedding: 'job-embedding',
@@ -41,7 +42,8 @@ export type DispatchPayload =
 // ── Typed job payloads ──────────────────────────────────────────────────
 export interface JobPayloads {
   [QUEUE_NAMES.ai]: Record<string, unknown>; // job.name dispatches (e.g. 'psc.scrape')
-  [QUEUE_NAMES.dispatch]: DispatchPayload;
+  [QUEUE_NAMES.alerts]: { jobId: string };
+  [QUEUE_NAMES.dispatch]: Record<string, unknown>; // job.name dispatches (psc_alert, whatsapp_job)
   [QUEUE_NAMES.maintenance]: Record<string, unknown>; // job.name dispatches
   [QUEUE_NAMES.jobEmbedding]: { jobId: string };
   [QUEUE_NAMES.alertDispatch]: { subscriptionId: string; jobId: string };
@@ -57,6 +59,7 @@ export interface JobPayloads {
 
 export const queues = {
   ai: new Queue<JobPayloads['ai']>(QUEUE_NAMES.ai, baseQueueOptions),
+  alerts: new Queue<JobPayloads['alerts']>(QUEUE_NAMES.alerts, baseQueueOptions),
   dispatch: new Queue<JobPayloads['dispatch']>(QUEUE_NAMES.dispatch, baseQueueOptions),
   maintenance: new Queue<JobPayloads['maintenance']>(QUEUE_NAMES.maintenance, baseQueueOptions),
   jobEmbedding: new Queue<JobPayloads['job-embedding']>(QUEUE_NAMES.jobEmbedding, baseQueueOptions),

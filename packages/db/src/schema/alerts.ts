@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm';
 import {
   boolean,
   index,
+  integer,
   jsonb,
   pgTable,
   text,
@@ -26,6 +27,11 @@ export const alertSubscriptions = pgTable(
     labelEn: varchar('label_en', { length: 200 }),
     channel: alertChannel('channel').notNull().default('whatsapp'),
     frequency: alertFrequency('frequency').notNull().default('daily'),
+    // 'immediate' | 'daily_digest' | 'weekly' (superset of the enum).
+    frequencyCode: varchar('frequency_code', { length: 20 }).notNull().default('immediate'),
+    language: varchar('language', { length: 2 }).notNull().default('ml'),
+    totalSent: integer('total_sent').notNull().default(0),
+    lastSentAt: timestamp('last_sent_at', { withTimezone: true }),
     isActive: boolean('is_active').notNull().default(true),
     lastDispatchedAt: timestamp('last_dispatched_at', { withTimezone: true }),
     ...timestamps,
@@ -33,6 +39,9 @@ export const alertSubscriptions = pgTable(
   (t) => [
     index('alert_subs_seeker_idx').on(t.seekerUserId),
     index('alert_subs_active_idx').on(t.isActive),
+    uniqueIndex('alert_subs_user_channel_uq')
+      .on(t.seekerUserId, t.channel)
+      .where(sql`deleted_at IS NULL`),
   ],
 );
 
@@ -48,9 +57,15 @@ export const alertFilters = pgTable(
     field: varchar('field', { length: 60 }).notNull(),
     operator: varchar('operator', { length: 20 }).notNull().default('eq'),
     value: jsonb('value').$type<unknown>().notNull(),
+    // Text mirrors for fast equality joins in the matching worker.
+    filterType: varchar('filter_type', { length: 40 }),
+    filterValue: varchar('filter_value', { length: 255 }),
     ...timestamps,
   },
-  (t) => [index('alert_filters_subscription_idx').on(t.subscriptionId)],
+  (t) => [
+    index('alert_filters_subscription_idx').on(t.subscriptionId),
+    index('alert_filters_type_value_idx').on(t.subscriptionId, t.filterType, t.filterValue),
+  ],
 );
 
 // Append-only log of dispatched alerts (idempotency + analytics).
@@ -64,12 +79,16 @@ export const alertDispatchLog = pgTable(
     jobId: uuid('job_id')
       .notNull()
       .references(() => jobs.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }),
     channel: alertChannel('channel').notNull(),
     dispatchedAt: timestamp('dispatched_at', { withTimezone: true })
       .notNull()
       .default(sql`now()`),
     deliveryStatus: varchar('delivery_status', { length: 30 }).notNull().default('queued'),
     providerMessageId: text('provider_message_id'),
+    whatsappMessageId: text('whatsapp_message_id'),
+    deliveryUpdatedAt: timestamp('delivery_updated_at', { withTimezone: true }),
+    failureReason: text('failure_reason'),
     error: text('error'),
     ...timestamps,
   },
@@ -79,5 +98,8 @@ export const alertDispatchLog = pgTable(
     uniqueIndex('alert_dispatch_uq')
       .on(t.subscriptionId, t.jobId, t.channel)
       .where(sql`deleted_at IS NULL`),
+    uniqueIndex('alert_dispatch_job_user_uq')
+      .on(t.jobId, t.userId)
+      .where(sql`user_id IS NOT NULL`),
   ],
 );

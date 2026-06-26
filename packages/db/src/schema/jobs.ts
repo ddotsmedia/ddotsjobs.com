@@ -72,6 +72,7 @@ export const jobs = pgTable(
     googleIndexedAt: timestamp('google_indexed_at', { withTimezone: true }),
     viewCount: integer('view_count').notNull().default(0),
     applicationCount: integer('application_count').notNull().default(0),
+    alertRecipientsCount: integer('alert_recipients_count').notNull().default(0),
     isWalkIn: boolean('is_walk_in').notNull().default(false),
     // True if the employer wants candidates with gulf work experience.
     valuesGulfExperience: boolean('values_gulf_experience').notNull().default(false),

@@ -3,6 +3,8 @@ import { db, eq, tables } from '@ddotsjobs/db';
 import { baseQueueOptions, connection, QUEUE_NAMES, type QueueName } from './queues.js';
 import { aiQueueProcessor, registerPscCron } from './workers/psc.worker.js';
 import { maintenanceQueueProcessor, registerItParkStatsCron } from './workers/itpark-stats.worker.js';
+import { alertsQueueProcessor } from './workers/alerts.worker.js';
+import { dispatchQueueProcessor } from './workers/dispatch.worker.js';
 import { jobEmbeddingProcessor } from './workers/job-embedding.worker.js';
 import { alertDispatchProcessor } from './workers/alert-dispatch.worker.js';
 import { pscScrapeProcessor } from './workers/psc-scrape.worker.js';
@@ -78,9 +80,27 @@ maintenanceWorker.on('failed', (job, err) =>
   console.error(`[maintenance] failed ${job?.name}: ${err.message}`),
 );
 
+// Alerts matching (concurrency 5) and WhatsApp dispatch (concurrency 3, 30/min).
+const alertsWorker = new Worker(QUEUE_NAMES.alerts, alertsQueueProcessor, {
+  connection,
+  prefix: baseQueueOptions.prefix,
+  concurrency: 5,
+});
+alertsWorker.on('failed', (job, err) => console.error(`[alerts] failed ${job?.id}: ${err.message}`));
+
+const dispatchWorker = new Worker(QUEUE_NAMES.dispatch, dispatchQueueProcessor, {
+  connection,
+  prefix: baseQueueOptions.prefix,
+  concurrency: 3,
+  limiter: { max: 30, duration: 60_000 },
+});
+dispatchWorker.on('failed', (job, err) => console.error(`[dispatch] failed ${job?.id}: ${err.message}`));
+
 const workers: Worker[] = [
   aiWorker,
   maintenanceWorker,
+  alertsWorker,
+  dispatchWorker,
   makeWorker(QUEUE_NAMES.jobEmbedding, jobEmbeddingProcessor as Processor),
   makeWorker(QUEUE_NAMES.alertDispatch, alertDispatchProcessor as Processor),
   makeWorker(QUEUE_NAMES.pscScrape, pscScrapeProcessor as Processor),
