@@ -14,7 +14,7 @@ export const fitScoreRouter = router({
         .select({
           district: j.district,
           category: j.categorySlug,
-          minExperienceYears: j.minExperienceYears,
+          minExperienceMonths: j.minExperienceMonths,
           salaryMinPaise: j.salaryMinPaise,
           salaryMaxPaise: j.salaryMaxPaise,
           salaryDisclosed: j.salaryDisclosed,
@@ -113,7 +113,7 @@ export const fitScoreRouter = router({
         job: {
           district: job.district ?? '',
           category: job.category ?? '',
-          minExperienceMonths: (job.minExperienceYears ?? 0) * 12,
+          minExperienceMonths: job.minExperienceMonths ?? 0,
           maxExperienceMonths: null,
           salaryMinPaise: job.salaryMinPaise,
           salaryMaxPaise: job.salaryMaxPaise,

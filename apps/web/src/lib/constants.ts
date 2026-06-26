@@ -46,6 +46,43 @@ export const SALARY_MIN_RUPEES = 10_000;
 export const SALARY_MAX_RUPEES = 100_000;
 export const SALARY_STEP_RUPEES = 5_000;
 
+// Job-post builder options.
+export const JOB_CATEGORIES = [
+  { slug: 'nursing', label: 'Nursing' },
+  { slug: 'it', label: 'IT/Software' },
+  { slug: 'teaching', label: 'Teaching' },
+  { slug: 'government', label: 'Government' },
+  { slug: 'engineering', label: 'Engineering' },
+  { slug: 'accounting', label: 'Accounting' },
+  { slug: 'construction', label: 'Construction' },
+  { slug: 'hospitality', label: 'Hospitality' },
+  { slug: 'retail', label: 'Retail' },
+  { slug: 'banking', label: 'Banking/Finance' },
+  { slug: 'healthcare', label: 'Healthcare' },
+  { slug: 'other', label: 'Other' },
+] as const;
+
+export const JOB_POST_TYPES = [
+  { value: 'full_time', label: 'Full-time' },
+  { value: 'part_time', label: 'Part-time' },
+  { value: 'contract', label: 'Contract' },
+  { value: 'internship', label: 'Internship' },
+  { value: 'walk_in', label: 'Walk-in' },
+  { value: 'freelance', label: 'Freelance' },
+] as const;
+
+export const JOB_CERTS = ['KNMC', 'KTET', 'KMC', 'ITI', 'ASAP', 'Other'] as const;
+
+export const JOB_EXPERIENCE = [
+  { months: 0, label: 'No experience required' },
+  { months: 6, label: '6 months+' },
+  { months: 12, label: '1 year+' },
+  { months: 24, label: '2 years+' },
+  { months: 36, label: '3 years+' },
+  { months: 60, label: '5 years+' },
+  { months: 120, label: '10 years+' },
+] as const;
+
 // Employer registration options.
 export const EMPLOYER_TYPES = [
   { value: 'hospital', label: 'Hospital' },

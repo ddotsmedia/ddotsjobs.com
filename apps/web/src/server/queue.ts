@@ -9,3 +9,5 @@ const prefix = KEY_PREFIX.replace(/:$/, '');
 const connection = createRawConnection();
 
 export const aiQueue = new Queue('ai', { connection, prefix });
+export const alertsQueue = new Queue('alerts', { connection, prefix });
+export const searchSyncQueue = new Queue('search-sync', { connection, prefix });

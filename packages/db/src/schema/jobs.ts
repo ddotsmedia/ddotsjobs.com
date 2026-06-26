@@ -56,6 +56,7 @@ export const jobs = pgTable(
     salaryPeriod: varchar('salary_period', { length: 20 }).notNull().default('monthly'),
     vacancies: integer('vacancies').notNull().default(1),
     minExperienceYears: smallint('min_experience_years').notNull().default(0),
+    minExperienceMonths: integer('min_experience_months').notNull().default(0),
     // 'both' | 'ml' | 'en' — language expected for the role.
     languageRequirement: varchar('language_requirement', { length: 10 }).notNull().default('both'),
     skills: jsonb('skills').$type<string[]>().notNull().default([]),
@@ -71,6 +72,7 @@ export const jobs = pgTable(
     applicationDeadline: timestamp('application_deadline', { withTimezone: true }),
     publishedAt: timestamp('published_at', { withTimezone: true }),
     expiresAt: timestamp('expires_at', { withTimezone: true }),
+    closedAt: timestamp('closed_at', { withTimezone: true }),
     googleIndexedAt: timestamp('google_indexed_at', { withTimezone: true }),
     viewCount: integer('view_count').notNull().default(0),
     applicationCount: integer('application_count').notNull().default(0),

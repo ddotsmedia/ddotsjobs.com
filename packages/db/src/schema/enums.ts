@@ -35,6 +35,7 @@ export const jobStatus = pgEnum('job_status', [
   'filled',
   'expired',
   'rejected',
+  'closed',
 ]);
 
 export const applicationStatus = pgEnum('application_status', [

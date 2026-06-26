@@ -19,7 +19,7 @@ const nextConfig: NextConfig = {
     '@ddotsjobs/redis',
     '@ddotsjobs/storage',
   ],
-  serverExternalPackages: ['pg', 'ioredis', '@anthropic-ai/sdk', '@aws-sdk/client-s3'],
+  serverExternalPackages: ['pg', 'ioredis', '@google/generative-ai', '@aws-sdk/client-s3'],
   experimental: {
     optimizePackageImports: ['@trpc/react-query', '@tanstack/react-query'],
   },

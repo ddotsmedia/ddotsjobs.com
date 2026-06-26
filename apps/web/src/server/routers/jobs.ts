@@ -1,7 +1,12 @@
+import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
-import { and, asc, count, eq, gte, inArray, isNull, sql, tables, type SQL } from '@ddotsjobs/db';
-import { protectedProcedure, publicProcedure, router } from '../trpc.js';
+import { and, asc, count, desc, eq, gte, inArray, isNull, sql, tables, type SQL } from '@ddotsjobs/db';
+import { callAI } from '@ddotsjobs/ai';
+import { jobAutoFillDescriptionPrompt } from '@ddotsjobs/ai/prompts';
+import { notifyGoogleIndexing } from '@/lib/google-indexing';
+import { alertsQueue, searchSyncQueue } from '../queue.js';
+import { protectedProcedure, publicProcedure, roleProcedure, router } from '../trpc.js';
 
 const DISTRICTS = [
   'thiruvananthapuram', 'kollam', 'pathanamthitta', 'alappuzha', 'kottayam',
@@ -70,6 +75,48 @@ function baseConditions(input: z.infer<typeof listInput> | z.infer<typeof countI
 }
 
 const countInput = listInput.omit({ sort: true, cursor: true, limit: true });
+
+const CREATE_JOB_TYPES = [
+  'full_time', 'part_time', 'contract', 'internship', 'walk_in', 'freelance',
+] as const;
+// 'freelance' is not in the job_type enum — map it to the closest value.
+const JOB_TYPE_ENUM: Record<string, 'full_time' | 'part_time' | 'contract' | 'internship' | 'walk_in'> = {
+  full_time: 'full_time', part_time: 'part_time', contract: 'contract',
+  internship: 'internship', walk_in: 'walk_in', freelance: 'contract',
+};
+
+const jobInput = z.object({
+  title: z.string().min(3).max(255),
+  titleMl: z.string().max(255).optional(),
+  category: z.string().min(1).max(100),
+  district: z.enum(DISTRICTS),
+  jobType: z.enum(CREATE_JOB_TYPES).default('full_time'),
+  description: z.string().min(50),
+  descriptionMl: z.string().optional(),
+  requirements: z.string().optional(),
+  salaryMinPaise: z.number().int().nonnegative().optional(),
+  salaryMaxPaise: z.number().int().nonnegative().optional(),
+  salaryDisclosed: z.boolean().default(true),
+  salaryPeriod: z.string().max(20).default('month'),
+  languageRequirement: z.enum(['ml', 'en', 'both']).default('both'),
+  minExperienceMonths: z.number().int().nonnegative().default(0),
+  requiredCertifications: z.array(z.string().max(40)).default([]),
+  isWalkIn: z.boolean().default(false),
+  walkInStartAt: z.string().datetime().optional(),
+  walkInEndAt: z.string().datetime().optional(),
+  walkInVenue: z.string().max(255).optional(),
+  walkInVenueMl: z.string().max(255).optional(),
+  walkInDocumentsMl: z.string().optional(),
+  valuesGulfExperience: z.boolean().default(false),
+  employerQuestion: z.string().max(500).optional(),
+  validThrough: z.string().datetime().optional(),
+  itParkId: z.string().uuid().optional(),
+});
+
+function jobSlug(title: string, district: string): string {
+  const base = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80) || 'job';
+  return `${base}-${district}-${randomBytes(3).toString('hex')}`;
+}
 
 export const jobsRouter = router({
   count: publicProcedure.input(countInput).query(async ({ ctx, input }) => {
@@ -352,5 +399,211 @@ export const jobsRouter = router({
       }
       await ctx.db.update(s).set({ deletedAt: new Date() }).where(eq(s.id, existing.id));
       return { saved: false as const };
+    }),
+
+  // ── Employer: post a job ─────────────────────────────────────────────
+  create: roleProcedure('employer').input(jobInput).mutation(async ({ ctx, input }) => {
+    const [emp] = await ctx.db
+      .select({
+        id: tables.employers.id,
+        verificationStatus: tables.employers.verificationStatus,
+        jobsPosted: tables.employers.jobsPostedThisPeriod,
+        jobsLimit: tables.employers.jobsLimitThisPeriod,
+      })
+      .from(tables.employers)
+      .where(and(eq(tables.employers.ownerUserId, ctx.user.id), isNull(tables.employers.deletedAt)))
+      .limit(1);
+    if (!emp) throw new TRPCError({ code: 'NOT_FOUND', message: 'Register your company first' });
+    if (emp.jobsPosted >= emp.jobsLimit) {
+      throw new TRPCError({ code: 'FORBIDDEN', message: 'Job post limit reached. Upgrade your plan.' });
+    }
+    if (input.isWalkIn && !input.walkInStartAt) {
+      throw new TRPCError({ code: 'BAD_REQUEST', message: 'Walk-in date is required' });
+    }
+    if (input.salaryMaxPaise != null && input.salaryMinPaise != null && input.salaryMaxPaise < input.salaryMinPaise) {
+      throw new TRPCError({ code: 'BAD_REQUEST', message: 'Maximum salary is below minimum' });
+    }
+
+    const status = emp.verificationStatus === 'verified' ? 'active' : 'pending_review';
+    const slug = jobSlug(input.title, input.district);
+    const now = new Date();
+
+    const [row] = await ctx.db
+      .insert(tables.jobs)
+      .values({
+        employerId: emp.id,
+        slug,
+        titleEn: input.title,
+        titleMl: input.titleMl ?? null,
+        descriptionEn: input.description,
+        descriptionMl: input.descriptionMl ?? null,
+        requirementsEn: input.requirements ?? null,
+        type: JOB_TYPE_ENUM[input.jobType],
+        status,
+        district: input.district,
+        categorySlug: input.category,
+        salaryMinPaise: input.salaryMinPaise ?? null,
+        salaryMaxPaise: input.salaryMaxPaise ?? null,
+        salaryDisclosed: input.salaryDisclosed,
+        salaryPeriod: input.salaryPeriod,
+        languageRequirement: input.languageRequirement,
+        minExperienceMonths: input.minExperienceMonths,
+        requiredCertifications: input.requiredCertifications,
+        isWalkIn: input.isWalkIn,
+        valuesGulfExperience: input.valuesGulfExperience,
+        employerQuestionEn: input.employerQuestion ?? null,
+        validThrough: input.validThrough ? new Date(input.validThrough) : null,
+        itParkId: input.itParkId ?? null,
+        publishedAt: status === 'active' ? now : null,
+      })
+      .returning({ id: tables.jobs.id });
+    if (!row) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+
+    if (input.isWalkIn && input.walkInStartAt) {
+      await ctx.db.insert(tables.walkInEvents).values({
+        jobId: row.id,
+        venueEn: input.walkInVenue ?? 'Walk-in venue',
+        venueMl: input.walkInVenueMl ?? null,
+        district: input.district,
+        startsAt: new Date(input.walkInStartAt),
+        endsAt: input.walkInEndAt ? new Date(input.walkInEndAt) : null,
+        instructionsMl: input.walkInDocumentsMl ?? null,
+      });
+    }
+
+    await ctx.db
+      .update(tables.employers)
+      .set({ jobsPostedThisPeriod: sql`${tables.employers.jobsPostedThisPeriod} + 1` })
+      .where(eq(tables.employers.id, emp.id));
+
+    if (status === 'active') {
+      await alertsQueue.add('match_job_alerts', { jobId: row.id }, { priority: 10 });
+      await searchSyncQueue.add('index', { jobId: row.id, action: 'index' });
+      void notifyGoogleIndexing(`https://ddotsjobs.com/jobs/${slug}`);
+    }
+
+    await ctx.db.insert(tables.auditLog).values({
+      actorUserId: ctx.user.id,
+      action: 'job.created',
+      entityType: 'job',
+      entityId: row.id,
+    });
+
+    return { jobId: row.id, slug, status };
+  }),
+
+  // ── Employer: update a job (district/category locked) ────────────────
+  update: roleProcedure('employer')
+    .input(
+      jobInput
+        .omit({ district: true, category: true, isWalkIn: true, walkInStartAt: true, walkInEndAt: true, walkInVenue: true, walkInVenueMl: true, walkInDocumentsMl: true })
+        .partial()
+        .extend({ jobId: z.string().uuid() }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const [job] = await ctx.db
+        .select({ id: tables.jobs.id, slug: tables.jobs.slug, status: tables.jobs.status })
+        .from(tables.jobs)
+        .innerJoin(tables.employers, eq(tables.employers.id, tables.jobs.employerId))
+        .where(and(eq(tables.jobs.id, input.jobId), eq(tables.employers.ownerUserId, ctx.user.id), isNull(tables.jobs.deletedAt)))
+        .limit(1);
+      if (!job) throw new TRPCError({ code: 'FORBIDDEN', message: 'Not your job' });
+
+      const set: Record<string, unknown> = { updatedAt: new Date() };
+      if (input.title !== undefined) set.titleEn = input.title;
+      if (input.titleMl !== undefined) set.titleMl = input.titleMl;
+      if (input.description !== undefined) set.descriptionEn = input.description;
+      if (input.descriptionMl !== undefined) set.descriptionMl = input.descriptionMl;
+      if (input.requirements !== undefined) set.requirementsEn = input.requirements;
+      if (input.jobType !== undefined) set.type = JOB_TYPE_ENUM[input.jobType];
+      if (input.salaryMinPaise !== undefined) set.salaryMinPaise = input.salaryMinPaise;
+      if (input.salaryMaxPaise !== undefined) set.salaryMaxPaise = input.salaryMaxPaise;
+      if (input.salaryDisclosed !== undefined) set.salaryDisclosed = input.salaryDisclosed;
+      if (input.languageRequirement !== undefined) set.languageRequirement = input.languageRequirement;
+      if (input.minExperienceMonths !== undefined) set.minExperienceMonths = input.minExperienceMonths;
+      if (input.requiredCertifications !== undefined) set.requiredCertifications = input.requiredCertifications;
+      if (input.valuesGulfExperience !== undefined) set.valuesGulfExperience = input.valuesGulfExperience;
+      if (input.employerQuestion !== undefined) set.employerQuestionEn = input.employerQuestion;
+      if (input.validThrough !== undefined) set.validThrough = new Date(input.validThrough);
+      if (input.itParkId !== undefined) set.itParkId = input.itParkId;
+
+      await ctx.db.update(tables.jobs).set(set).where(eq(tables.jobs.id, input.jobId));
+      // Profile/content change invalidates cached fit scores.
+      await ctx.db.delete(tables.fitScores).where(eq(tables.fitScores.jobId, input.jobId));
+
+      if (job.status === 'active') {
+        await alertsQueue.add('match_job_alerts', { jobId: input.jobId }, { priority: 10 });
+        await searchSyncQueue.add('index', { jobId: input.jobId, action: 'index' });
+      }
+      return { success: true as const };
+    }),
+
+  myJobs: roleProcedure('employer').query(async ({ ctx }) => {
+    const j = tables.jobs;
+    return ctx.db
+      .select({
+        id: j.id,
+        title: j.titleEn,
+        slug: j.slug,
+        status: j.status,
+        district: j.district,
+        category: j.categorySlug,
+        salaryMinPaise: j.salaryMinPaise,
+        salaryMaxPaise: j.salaryMaxPaise,
+        salaryDisclosed: j.salaryDisclosed,
+        isWalkIn: j.isWalkIn,
+        publishedAt: j.publishedAt,
+        validThrough: j.validThrough,
+        viewCount: j.viewCount,
+        applicationCount: j.applicationCount,
+        walkInStartsAt: sql<Date | null>`(SELECT min(w.starts_at) FROM walk_in_events w WHERE w.job_id = jobs.id AND w.deleted_at IS NULL)`,
+      })
+      .from(j)
+      .innerJoin(tables.employers, eq(tables.employers.id, j.employerId))
+      .where(and(eq(tables.employers.ownerUserId, ctx.user.id), isNull(j.deletedAt)))
+      .orderBy(desc(j.publishedAt), desc(j.createdAt))
+      .limit(20);
+  }),
+
+  close: roleProcedure('employer')
+    .input(z.object({ jobId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const [job] = await ctx.db
+        .select({ id: tables.jobs.id })
+        .from(tables.jobs)
+        .innerJoin(tables.employers, eq(tables.employers.id, tables.jobs.employerId))
+        .where(and(eq(tables.jobs.id, input.jobId), eq(tables.employers.ownerUserId, ctx.user.id)))
+        .limit(1);
+      if (!job) throw new TRPCError({ code: 'FORBIDDEN', message: 'Not your job' });
+      await ctx.db
+        .update(tables.jobs)
+        .set({ status: 'closed', closedAt: new Date() })
+        .where(eq(tables.jobs.id, input.jobId));
+      return { success: true as const };
+    }),
+
+  autoFillDescription: roleProcedure('employer')
+    .input(
+      z.object({
+        title: z.string().min(1),
+        category: z.string().min(1),
+        district: z.string().min(1),
+        language: z.enum(['ml', 'en', 'both']).default('both'),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      try {
+        const spec = jobAutoFillDescriptionPrompt(input);
+        const { data } = await callAI({
+          task: spec.task,
+          prompt: spec.prompt,
+          system: spec.system,
+          schema: spec.schema,
+        });
+        return { description_en: data.description_en, description_ml: data.description_ml };
+      } catch (err) {
+        console.error('[jobs.autoFill] failed:', String(err));
+        return null;
+      }
     }),
 });

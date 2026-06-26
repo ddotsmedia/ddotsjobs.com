@@ -239,10 +239,37 @@ export function fitExplainScorePrompt(input: {
   };
 }
 
+// ── Job description auto-fill (Flash) ───────────────────────────────────
+export const jobAutoFillSchema = z.object({
+  description_en: z.string(),
+  description_ml: z.string(),
+});
+export type JobAutoFillOutput = z.infer<typeof jobAutoFillSchema>;
+
+export function jobAutoFillDescriptionPrompt(input: {
+  title: string;
+  category: string;
+  district: string;
+  language: string;
+}): PromptSpec<JobAutoFillOutput> {
+  return {
+    task: 'summarize',
+    version: 1,
+    system:
+      'Write a concise, professional job description (4-7 sentences) for the ' +
+      'given Kerala job, in both English (description_en) and Malayalam ' +
+      '(description_ml). Cover role, key responsibilities and who should apply. ' +
+      'Do not invent salary, contact or employer-specific claims.',
+    prompt: JSON.stringify(input),
+    schema: jobAutoFillSchema,
+  };
+}
+
 // ── Registry of every prompt for introspection / eval harnesses ─────────
 export const PROMPTS = {
   fitScore: fitScorePrompt,
   fitExplainScore: fitExplainScorePrompt,
+  jobAutoFillDescription: jobAutoFillDescriptionPrompt,
   gulfTitleTranslation: gulfTitleTranslationPrompt,
   gulfTranslateTitle: gulfTranslateTitlePrompt,
   jobNormalize: jobNormalizePrompt,

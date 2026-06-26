@@ -47,6 +47,9 @@ importers:
       '@ddotsjobs/storage':
         specifier: workspace:*
         version: link:../../packages/storage
+      '@google/generative-ai':
+        specifier: ^0.21.0
+        version: 0.21.0
       '@tanstack/react-query':
         specifier: ^5.62.7
         version: 5.101.1(react@19.0.0)
