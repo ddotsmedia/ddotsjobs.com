@@ -29,7 +29,8 @@ function makeWorker(name: QueueName, processor: Processor): Worker {
 const aiWorker = new Worker(QUEUE_NAMES.ai, aiQueueProcessor, {
   connection,
   prefix: baseQueueOptions.prefix,
-  concurrency: 1,
+  // PSC scrape (rare cron) + gulf translate (spec concurrency 3) share this queue.
+  concurrency: 3,
 });
 aiWorker.on('completed', (job) => console.log(`[ai] completed ${job.name} ${job.id}`));
 aiWorker.on('failed', async (job, err) => {

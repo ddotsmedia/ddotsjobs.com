@@ -148,10 +148,41 @@ export function pscGenerateSummaryMlPrompt(input: {
   };
 }
 
+// ── Gulf → Kerala job-title translation (Haiku) ─────────────────────────
+export const gulfTranslateSchema = z.object({
+  kerala_titles: z.array(z.string()).min(1).max(8),
+  primary_title: z.string().min(1),
+  explanation_ml: z.string(),
+  suggested_categories: z.array(z.string()).max(8),
+  confidence: z.number().min(0).max(1),
+});
+export type GulfTranslateOutput = z.infer<typeof gulfTranslateSchema>;
+
+export function gulfTranslateTitlePrompt(input: {
+  gulfTitle: string;
+  country: string | null;
+  industry: string | null;
+  yearsExp: number | null;
+}): PromptSpec<GulfTranslateOutput> {
+  return {
+    task: 'translate',
+    version: 1,
+    system:
+      'Map a Gulf job title to its Kerala job-market equivalents. Return ' +
+      'kerala_titles (ranked English titles), primary_title (best match), ' +
+      'explanation_ml (one Malayalam sentence), suggested_categories (slugs like ' +
+      'nursing/it/construction), and confidence 0..1. Be faithful; do not inflate ' +
+      'seniority.',
+    prompt: JSON.stringify(input),
+    schema: gulfTranslateSchema,
+  };
+}
+
 // ── Registry of every prompt for introspection / eval harnesses ─────────
 export const PROMPTS = {
   fitScore: fitScorePrompt,
   gulfTitleTranslation: gulfTitleTranslationPrompt,
+  gulfTranslateTitle: gulfTranslateTitlePrompt,
   jobNormalize: jobNormalizePrompt,
   pscExtractNotification: pscExtractNotificationPrompt,
   pscGenerateSummaryMl: pscGenerateSummaryMlPrompt,

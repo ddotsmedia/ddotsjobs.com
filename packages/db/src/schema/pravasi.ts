@@ -3,8 +3,10 @@ import {
   bigint,
   boolean,
   index,
+  integer,
   jsonb,
   pgTable,
+  real,
   text,
   timestamp,
   uniqueIndex,
@@ -26,6 +28,9 @@ export const pravasiProfiles = pgTable(
     currentCountry: gulfCountry('current_country'),
     isReturnee: boolean('is_returnee').notNull().default(false),
     returnedAt: timestamp('returned_at', { withTimezone: true }),
+    totalYearsAbroad: integer('total_years_abroad'),
+    financialUrgency: varchar('financial_urgency', { length: 30 }).notNull().default('moderate'),
+    seekingEmploymentIn: jsonb('seeking_employment_in').$type<string[]>().notNull().default([]),
     passportNumberMasked: varchar('passport_number_masked', { length: 30 }),
     emigrationClearance: boolean('emigration_clearance').notNull().default(false),
     norkaIdMasked: varchar('norka_id_masked', { length: 60 }),
@@ -49,10 +54,20 @@ export const pravasiWorkHistory = pgTable(
     pravasiProfileId: uuid('pravasi_profile_id')
       .notNull()
       .references(() => pravasiProfiles.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }),
     employerName: varchar('employer_name', { length: 255 }),
     country: gulfCountry('country'),
     titleEn: varchar('title_en', { length: 255 }),
     titleLocal: varchar('title_local', { length: 255 }),
+    gulfJobTitle: varchar('gulf_job_title', { length: 255 }),
+    industry: varchar('industry', { length: 120 }),
+    yearsInRole: integer('years_in_role'),
+    keySkills: jsonb('key_skills').$type<string[]>().notNull().default([]),
+    certifications: jsonb('certifications').$type<string[]>().notNull().default([]),
+    translatedKeralaTitles: jsonb('translated_kerala_titles').$type<string[]>().notNull().default([]),
+    translationConfidence: real('translation_confidence'),
+    translationSource: varchar('translation_source', { length: 30 }),
+    sortOrder: integer('sort_order').notNull().default(0),
     startedAt: timestamp('started_at', { withTimezone: true }),
     endedAt: timestamp('ended_at', { withTimezone: true }),
     // Last drawn salary in paise (INR-equivalent), BIGINT.
@@ -61,7 +76,10 @@ export const pravasiWorkHistory = pgTable(
     descriptionEn: text('description_en'),
     ...timestamps,
   },
-  (t) => [index('pravasi_work_history_profile_idx').on(t.pravasiProfileId)],
+  (t) => [
+    index('pravasi_work_history_profile_idx').on(t.pravasiProfileId),
+    index('pravasi_work_history_user_idx').on(t.userId),
+  ],
 );
 
 // Maps gulf/local job titles to canonical ddotsjobs categories + Malayalam.
@@ -70,6 +88,12 @@ export const gulfTitleTranslations = pgTable(
   {
     id: pk(),
     sourceTitle: varchar('source_title', { length: 255 }).notNull(),
+    gulfTitle: varchar('gulf_title', { length: 255 }),
+    gulfTitleNormalized: varchar('gulf_title_normalized', { length: 255 }),
+    keralaEquivalents: jsonb('kerala_equivalents').$type<string[]>().notNull().default([]),
+    industry: varchar('industry', { length: 120 }),
+    confidenceScore: real('confidence_score'),
+    translationSource: varchar('translation_source', { length: 30 }),
     country: gulfCountry('country'),
     canonicalTitleEn: varchar('canonical_title_en', { length: 255 }).notNull(),
     canonicalTitleMl: varchar('canonical_title_ml', { length: 255 }),
@@ -81,6 +105,9 @@ export const gulfTitleTranslations = pgTable(
     uniqueIndex('gulf_title_translations_uq')
       .on(t.sourceTitle, t.country)
       .where(sql`deleted_at IS NULL`),
+    uniqueIndex('gulf_title_normalized_uq')
+      .on(t.gulfTitleNormalized)
+      .where(sql`gulf_title_normalized IS NOT NULL`),
     index('gulf_title_translations_category_idx').on(t.categorySlug),
   ],
 );

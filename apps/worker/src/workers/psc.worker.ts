@@ -6,6 +6,7 @@ import { pscExtractNotificationPrompt, pscGenerateSummaryMlPrompt } from '@ddots
 import { and, db, eq, isNull, sql, tables } from '@ddotsjobs/db';
 import { redis } from '@ddotsjobs/redis';
 import { queues, QUEUE_NAMES } from '../queues.js';
+import { runGulfTranslate } from './gulf.worker.js';
 
 const PSC_URL = 'https://www.keralapsc.gov.in/notifications';
 const LAST_HASH_KEY = 'psc:last_hash'; // -> ddotsjobs:psc:last_hash
@@ -23,9 +24,19 @@ export async function registerPscCron(): Promise<void> {
 
 /** ai-queue processor — routes by job.name. */
 export async function aiQueueProcessor(job: Job): Promise<unknown> {
-  if (job.name === PSC_JOB_NAME) return runPscScrape();
-  console.warn(`[ai] unhandled job ${job.name}`);
-  return { skipped: true };
+  switch (job.name) {
+    case PSC_JOB_NAME:
+      return runPscScrape();
+    case 'gulf.translate':
+      return runGulfTranslate(job.data);
+    case 'fit.recompute':
+      // Fit-score recomputation consumer lands in C5.
+      console.log(`[ai] fit.recompute queued for ${JSON.stringify(job.data)}`);
+      return { status: 'queued' };
+    default:
+      console.warn(`[ai] unhandled job ${job.name}`);
+      return { skipped: true };
+  }
 }
 
 function cleanHtml(html: string): string {

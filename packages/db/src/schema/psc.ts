@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import {
+  bigint,
   boolean,
   index,
   integer,
@@ -122,6 +123,10 @@ export const norkaSchemes = pgTable(
     eligibilityEn: text('eligibility_en'),
     benefitsMl: text('benefits_ml'),
     benefitsEn: text('benefits_en'),
+    benefitType: varchar('benefit_type', { length: 60 }),
+    // Max benefit in paise (integer). Null when not a fixed amount.
+    maxBenefitPaise: bigint('max_benefit_paise', { mode: 'number' }),
+    documents: jsonb('documents').$type<string[]>().notNull().default([]),
     applyUrl: text('apply_url'),
     category: varchar('category', { length: 80 }),
     isActive: boolean('is_active').notNull().default(true),
