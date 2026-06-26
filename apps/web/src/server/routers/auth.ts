@@ -9,7 +9,7 @@ import {
   readOtp,
   storeOtp,
 } from '@/lib/otp';
-import { sendOtp } from '@/lib/resend';
+import { sendWhatsAppOtp } from '@/lib/greenapi';
 import { protectedProcedure, publicProcedure, router } from '../trpc.js';
 
 const phoneSchema = z
@@ -23,7 +23,7 @@ export const authRouter = router({
     .mutation(async ({ input }) => {
       const code = generateOtp();
       await storeOtp(input.phone, code);
-      await sendOtp(input.phone, code);
+      await sendWhatsAppOtp(input.phone, code);
       return { success: true as const };
     }),
 
