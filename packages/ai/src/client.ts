@@ -1,8 +1,9 @@
-import Anthropic from '@anthropic-ai/sdk';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { z } from 'zod';
 import {
   MAX_TOKENS,
   MODELS,
+  geminiModelForTier,
   pickModel,
   projectCostPaise,
   type ModelTier,
@@ -17,18 +18,18 @@ import {
   reserveBudget,
 } from './enforce.js';
 
-const apiKey = process.env.ANTHROPIC_API_KEY;
+const apiKey = process.env.GEMINI_API_KEY;
 // Lazily constructed so importing this module never throws when the key is
 // absent (e.g. during build). The first callAI() use validates it.
-let _client: Anthropic | null = null;
-function client(): Anthropic {
-  if (!apiKey) throw new Error('ANTHROPIC_API_KEY is not set');
-  _client ??= new Anthropic({ apiKey });
+let _client: GoogleGenerativeAI | null = null;
+function client(): GoogleGenerativeAI {
+  if (!apiKey) throw new Error('GEMINI_API_KEY is not set');
+  _client ??= new GoogleGenerativeAI(apiKey);
   return _client;
 }
 
 export interface CallAIOptions<T> {
-  /** Task kind drives model tier (Haiku default, Sonnet for reasoning). */
+  /** Task kind drives model tier (flash default, pro for reasoning). */
   task: TaskKind;
   /** User-turn content. */
   prompt: string;
@@ -38,7 +39,7 @@ export interface CallAIOptions<T> {
   schema?: z.ZodType<T>;
   /** Override max output tokens (defaults to the tier's MAX_TOKENS). */
   maxTokens?: number;
-  /** Force a specific tier. NEVER Opus — type only allows haiku|sonnet. */
+  /** Force a specific tier. */
   tier?: ModelTier;
   /** Lower = more deterministic. Default 0.2. */
   temperature?: number;
@@ -58,29 +59,22 @@ const SCHEMA_INSTRUCTION =
   'Respond with ONLY a single JSON value matching the requested schema. ' +
   'No markdown fences, no commentary.';
 
-function extractText(message: Anthropic.Message): string {
-  return message.content
-    .filter((b): b is Anthropic.TextBlock => b.type === 'text')
-    .map((b) => b.text)
-    .join('')
-    .trim();
-}
-
 function stripFences(text: string): string {
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
   return (fenced?.[1] ?? text).trim();
 }
 
 /**
- * The ONLY entry point for Anthropic in the entire codebase. Enforces the
- * Universal Prompt Law, model-tier policy (never Opus), circuit breaker and
- * daily budget. Pass a Zod `schema` to get validated structured output.
+ * The ONLY AI entry point in the entire codebase. Enforces the Universal Prompt
+ * Law, model-tier policy, circuit breaker and daily budget. Backed by Gemini
+ * (Flash for the default tier, Pro for reasoning). Pass a Zod `schema` to get
+ * validated structured output.
  */
 export async function callAI<T = string>(
   options: CallAIOptions<T>,
 ): Promise<CallAIResult<T>> {
   const tier: ModelTier = options.tier ?? pickModel(options.task);
-  const model = MODELS[tier];
+  const modelName = geminiModelForTier(tier);
   const maxTokens = options.maxTokens ?? MAX_TOKENS[tier];
   const temperature = options.temperature ?? 0.2;
 
@@ -88,32 +82,33 @@ export async function callAI<T = string>(
   if (options.system) systemParts.push(options.system);
   if (options.schema) systemParts.push(SCHEMA_INSTRUCTION);
   const system = systemParts.join('\n\n');
+  const fullPrompt = `${system}\n\n${options.prompt}`;
 
   await assertCircuitClosed();
 
   // Reserve budget on a rough projection (input estimated from char count / 4).
-  const estInputTokens = Math.ceil((system.length + options.prompt.length) / 4);
+  const estInputTokens = Math.ceil(fullPrompt.length / 4);
   const projected = projectCostPaise(tier, estInputTokens, maxTokens);
   const dayKey = await reserveBudget(tier, projected);
 
   try {
-    const message = await client().messages.create({
-      model,
-      max_tokens: maxTokens,
-      temperature,
-      system,
-      messages: [{ role: 'user', content: options.prompt }],
+    const model = client().getGenerativeModel({
+      model: modelName,
+      generationConfig: { temperature, maxOutputTokens: maxTokens },
     });
+    const result = await model.generateContent(fullPrompt);
+    const text = result.response.text().trim();
+    if (!text) throw new Error('Empty response from model');
 
+    // Gemini does not return billed token usage here — estimate from char count.
     const usage = {
-      inputTokens: message.usage.input_tokens,
-      outputTokens: message.usage.output_tokens,
+      inputTokens: estInputTokens,
+      outputTokens: Math.ceil(text.length / 4),
     };
     const costPaise = projectCostPaise(tier, usage.inputTokens, usage.outputTokens);
     await reconcileBudget(dayKey, projected, costPaise);
     await recordSuccess();
 
-    const text = extractText(message);
     let data: T;
     if (options.schema) {
       const parsed: unknown = JSON.parse(stripFences(text));
@@ -122,7 +117,7 @@ export async function callAI<T = string>(
       data = text as unknown as T;
     }
 
-    return { data, text, model, tier, costPaise, usage };
+    return { data, text, model: modelName, tier, costPaise, usage };
   } catch (err) {
     await recordFailure();
     throw err;

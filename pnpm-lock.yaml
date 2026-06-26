@@ -123,6 +123,9 @@ importers:
       '@ddotsjobs/storage':
         specifier: workspace:*
         version: link:../../packages/storage
+      '@google/generative-ai':
+        specifier: ^0.21.0
+        version: 0.21.0
       axios:
         specifier: ^1.7.9
         version: 1.18.1
@@ -160,15 +163,15 @@ importers:
 
   packages/ai:
     dependencies:
-      '@anthropic-ai/sdk':
-        specifier: ^0.65.0
-        version: 0.65.0(zod@3.25.76)
       '@ddotsjobs/config':
         specifier: workspace:*
         version: link:../config
       '@ddotsjobs/redis':
         specifier: workspace:*
         version: link:../redis
+      '@google/generative-ai':
+        specifier: ^0.21.0
+        version: 0.21.0
       zod:
         specifier: ^3.24.1
         version: 3.25.76
@@ -1016,6 +1019,10 @@ packages:
   '@eslint/plugin-kit@0.4.1':
     resolution: {integrity: sha512-43/qtrDUokr7LJqoF2c3+RInu/t4zfrpYdoSDfYyhg52rwLV6TnOvdG4fXm7IkSB3wErkcmJS9iEhjVtOSEjjA==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
+
+  '@google/generative-ai@0.21.0':
+    resolution: {integrity: sha512-7XhUbtnlkSEZK15kN3t+tzIMxsbKm/dSkKBFalj+20NvPKe1kBY7mR2P7vuijEn+f06z5+A8bVGKO0v39cr6Wg==}
+    engines: {node: '>=18.0.0'}
 
   '@humanfs/core@0.19.2':
     resolution: {integrity: sha512-UhXNm+CFMWcbChXywFwkmhqjs3PRCmcSa/hfBgLIb7oQ5HNb1wS0icWsGtSAUNgefHeI+eBrA8I1fxmbHsGdvA==}
@@ -4119,6 +4126,8 @@ snapshots:
     dependencies:
       '@eslint/core': 0.17.0
       levn: 0.4.1
+
+  '@google/generative-ai@0.21.0': {}
 
   '@humanfs/core@0.19.2':
     dependencies:

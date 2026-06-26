@@ -11,6 +11,23 @@ export const MODELS = {
 export type ModelTier = keyof typeof MODELS;
 export type ModelId = (typeof MODELS)[ModelTier];
 
+// Active provider: Gemini (Anthropic kept above for reference). The default tier
+// maps to Flash, the reasoning tier to Pro.
+export const GEMINI_MODELS = {
+  flash: 'gemini-1.5-flash',
+  pro: 'gemini-1.5-pro',
+} as const;
+
+const TIER_TO_GEMINI: Record<ModelTier, string> = {
+  haiku: GEMINI_MODELS.flash,
+  sonnet: GEMINI_MODELS.pro,
+};
+
+/** Concrete Gemini model id for a tier. */
+export function geminiModelForTier(tier: ModelTier): string {
+  return TIER_TO_GEMINI[tier];
+}
+
 /** Per-tier max output tokens. Keep tight — long outputs are slow + costly. */
 export const MAX_TOKENS: Record<ModelTier, number> = {
   haiku: 1024,
