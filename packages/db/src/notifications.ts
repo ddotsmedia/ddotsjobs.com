@@ -11,15 +11,22 @@ export interface CreateNotificationArgs {
   actionUrl?: string | null;
 }
 
-/** Insert an in-app notification. Shared by web routers + the worker. */
+/**
+ * Insert an in-app notification. Shared by web routers + the worker.
+ * Errors are swallowed — a notification failure must never crash the caller.
+ */
 export async function createNotification(args: CreateNotificationArgs): Promise<void> {
-  await db.insert(notifications).values({
-    userId: args.userId,
-    type: args.type,
-    title: args.title,
-    titleMl: args.titleMl ?? null,
-    body: args.body ?? null,
-    bodyMl: args.bodyMl ?? null,
-    actionUrl: args.actionUrl ?? null,
-  });
+  try {
+    await db.insert(notifications).values({
+      userId: args.userId,
+      type: args.type,
+      title: args.title,
+      titleMl: args.titleMl ?? null,
+      body: args.body ?? null,
+      bodyMl: args.bodyMl ?? null,
+      actionUrl: args.actionUrl ?? null,
+    });
+  } catch (err) {
+    console.error('[createNotification] non-fatal:', err instanceof Error ? err.message : err);
+  }
 }

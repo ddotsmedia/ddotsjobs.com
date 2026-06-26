@@ -9,6 +9,19 @@ import { relativeTime } from '@/lib/format';
 
 type Item = inferRouterOutputs<AppRouter>['notifications']['list']['items'][number];
 
+// Emoji per notification type.
+function typeIcon(type: string): string {
+  if (type.includes('shortlist')) return '🎉';
+  if (type.includes('interview')) return '📅';
+  if (type.includes('verified') || type.includes('verification')) return '✅';
+  if (type.includes('job.published') || type.includes('job.approved')) return '📢';
+  if (type.includes('contact')) return '💬';
+  if (type.includes('rejected')) return '🚫';
+  if (type.includes('subscription')) return '⭐';
+  if (type.includes('pending')) return '⏳';
+  return '🔔';
+}
+
 export function NotificationsList() {
   const router = useRouter();
   const utils = trpc.useUtils();
@@ -77,12 +90,13 @@ export function NotificationsList() {
           <div style={s.list}>
             {items.map((it) => (
               <button key={it.id} type="button" onClick={() => onItem(it)} style={{ ...s.item, background: it.isRead ? '#fff' : '#fffdf5' }}>
-                {!it.isRead && <span style={s.dot} aria-hidden />}
+                <span style={s.icon} aria-hidden>{typeIcon(it.type)}</span>
                 <span style={{ flex: 1, minWidth: 0 }}>
                   <span style={{ ...s.title, fontWeight: it.isRead ? 500 : 700 }}>{it.title}</span>
                   {it.body && <span style={s.body}>{it.body}</span>}
                   <span style={s.time}>{relativeTime(it.createdAt)}</span>
                 </span>
+                {!it.isRead && <span style={s.dot} aria-hidden />}
               </button>
             ))}
           </div>
@@ -110,6 +124,7 @@ const s: Record<string, React.CSSProperties> = {
   empty: { padding: 'var(--space-4)', textAlign: 'center', background: '#fff', borderRadius: 'var(--radius-card)', border: '1px dashed #d8d8d0', color: '#6b6b66' },
   list: { display: 'flex', flexDirection: 'column', gap: 6 },
   item: { display: 'flex', gap: 10, alignItems: 'flex-start', width: '100%', padding: 'var(--space-2)', borderRadius: 'var(--radius-card)', border: '1px solid #efefe9', cursor: 'pointer', textAlign: 'left' },
+  icon: { fontSize: 20, lineHeight: 1, flex: '0 0 auto', marginTop: 1 },
   dot: { width: 9, height: 9, borderRadius: '9999px', background: 'var(--color-brand)', marginTop: 5, flex: '0 0 auto' },
   title: { display: 'block', fontSize: 15, color: 'var(--color-dark)' },
   body: { display: 'block', fontSize: 13, color: '#55554f', marginTop: 2 },
