@@ -206,9 +206,43 @@ export function knmcExtractCertificatePrompt(input: {
   };
 }
 
+// ── Fit-score explanation (Flash) ───────────────────────────────────────
+export const fitExplainSchema = z.object({
+  summary: z.string(),
+  strengths: z.array(z.string()).max(6),
+  gaps: z.array(z.string()).max(6),
+  action: z.string(),
+});
+export type FitExplainOutput = z.infer<typeof fitExplainSchema>;
+
+export function fitExplainScorePrompt(input: {
+  overallScore: number;
+  qualificationScore: number;
+  experienceScore: number;
+  locationScore: number;
+  salaryScore: number;
+  jobCategory: string;
+  seekerLanguage: string;
+  hasRequiredCert: boolean;
+  missingCerts: string[];
+}): PromptSpec<FitExplainOutput> {
+  const lang = input.seekerLanguage === 'ml' ? 'Malayalam' : 'English';
+  return {
+    task: 'reasoning',
+    version: 1,
+    system:
+      `Explain a job fit score to a job seeker in ${lang}. Be encouraging and ` +
+      'concrete. summary: one short paragraph. strengths/gaps: short bullet ' +
+      'phrases. action: one next step. Base it ONLY on the provided scores.',
+    prompt: JSON.stringify(input),
+    schema: fitExplainSchema,
+  };
+}
+
 // ── Registry of every prompt for introspection / eval harnesses ─────────
 export const PROMPTS = {
   fitScore: fitScorePrompt,
+  fitExplainScore: fitExplainScorePrompt,
   gulfTitleTranslation: gulfTitleTranslationPrompt,
   gulfTranslateTitle: gulfTranslateTitlePrompt,
   jobNormalize: jobNormalizePrompt,

@@ -11,6 +11,7 @@ import { IncrementView } from '@/components/jobs/IncrementView';
 import { SaveJobButton } from '@/components/jobs/SaveJobButton';
 import { ShareButton } from '@/components/jobs/ShareButton';
 import { SegmentJobsPage } from '@/components/SegmentJobsPage';
+import { FitScoreRing } from '@/components/FitScoreRing';
 import { DISTRICTS } from '@/lib/constants';
 import { initials, relativeTime, titleCase } from '@/lib/format';
 
@@ -151,12 +152,19 @@ export default async function JobDetailPage({ params }: Props) {
   const isEmployerOrAdmin = role === 'employer' || role === 'admin';
 
   let initialSaved = false;
+  let fit: Awaited<ReturnType<Awaited<ReturnType<typeof getServerTrpc>>['fitScore']['getForJob']>> | null = null;
   if (isSeeker) {
     try {
       const trpc = await getServerTrpc();
       initialSaved = (await trpc.jobs.isSaved({ jobId: job.id })).saved;
     } catch {
       initialSaved = false;
+    }
+    try {
+      const trpc = await getServerTrpc();
+      fit = await trpc.fitScore.getForJob({ jobId: job.id });
+    } catch {
+      fit = null;
     }
   }
 
@@ -279,6 +287,11 @@ export default async function JobDetailPage({ params }: Props) {
           {/* Sidebar */}
           <aside style={s.sidebar}>
             <div style={s.applyCard}>
+              {fit && (
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 4 }}>
+                  <FitScoreRing score={fit.overall} breakdown={fit} size="md" />
+                </div>
+              )}
               <div style={s.applySalary}>{salary}</div>
               {isEmployerOrAdmin ? (
                 <button type="button" disabled style={s.applyDisabled}>Employer account</button>

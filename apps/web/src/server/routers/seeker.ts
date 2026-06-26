@@ -108,6 +108,9 @@ export const seekerRouter = router({
         .set({ completionPct: pct, profileComplete: pct >= 100 })
         .where(eq(tables.seekerProfiles.userId, uid));
 
+      // Profile changed — invalidate cached fit scores so they recompute.
+      await ctx.db.delete(tables.fitScores).where(eq(tables.fitScores.seekerUserId, uid));
+
       return { completionPct: pct };
     }),
 
