@@ -11,7 +11,9 @@ export const KEY_PREFIX = process.env.REDIS_KEY_PREFIX ?? 'ddotsjobs:';
 const baseOptions: RedisOptions = {
   maxRetriesPerRequest: null,
   enableReadyCheck: false,
-  lazyConnect: false,
+  // Connect on first command, not on import — avoids connection storms during
+  // `next build` static generation (where Redis may be unreachable).
+  lazyConnect: true,
 };
 
 /**
@@ -19,6 +21,8 @@ const baseOptions: RedisOptions = {
  * by ioredis, so callers use bare keys (e.g. `cache:job:123`).
  */
 export const redis = new Redis(REDIS_URL, { ...baseOptions, keyPrefix: KEY_PREFIX });
+// Prevent an unhandled 'error' event from crashing the process on a blip.
+redis.on('error', (err) => console.error('[redis] connection error:', err.message));
 
 /**
  * Raw connection factory WITHOUT ioredis keyPrefix. BullMQ manages its own key

@@ -24,3 +24,5 @@ export {
   sql,
   sum,
 } from 'drizzle-orm';
+
+export type { SQL } from 'drizzle-orm';

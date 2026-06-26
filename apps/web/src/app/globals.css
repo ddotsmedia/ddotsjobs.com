@@ -61,3 +61,19 @@ a {
   color: inherit;
   text-decoration: none;
 }
+
+/* Responsive helpers — inline styles can't express media queries. */
+.ddj-mobile-only {
+  display: inline-flex;
+}
+.ddj-desktop-only {
+  display: none;
+}
+@media (min-width: 880px) {
+  .ddj-mobile-only {
+    display: none !important;
+  }
+  .ddj-desktop-only {
+    display: block;
+  }
+}

@@ -61,6 +61,10 @@ export const jobs = pgTable(
     viewCount: integer('view_count').notNull().default(0),
     applicationCount: integer('application_count').notNull().default(0),
     isWalkIn: boolean('is_walk_in').notNull().default(false),
+    // True if the employer wants candidates with gulf work experience.
+    valuesGulfExperience: boolean('values_gulf_experience').notNull().default(false),
+    // False => salary hidden ("Market rate") even when min/max set.
+    salaryDisclosed: boolean('salary_disclosed').notNull().default(true),
     // Full-text search vector — maintained by DB trigger, never written by app.
     tsv: tsvector('tsv'),
     // Semantic embedding (Anthropic/Voyage 1536-dim) — backfilled by worker.
@@ -74,6 +78,7 @@ export const jobs = pgTable(
     index('jobs_district_idx').on(t.district),
     index('jobs_category_idx').on(t.categorySlug),
     index('jobs_published_at_idx').on(t.publishedAt),
+    index('jobs_values_gulf_idx').on(t.valuesGulfExperience),
     uniqueIndex('jobs_slug_uq')
       .on(t.slug)
       .where(sql`slug IS NOT NULL AND deleted_at IS NULL`),

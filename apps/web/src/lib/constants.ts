@@ -29,6 +29,23 @@ export const SECTORS = [
   { slug: 'retail', label: 'Retail' },
 ] as const;
 
+// /jobs category checkboxes (sectors + Other).
+export const CATEGORIES_UI = [...SECTORS, { slug: 'other', label: 'Other' }] as const;
+
+// /jobs job-type checkboxes (subset of the job_type enum surfaced to seekers).
+export const JOB_TYPES_UI = [
+  { value: 'full_time', label: 'Full-time' },
+  { value: 'part_time', label: 'Part-time' },
+  { value: 'contract', label: 'Contract' },
+  { value: 'walk_in', label: 'Walk-in' },
+  { value: 'internship', label: 'Internship' },
+] as const;
+
+// Salary slider (rupees). Convert to paise (×100) before querying.
+export const SALARY_MIN_RUPEES = 10_000;
+export const SALARY_MAX_RUPEES = 100_000;
+export const SALARY_STEP_RUPEES = 5_000;
+
 // Hero filter chips. `kind` decides how the chip maps to /jobs query params.
 export const HERO_CHIPS = [
   { key: 'nursing', label: 'Nursing', kind: 'category' as const, value: 'nursing' },
