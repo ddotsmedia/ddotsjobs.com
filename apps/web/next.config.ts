@@ -1,5 +1,8 @@
 import path from 'node:path';
+import bundleAnalyzer from '@next/bundle-analyzer';
 import type { NextConfig } from 'next';
+
+const withBundleAnalyzer = bundleAnalyzer({ enabled: process.env.ANALYZE === 'true' });
 
 const r2Url = process.env.NEXT_PUBLIC_R2_PUBLIC_URL ?? 'https://assets.ddotsjobs.com';
 const r2Host = new URL(r2Url).hostname;
@@ -24,7 +27,12 @@ const nextConfig: NextConfig = {
     optimizePackageImports: ['@trpc/react-query', '@tanstack/react-query'],
   },
   images: {
-    remotePatterns: [{ protocol: 'https', hostname: r2Host }],
+    formats: ['image/webp'],
+    minimumCacheTTL: 86400,
+    remotePatterns: [
+      { protocol: 'https', hostname: r2Host },
+      { protocol: 'https', hostname: '*.r2.cloudflarestorage.com' },
+    ],
   },
   eslint: { ignoreDuringBuilds: false },
   typescript: { ignoreBuildErrors: false },
@@ -39,4 +47,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withBundleAnalyzer(nextConfig);

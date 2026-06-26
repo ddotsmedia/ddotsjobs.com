@@ -5,12 +5,14 @@ import { SessionProvider } from 'next-auth/react';
 import { TRPCProvider } from '@/lib/trpc/client';
 import './globals.css';
 
-const geistSans = Geist({ subsets: ['latin'], variable: '--font-geist-sans' });
-const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-geist-mono' });
+const geistSans = Geist({ subsets: ['latin'], display: 'swap', preload: true, variable: '--font-geist-sans' });
+const geistMono = Geist_Mono({ subsets: ['latin'], display: 'swap', preload: true, variable: '--font-geist-mono' });
 const instrumentSerif = Instrument_Serif({
   subsets: ['latin'],
   weight: '400',
   style: ['normal', 'italic'],
+  display: 'swap',
+  preload: true,
   variable: '--font-instrument-serif',
 });
 
