@@ -51,7 +51,7 @@ export default async function Image({ params }: { params: Promise<{ slug: string
           fontFamily: 'Georgia, serif',
         }}
       >
-        <div style={{ display: 'flex', height: 16, background: '#F5A800' }} />
+        <div style={{ display: 'flex', height: 16, background: '#F5C842' }} />
         <div
           style={{
             display: 'flex',
@@ -64,7 +64,7 @@ export default async function Image({ params }: { params: Promise<{ slug: string
           <div style={{ fontSize: 64, fontStyle: 'italic', color: '#0F0E0C', lineHeight: 1.1 }}>
             {title}
           </div>
-          <div style={{ display: 'flex', fontSize: 36, color: '#007D77', marginTop: 24 }}>
+          <div style={{ display: 'flex', fontSize: 36, color: '#3A9EA5', marginTop: 24 }}>
             {company}
           </div>
           {district ? (

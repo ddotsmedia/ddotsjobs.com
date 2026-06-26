@@ -83,7 +83,7 @@ export function BillingClient() {
         order_id: order.orderId,
         name: 'ddotsjobs.com',
         description: planName,
-        theme: { color: '#f5a800' },
+        theme: { color: '#F5C842' },
         handler: (resp) => {
           verifyPayment.mutate(
             { orderId: resp.razorpay_order_id, paymentId: resp.razorpay_payment_id, signature: resp.razorpay_signature, tier },

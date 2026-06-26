@@ -219,7 +219,7 @@ const s: Record<string, React.CSSProperties> = {
   helper: { fontSize: 13, color: 'var(--color-accent)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 },
   checkWrap: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(150px,1fr))', gap: 4 },
   check: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, minHeight: 36 },
-  slider: { width: '100%', height: 28, accentColor: '#f5a800' },
+  slider: { width: '100%', height: 28, accentColor: '#F5C842' },
   previewWrap: { display: 'flex', flexDirection: 'column', gap: 6 },
   previewLabel: { fontSize: 13, fontWeight: 600, color: '#6b6b66' },
   bubble: { whiteSpace: 'pre-wrap', fontSize: 14, lineHeight: 1.5, padding: 'var(--space-2)', background: '#dcf8c6', borderRadius: 14, color: '#0f0e0c' },

@@ -107,7 +107,7 @@ const s: Record<string, React.CSSProperties> = {
   badge: { fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: '9999px', whiteSpace: 'nowrap' },
   metaRow: { display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginTop: 2 },
   muted: { fontSize: 12, color: '#9a9a92' },
-  knmc: { fontSize: 11, fontWeight: 600, color: '#007d77', background: '#eef6f5', padding: '1px 7px', borderRadius: '9999px' },
+  knmc: { fontSize: 11, fontWeight: 600, color: '#3A9EA5', background: '#eef6f5', padding: '1px 7px', borderRadius: '9999px' },
   fitBar: { height: 5, background: '#ececdf', borderRadius: 999, marginTop: 6 },
   fitFill: { height: 5, background: 'var(--color-brand)', borderRadius: 999 },
   actions: { display: 'flex', gap: 8, alignItems: 'center', marginTop: 6 },

@@ -1,9 +1,52 @@
 :root {
-  /* Brand */
-  --color-brand: #f5a800; /* Kerala sunrise amber */
-  --color-accent: #007d77; /* Kerala backwater teal */
+  /* ── Ddotsmedia brand identity ── */
+  /* Legacy aliases (most components reference these):
+     brand = primary CTA color (now yellow), accent = identity/links (now teal). */
+  --color-brand: #f5c842; /* Ddotsmedia yellow — CTAs */
+  --color-accent: #3a9ea5; /* Ddotsmedia teal — identity/links */
   --color-neutral: #fafaf8; /* warm stone */
-  --color-dark: #0f0e0c;
+  --color-dark: #1a1916;
+
+  /* Brand — Ddotsmedia teal */
+  --brand: #3a9ea5;
+  --brand-hover: #2e8a91;
+  --brand-dark: #1f6b70;
+  --brand-light: #edf7f8;
+  --brand-subtle: rgba(58, 158, 165, 0.08);
+
+  /* Accent — Yellow (CTAs, highlights) */
+  --accent: #f5c842;
+  --accent-hover: #e0b530;
+  --accent-dark: #a37e00;
+  --accent-light: rgba(245, 200, 66, 0.1);
+
+  /* Accent 2 — Orange */
+  --accent-orange: #e8623a;
+  --accent-orange-light: rgba(232, 98, 58, 0.1);
+
+  /* Accent 3 — Lime */
+  --accent-lime: #8dc63f;
+  --accent-lime-light: rgba(141, 198, 63, 0.1);
+
+  /* Neutrals */
+  --bg-primary: #ffffff;
+  --bg-secondary: #fafaf8;
+  --bg-tertiary: #f4f3ee;
+  --text-primary: #1a1916;
+  --text-secondary: #6b6860;
+  --text-tertiary: #b0ad9f;
+  --border-subtle: rgba(26, 25, 22, 0.08);
+  --border-default: rgba(26, 25, 22, 0.14);
+
+  /* Semantic */
+  --success: #8dc63f;
+  --success-bg: rgba(141, 198, 63, 0.1);
+  --warning: #f5c842;
+  --warning-bg: rgba(245, 200, 66, 0.1);
+  --error: #e8623a;
+  --error-bg: rgba(232, 98, 58, 0.1);
+  --info: #3a9ea5;
+  --info-bg: rgba(58, 158, 165, 0.1);
 
   /* Radii */
   --radius-card: 14px;
@@ -28,6 +71,11 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
+    --brand: #4db5bc;
+    --accent: #f5c842;
+    --bg-primary: #0f0e0c;
+    --bg-secondary: #1a1916;
+    --text-primary: #f0efe8;
     --background: var(--color-dark);
     --foreground: var(--color-neutral);
   }
@@ -170,8 +218,8 @@ a {
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 .hp-search:focus-within {
-  border-color: #f5a800;
-  box-shadow: 0 0 0 3px rgba(245, 168, 0, 0.16);
+  border-color: #3a9ea5;
+  box-shadow: 0 0 0 3px rgba(58, 158, 165, 0.16);
 }
 .hp-search input::placeholder {
   color: #b0ad9f;
@@ -180,8 +228,8 @@ a {
   transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 .hp-chip:hover {
-  border-color: #f5a800;
-  background: rgba(245, 168, 0, 0.06);
+  border-color: #3a9ea5;
+  background: rgba(58, 158, 165, 0.06);
 }
 .hp-sector {
   transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
@@ -189,7 +237,7 @@ a {
 .hp-sector:hover {
   transform: translateY(-3px);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
-  border-color: rgba(245, 168, 0, 0.3);
+  border-color: #3a9ea5;
 }
 .hp-job {
   border-left: 3px solid transparent;
@@ -197,7 +245,7 @@ a {
 }
 .hp-job:hover {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  border-left-color: #f5a800;
+  border-left-color: #f5c842;
 }
 .hp-link {
   transition: color 0.15s ease;

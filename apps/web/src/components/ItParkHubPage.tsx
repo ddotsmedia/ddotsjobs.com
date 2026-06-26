@@ -8,7 +8,7 @@ type Park = inferRouterOutputs<AppRouter>['itParks']['getBySlug'];
 type Jobs = inferRouterOutputs<AppRouter>['itParks']['jobs'];
 
 export function ItParkHubPage({ park, jobs }: { park: Park; jobs: Jobs }) {
-  const badge = PARK_BADGE[park.slug] ?? { label: park.name, color: '#007D77' };
+  const badge = PARK_BADGE[park.slug] ?? { label: park.name, color: '#3A9EA5' };
 
   return (
     <main style={s.page}>

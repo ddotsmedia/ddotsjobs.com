@@ -257,7 +257,7 @@ const s: Record<string, React.CSSProperties> = {
   label: { fontSize: 14, fontWeight: 600, color: '#33332f' },
   hint: { fontSize: 13, color: '#9a9a92' },
   input: { height: 48, padding: '0 12px', fontSize: 16, background: '#fff', border: '1px solid #e2e2dc', borderRadius: 'var(--radius-input)', outline: 'none' },
-  slider: { width: '100%', height: 28, accentColor: '#f5a800' },
+  slider: { width: '100%', height: 28, accentColor: '#F5C842' },
   toggleRow: { display: 'flex', gap: 8 },
   toggleBtn: { flex: 1, minHeight: 44, fontSize: 15, fontWeight: 600, background: '#fff', border: '1px solid #e2e2dc', borderRadius: 'var(--radius-pill)', cursor: 'pointer' },
   toggleOn: { background: 'var(--color-accent)', color: '#fff', borderColor: 'var(--color-accent)' },

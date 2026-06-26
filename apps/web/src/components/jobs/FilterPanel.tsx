@@ -151,8 +151,8 @@ const s: Record<string, React.CSSProperties> = {
   sectionTitle: { fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: '#6b6b66', fontFamily: 'var(--font-sans)', fontStyle: 'normal' },
   sectionBody: { display: 'flex', flexDirection: 'column', gap: 6 },
   check: { display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, minHeight: 32, cursor: 'pointer' },
-  checkbox: { width: 18, height: 18, accentColor: '#007d77' },
+  checkbox: { width: 18, height: 18, accentColor: '#3A9EA5' },
   salaryVal: { fontSize: 14, fontWeight: 600, color: 'var(--color-accent)' },
-  slider: { width: '100%', accentColor: '#f5a800', height: 28 },
+  slider: { width: '100%', accentColor: '#F5C842', height: 28 },
   clear: { alignSelf: 'flex-start', fontSize: 14, color: '#c0392b', background: 'none', border: 'none', cursor: 'pointer', padding: 0 },
 };

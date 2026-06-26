@@ -17,16 +17,24 @@ export default function Image() {
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          background: '#F5A800',
+          background: '#3A9EA5',
           fontFamily: 'Georgia, serif',
+          position: 'relative',
         }}
       >
+        <div style={{ display: 'flex', gap: 18, marginBottom: 28 }}>
+          <div style={{ width: 56, height: 56, borderRadius: 999, background: '#FFFFFF' }} />
+          <div style={{ width: 56, height: 56, borderRadius: 999, background: '#F5C842' }} />
+          <div style={{ width: 56, height: 56, borderRadius: 999, background: '#8DC63F' }} />
+          <div style={{ width: 56, height: 56, borderRadius: 999, background: '#E8623A' }} />
+        </div>
         <div style={{ fontSize: 96, fontStyle: 'italic', color: '#fff', fontWeight: 700 }}>
           ddotsjobs.com
         </div>
-        <div style={{ fontSize: 40, color: '#0F0E0C', marginTop: 12 }}>
+        <div style={{ fontSize: 40, color: '#EDF7F8', marginTop: 12 }}>
           Kerala&rsquo;s job portal
         </div>
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 16, background: '#F5C842' }} />
       </div>
     ),
     { ...size },

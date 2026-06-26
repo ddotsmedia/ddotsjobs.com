@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { trpc } from '@/lib/trpc/client';
+import { Logo } from '@/components/Logo';
 
 // E.164 international: + then 8–15 digits, leading digit non-zero.
 const PHONE_RE = /^\+[1-9]\d{7,14}$/;
@@ -19,7 +20,9 @@ export default function LoginPage() {
   return (
     <main style={styles.main}>
       <div style={styles.card}>
-        <h1 style={styles.title}>ddotsjobs</h1>
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
+          <Logo variant="full" size={36} />
+        </div>
         <p style={styles.sub}>കേരളത്തിന്റെ തൊഴിൽ പോർട്ടൽ</p>
 
         <label htmlFor="phone" style={styles.label}>

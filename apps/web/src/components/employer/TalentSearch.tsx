@@ -24,7 +24,7 @@ const CERTS = [
   { label: 'KTET verified', value: 'KTET' },
 ] as const;
 
-const AVATAR_COLORS = ['#f5a800', '#007d77', '#c0392b', '#2e7d32', '#6a4fb3', '#0277bd', '#d2691e', '#b8860b'];
+const AVATAR_COLORS = ['#F5C842', '#3A9EA5', '#c0392b', '#2e7d32', '#6a4fb3', '#0277bd', '#d2691e', '#b8860b'];
 
 function avatarColor(id: string): string {
   let h = 0;

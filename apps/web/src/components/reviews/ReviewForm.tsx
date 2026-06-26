@@ -17,7 +17,7 @@ function StarSelector({ value, onChange, label }: { value: number; onChange: (v:
             aria-label={`${i} star${i > 1 ? 's' : ''}`}
             onMouseEnter={() => setHover(i)}
             onClick={() => onChange(value === i ? 0 : i)}
-            style={{ ...s.starBtn, color: i <= (hover || value) ? '#f5a800' : '#d8d8d0' }}
+            style={{ ...s.starBtn, color: i <= (hover || value) ? '#F5C842' : '#d8d8d0' }}
           >
             ★
           </button>

@@ -3,8 +3,8 @@ import type { FitScoreResult } from '@/lib/services/fit-score.service';
 const SIZES = { sm: 64, md: 96, lg: 132 } as const;
 
 function ringColor(score: number): string {
-  if (score >= 80) return '#F5A800';
-  if (score >= 60) return '#007D77';
+  if (score >= 80) return '#F5C842';
+  if (score >= 60) return '#3A9EA5';
   return '#B0AD9F';
 }
 

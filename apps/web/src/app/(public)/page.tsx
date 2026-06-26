@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { SearchHero } from '@/components/home/SearchHero';
+import { Logo } from '@/components/Logo';
 import { SECTORS } from '@/lib/constants';
 import { getHomeStats, getLatestJobs, getSectorCounts, type LatestJob } from './_data';
 
@@ -30,7 +31,19 @@ const SECTOR_ICONS: Record<string, string> = {
 };
 
 // Avatar palette — cycled by card index (Phase 6).
-const LOGO_COLORS = ['#007D77', '#F5A800', '#534AB7', '#1A7F4E', '#C4242B', '#378ADD'];
+const LOGO_COLORS = ['#3A9EA5', '#F5C842', '#534AB7', '#1A7F4E', '#C4242B', '#378ADD'];
+
+// Per-sector brand accent (Ddotsmedia 4-color system).
+const SECTOR_COLORS: Record<string, string> = {
+  nursing: '#E8623A',
+  it: '#3A9EA5',
+  teaching: '#8DC63F',
+  government: '#3A9EA5',
+  gulf_return: '#F5C842',
+  banking: '#3A9EA5',
+  construction: '#E8623A',
+  retail: '#8DC63F',
+};
 
 function rupees(paise: number | null): string {
   if (paise == null) return 'Salary undisclosed';
@@ -75,10 +88,10 @@ export default async function HomePage() {
   ]);
 
   const statCards = [
-    { label: 'Active jobs', value: stats.activeJobs.toLocaleString('en-IN') },
-    { label: 'Verified employers', value: stats.verifiedEmployers.toLocaleString('en-IN') },
-    { label: 'Placements', value: stats.placements.toLocaleString('en-IN') },
-    { label: 'WhatsApp subscribers', value: stats.whatsapp },
+    { label: 'Active jobs', value: stats.activeJobs.toLocaleString('en-IN'), color: '#3A9EA5' },
+    { label: 'Verified employers', value: stats.verifiedEmployers.toLocaleString('en-IN'), color: '#3A9EA5' },
+    { label: 'Placements', value: stats.placements.toLocaleString('en-IN'), color: '#3A9EA5' },
+    { label: 'WhatsApp subscribers', value: stats.whatsapp, color: '#8DC63F' },
   ];
 
   return (
@@ -101,7 +114,7 @@ export default async function HomePage() {
           <div style={s.statStrip}>
             {statCards.map((c, i) => (
               <div key={c.label} style={{ ...s.statCell, ...(i > 0 ? s.statDivider : {}) }}>
-                <span style={s.statValue}>{c.value}</span>
+                <span style={{ ...s.statValue, color: c.color }}>{c.value}</span>
                 <span style={s.statLabel}>{c.label}</span>
               </div>
             ))}
@@ -116,9 +129,9 @@ export default async function HomePage() {
         <div style={s.sectorGrid}>
           {SECTORS.map((sec) => (
             <Link key={sec.slug} href={`/jobs?category=${sec.slug}`} className="hp-sector" style={s.sectorCard}>
-              <span style={s.sectorIcon} aria-hidden>{SECTOR_ICONS[sec.slug] ?? '📌'}</span>
+              <span style={{ ...s.sectorIcon, background: `${SECTOR_COLORS[sec.slug] ?? '#3A9EA5'}1A` }} aria-hidden>{SECTOR_ICONS[sec.slug] ?? '📌'}</span>
               <span style={s.sectorLabel}>{sec.label}</span>
-              <span style={s.sectorCount}>{(sectorCounts[sec.slug] ?? 0).toLocaleString('en-IN')} jobs</span>
+              <span style={{ ...s.sectorCount, color: SECTOR_COLORS[sec.slug] ?? '#3A9EA5' }}>{(sectorCounts[sec.slug] ?? 0).toLocaleString('en-IN')} jobs</span>
             </Link>
           ))}
         </div>
@@ -180,8 +193,8 @@ export default async function HomePage() {
       <footer style={s.footer}>
         <div style={{ ...s.container, ...s.footerInner }}>
           <div style={s.footerBrand}>
-            <span style={s.wordmark}>ddotsjobs</span>
-            <span style={s.footerTagline}>Kerala&rsquo;s career platform</span>
+            <Logo variant="full" size={30} color="#1A1916" />
+            <span style={s.footerTagline}>Kerala&rsquo;s career platform · Ddotsmedia IT Solutions</span>
           </div>
           <nav style={s.footerNav}>
             <Link href="/about" className="hp-link" style={s.footerLink}>About</Link>
@@ -201,18 +214,18 @@ const s: Record<string, React.CSSProperties> = {
   container: { width: '100%', maxWidth: 1040, margin: '0 auto', padding: '0 var(--space-2)' },
   hero: {
     padding: 'clamp(48px, 9vw, 80px) 0',
-    background: 'linear-gradient(160deg, #FAFAF8 0%, #FFF8ED 60%, #EDF7F6 100%)',
+    background: 'linear-gradient(160deg, #F0F9FA 0%, #FFFFFF 50%, #F8FDF0 100%)',
   },
   kicker: {
     display: 'inline-block',
-    borderLeft: '2px solid #F5A800',
+    borderLeft: '2px solid #F5C842',
     paddingLeft: 10,
     margin: '0 0 var(--space-2)',
     fontSize: 12,
     fontWeight: 600,
     letterSpacing: '0.1em',
     textTransform: 'uppercase',
-    color: '#007D77',
+    color: '#3A9EA5',
   },
   headline: {
     fontFamily: 'var(--font-display)',
@@ -251,7 +264,7 @@ const s: Record<string, React.CSSProperties> = {
     fontStyle: 'italic',
     fontSize: 40,
     lineHeight: 1,
-    color: '#F5A800',
+    color: '#F5C842',
   },
   statLabel: { fontSize: 12, color: '#6B6860', textTransform: 'uppercase', letterSpacing: '0.05em' },
   eyebrow: {
@@ -284,9 +297,9 @@ const s: Record<string, React.CSSProperties> = {
     borderRadius: 'var(--radius-card)',
     border: '1px solid #efefe9',
   },
-  sectorIcon: { fontSize: 28, lineHeight: 1 },
+  sectorIcon: { fontSize: 24, lineHeight: 1, width: 44, height: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: 12 },
   sectorLabel: { fontSize: 15, fontWeight: 600, color: 'var(--color-dark)' },
-  sectorCount: { fontSize: 13, fontWeight: 600, color: '#007D77' },
+  sectorCount: { fontSize: 13, fontWeight: 600, color: '#3A9EA5' },
   jobList: { display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' },
   jobCard: {
     display: 'flex',
@@ -315,7 +328,7 @@ const s: Record<string, React.CSSProperties> = {
   jobTime: { fontSize: 12, color: '#B0AD9F', whiteSpace: 'nowrap' },
   jobCompany: { fontSize: 14, color: '#6B6860' },
   jobMeta: { display: 'flex', gap: 'var(--space-1)', alignItems: 'center', flexWrap: 'wrap' },
-  jobSalary: { fontSize: 14, fontWeight: 600, color: '#1A1916' },
+  jobSalary: { fontSize: 14, fontWeight: 600, color: '#3A9EA5' },
   jobDistrict: {
     fontSize: 12,
     color: '#6b6b66',

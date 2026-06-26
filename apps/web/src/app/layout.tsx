@@ -25,7 +25,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover', // expose env(safe-area-inset-*) for notched devices
-  themeColor: '#f5a800',
+  themeColor: '#3A9EA5', // Ddotsmedia brand teal
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
