@@ -10,9 +10,22 @@ import { DescriptionTabs } from '@/components/jobs/DescriptionTabs';
 import { IncrementView } from '@/components/jobs/IncrementView';
 import { SaveJobButton } from '@/components/jobs/SaveJobButton';
 import { ShareButton } from '@/components/jobs/ShareButton';
+import { SegmentJobsPage } from '@/components/SegmentJobsPage';
+import { DISTRICTS } from '@/lib/constants';
 import { initials, relativeTime, titleCase } from '@/lib/format';
 
 export const revalidate = 120;
+
+// The [slug] segment doubles as district landing pages (/jobs/ernakulam) and job
+// detail (/jobs/<job-slug>). District slugs are pre-rendered; job slugs are
+// rendered on demand.
+export function generateStaticParams() {
+  return DISTRICTS.map((d) => ({ slug: d.value }));
+}
+
+function districtForSlug(slug: string) {
+  return DISTRICTS.find((d) => d.value === slug) ?? null;
+}
 
 type Job = inferRouterOutputs<AppRouter>['jobs']['getBySlug'];
 
@@ -47,6 +60,12 @@ const EMPLOYMENT_TYPE: Record<string, string> = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
+  const district = districtForSlug(slug);
+  if (district) {
+    const title = `Jobs in ${district.label} — ddotsjobs.com`;
+    const description = `Find verified jobs in ${district.label}, Kerala. Nursing, IT, teaching and more.`;
+    return { title, description, openGraph: { title, description } };
+  }
   const job = await loadJob(slug);
   if (!job) return { title: 'Job not found — ddotsjobs.com' };
   const title = `${job.titleEn} at ${job.company} — ddotsjobs.com`;
@@ -102,6 +121,26 @@ function buildJsonLd(job: Job): string | null {
 
 export default async function JobDetailPage({ params }: Props) {
   const { slug } = await params;
+
+  // District landing page branch.
+  const district = districtForSlug(slug);
+  if (district) {
+    let items: Awaited<ReturnType<Awaited<ReturnType<typeof getServerTrpc>>['jobs']['segment']>>['items'] = [];
+    try {
+      const trpc = await getServerTrpc();
+      items = (await trpc.jobs.segment({ district: district.value, limit: 50 })).items;
+    } catch {
+      items = [];
+    }
+    return (
+      <SegmentJobsPage
+        title={`Jobs in ${district.label}`}
+        subtitle={`Verified jobs in ${district.label}, Kerala.`}
+        items={items}
+      />
+    );
+  }
+
   const job = await loadJob(slug);
   if (!job) notFound();
 

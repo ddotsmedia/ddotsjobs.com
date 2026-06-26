@@ -153,6 +153,65 @@ export const jobsRouter = router({
     return { items, nextCursor };
   }),
 
+  // SEO segment listings (district / category pages): top-N, no pagination.
+  segment: publicProcedure
+    .input(
+      z.object({
+        district: z.enum(DISTRICTS).optional(),
+        category: z.string().max(100).optional(),
+        limit: z.number().int().min(1).max(50).default(50),
+      }),
+    )
+    .query(async ({ ctx, input }): Promise<{ items: JobListItem[] }> => {
+      const j = tables.jobs;
+      const e = tables.employers;
+      const conds: SQL[] = [eq(j.status, 'active'), isNull(j.deletedAt)];
+      if (input.district) conds.push(eq(j.district, input.district));
+      if (input.category) conds.push(eq(j.categorySlug, input.category));
+
+      const rows = await ctx.db
+        .select({
+          id: j.id,
+          slug: j.slug,
+          titleEn: j.titleEn,
+          district: j.district,
+          jobType: j.type,
+          salaryMinPaise: j.salaryMinPaise,
+          salaryDisclosed: j.salaryDisclosed,
+          publishedAt: j.publishedAt,
+          viewCount: j.viewCount,
+          isWalkIn: j.isWalkIn,
+          valuesGulfExperience: j.valuesGulfExperience,
+          displayNameEn: e.displayNameEn,
+          legalNameEn: e.legalNameEn,
+          verificationStatus: e.verificationStatus,
+          walkInStartsAt: sql<Date | null>`(SELECT min(w.starts_at) FROM walk_in_events w WHERE w.job_id = jobs.id AND w.deleted_at IS NULL)`,
+        })
+        .from(j)
+        .innerJoin(e, eq(j.employerId, e.id))
+        .where(and(...conds))
+        .orderBy(sql`coalesce(jobs.published_at, jobs.created_at) desc, jobs.id desc`)
+        .limit(input.limit);
+
+      const items: JobListItem[] = rows.map((r) => ({
+        id: r.id,
+        slug: r.slug,
+        titleEn: r.titleEn,
+        district: r.district,
+        jobType: r.jobType,
+        salaryMinPaise: r.salaryMinPaise,
+        salaryDisclosed: r.salaryDisclosed,
+        publishedAt: r.publishedAt,
+        viewCount: r.viewCount,
+        isWalkIn: r.isWalkIn,
+        valuesGulfExperience: r.valuesGulfExperience,
+        company: r.displayNameEn ?? r.legalNameEn,
+        isVerified: r.verificationStatus === 'verified',
+        walkInStartsAt: r.walkInStartsAt,
+      }));
+      return { items };
+    }),
+
   getBySlug: publicProcedure
     .input(z.object({ slug: z.string().min(1) }))
     .query(async ({ ctx, input }) => {

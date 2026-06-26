@@ -69,6 +69,7 @@ export const jobs = pgTable(
     applicationDeadline: timestamp('application_deadline', { withTimezone: true }),
     publishedAt: timestamp('published_at', { withTimezone: true }),
     expiresAt: timestamp('expires_at', { withTimezone: true }),
+    googleIndexedAt: timestamp('google_indexed_at', { withTimezone: true }),
     viewCount: integer('view_count').notNull().default(0),
     applicationCount: integer('application_count').notNull().default(0),
     isWalkIn: boolean('is_walk_in').notNull().default(false),

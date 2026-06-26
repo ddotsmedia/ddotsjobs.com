@@ -46,6 +46,18 @@ export const SALARY_MIN_RUPEES = 10_000;
 export const SALARY_MAX_RUPEES = 100_000;
 export const SALARY_STEP_RUPEES = 5_000;
 
+// Category SEO pages: URL param -> DB category_slug + display name.
+export const CATEGORY_SEO = [
+  { param: 'nursing', db: 'nursing', display: 'Nursing Jobs' },
+  { param: 'it', db: 'it', display: 'IT / Tech Jobs' },
+  { param: 'teaching', db: 'teaching', display: 'Teaching Jobs' },
+  { param: 'government', db: 'government', display: 'Government Jobs' },
+  { param: 'gulf-return', db: 'gulf_return', display: 'Gulf Return Jobs' },
+  { param: 'banking', db: 'banking', display: 'Banking / Cooperative Jobs' },
+  { param: 'construction', db: 'construction', display: 'Construction Jobs' },
+  { param: 'retail', db: 'retail', display: 'Retail / Trade Jobs' },
+] as const;
+
 // IT park badge label + brand color (by slug).
 export const PARK_BADGE: Record<string, { label: string; color: string }> = {
   technopark: { label: 'Technopark', color: '#534AB7' },
