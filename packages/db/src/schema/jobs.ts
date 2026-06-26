@@ -24,6 +24,7 @@ import {
   visibilityLevel,
 } from './enums.js';
 import { employers } from './employers.js';
+import { itParks } from './it_parks.js';
 import { users } from './users.js';
 
 export const jobs = pgTable(
@@ -44,6 +45,8 @@ export const jobs = pgTable(
     visibility: visibilityLevel('visibility').notNull().default('public'),
     district: district('district'),
     itPark: itPark('it_park'),
+    // FK to the it_parks hub table (distinct from the it_park enum above).
+    itParkId: uuid('it_park_id').references(() => itParks.id),
     gulfCountry: gulfCountry('gulf_country'),
     locationText: varchar('location_text', { length: 255 }),
     isRemote: boolean('is_remote').notNull().default(false),

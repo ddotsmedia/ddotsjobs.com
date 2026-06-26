@@ -2,7 +2,13 @@ import Link from 'next/link';
 import type { JobListItem } from '@/server/routers/jobs';
 import { initials, relativeTime, rupeesPerMonth, titleCase, walkInDateLabel } from '@/lib/format';
 
-export function JobCard({ job }: { job: JobListItem }) {
+export function JobCard({
+  job,
+  parkBadge,
+}: {
+  job: JobListItem;
+  parkBadge?: { label: string; color: string };
+}) {
   const featured = job.viewCount > 50;
   const href = `/jobs/${job.slug ?? job.id}`;
 
@@ -34,6 +40,11 @@ export function JobCard({ job }: { job: JobListItem }) {
           </div>
 
           <div style={s.badges}>
+            {parkBadge && (
+              <span style={{ ...s.badge, background: parkBadge.color, color: '#fff' }}>
+                {parkBadge.label}
+              </span>
+            )}
             {job.district && <span style={s.badge}>{titleCase(job.district)}</span>}
             <span style={s.badge}>{titleCase(job.jobType)}</span>
             {job.isWalkIn && (

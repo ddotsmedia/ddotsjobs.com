@@ -46,6 +46,13 @@ export const SALARY_MIN_RUPEES = 10_000;
 export const SALARY_MAX_RUPEES = 100_000;
 export const SALARY_STEP_RUPEES = 5_000;
 
+// IT park badge label + brand color (by slug).
+export const PARK_BADGE: Record<string, { label: string; color: string }> = {
+  technopark: { label: 'Technopark', color: '#534AB7' },
+  infopark: { label: 'Infopark', color: '#007D77' },
+  cyberpark: { label: 'Cyberpark', color: '#F5A800' },
+};
+
 // PSC notification status -> label + colors.
 export const PSC_STATUS: Record<string, { label: string; color: string; bg: string }> = {
   active: { label: 'Active', color: '#1d7a3a', bg: '#e6f5ea' },

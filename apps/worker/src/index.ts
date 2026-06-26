@@ -2,6 +2,7 @@ import { Worker, type Processor } from 'bullmq';
 import { db, tables } from '@ddotsjobs/db';
 import { baseQueueOptions, connection, QUEUE_NAMES, type QueueName } from './queues.js';
 import { aiQueueProcessor, registerPscCron } from './workers/psc.worker.js';
+import { maintenanceQueueProcessor, registerItParkStatsCron } from './workers/itpark-stats.worker.js';
 import { jobEmbeddingProcessor } from './workers/job-embedding.worker.js';
 import { alertDispatchProcessor } from './workers/alert-dispatch.worker.js';
 import { pscScrapeProcessor } from './workers/psc-scrape.worker.js';
@@ -49,8 +50,19 @@ aiWorker.on('failed', async (job, err) => {
   }
 });
 
+// Maintenance queue — hourly stat rollups (concurrency 1).
+const maintenanceWorker = new Worker(QUEUE_NAMES.maintenance, maintenanceQueueProcessor, {
+  connection,
+  prefix: baseQueueOptions.prefix,
+  concurrency: 1,
+});
+maintenanceWorker.on('failed', (job, err) =>
+  console.error(`[maintenance] failed ${job?.name}: ${err.message}`),
+);
+
 const workers: Worker[] = [
   aiWorker,
+  maintenanceWorker,
   makeWorker(QUEUE_NAMES.jobEmbedding, jobEmbeddingProcessor as Processor),
   makeWorker(QUEUE_NAMES.alertDispatch, alertDispatchProcessor as Processor),
   makeWorker(QUEUE_NAMES.pscScrape, pscScrapeProcessor as Processor),
@@ -62,6 +74,9 @@ const workers: Worker[] = [
 registerPscCron()
   .then(() => console.log('[ai] PSC scrape cron registered (0 */4 * * *)'))
   .catch((err: unknown) => console.error('[ai] cron registration failed:', err));
+registerItParkStatsCron()
+  .then(() => console.log('[maintenance] IT park stats cron registered (0 * * * *)'))
+  .catch((err: unknown) => console.error('[maintenance] cron registration failed:', err));
 
 console.log(`ddotsjobs-worker up — ${workers.length} queues, concurrency ${CONCURRENCY}`);
 
