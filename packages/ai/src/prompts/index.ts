@@ -265,11 +265,43 @@ export function jobAutoFillDescriptionPrompt(input: {
   };
 }
 
+// ── Walk-in notice (Flash) ──────────────────────────────────────────────
+export const walkinNoticeSchema = z.object({ notice: z.string().min(1) });
+export type WalkinNoticeOutput = z.infer<typeof walkinNoticeSchema>;
+
+export function walkinGenerateNoticePrompt(input: {
+  jobTitle: string;
+  jobTitleMl: string | null;
+  companyName: string;
+  district: string;
+  walkInDate: string;
+  walkInTime: string;
+  venue: string;
+  salaryRange: string;
+  requirements: string[];
+  contactPhone: string | null;
+  language: string;
+}): PromptSpec<WalkinNoticeOutput> {
+  const lang = input.language === 'en' ? 'English' : 'Malayalam';
+  return {
+    task: 'summarize',
+    version: 1,
+    system:
+      `Write a ready-to-share WhatsApp walk-in interview notice in ${lang}. ` +
+      'Use clear lines and a few relevant emojis (📅 📍 🕒 💼 📞). Include the ' +
+      'company, role, date, time, venue, salary, required documents and contact. ' +
+      'Return the full notice as `notice`. Use ONLY the data provided.',
+    prompt: JSON.stringify(input),
+    schema: walkinNoticeSchema,
+  };
+}
+
 // ── Registry of every prompt for introspection / eval harnesses ─────────
 export const PROMPTS = {
   fitScore: fitScorePrompt,
   fitExplainScore: fitExplainScorePrompt,
   jobAutoFillDescription: jobAutoFillDescriptionPrompt,
+  walkinGenerateNotice: walkinGenerateNoticePrompt,
   gulfTitleTranslation: gulfTitleTranslationPrompt,
   gulfTranslateTitle: gulfTranslateTitlePrompt,
   jobNormalize: jobNormalizePrompt,

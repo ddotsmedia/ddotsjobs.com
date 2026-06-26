@@ -120,6 +120,7 @@ export const walkInEvents = pgTable(
     contactPhone: varchar('contact_phone', { length: 20 }),
     instructionsMl: text('instructions_ml'),
     instructionsEn: text('instructions_en'),
+    noticeGeneratedAt: timestamp('notice_generated_at', { withTimezone: true }),
     ...timestamps,
   },
   (t) => [
