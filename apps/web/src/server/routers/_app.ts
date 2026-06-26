@@ -1,5 +1,6 @@
 import { publicProcedure, router } from '../trpc.js';
 import { alertsRouter } from './alerts.js';
+import { applicationsRouter } from './applications.js';
 import { authRouter } from './auth.js';
 import { fitScoreRouter } from './fit-score.js';
 import { itParksRouter } from './it-parks.js';
@@ -13,6 +14,7 @@ import { verificationRouter } from './verification.js';
 export const appRouter = router({
   health: publicProcedure.query(() => ({ ok: true as const, service: 'ddotsjobs-web' })),
   alerts: alertsRouter,
+  applications: applicationsRouter,
   auth: authRouter,
   fitScore: fitScoreRouter,
   itParks: itParksRouter,
