@@ -13,7 +13,8 @@ module.exports = {
       max_memory_restart: '600M',
       env: {
         NODE_ENV: 'production',
-        PORT: '3100',
+        // 3100 is occupied by another project (ayurconnect-web); 3107 verified free.
+        PORT: '3107',
         HOSTNAME: '127.0.0.1',
       },
       error_file: '/var/log/ddotsjobs/web-error.log',
