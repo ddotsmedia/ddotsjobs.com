@@ -37,7 +37,7 @@ export function SearchHero() {
 
   return (
     <div style={s.wrap}>
-      <div style={s.searchShell}>
+      <div className="hp-search" style={s.searchShell}>
         <div style={s.searchRow}>
           <input
             type="text"
@@ -80,9 +80,9 @@ export function SearchHero() {
               className="hp-chip"
               style={{
                 ...s.chip,
-                background: on ? 'var(--color-brand)' : '#fff',
-                color: on ? '#0f0e0c' : '#0f0e0c',
-                borderColor: on ? 'var(--color-brand)' : '#e2e2dc',
+                background: on ? 'rgba(245,168,0,0.12)' : '#fff',
+                color: on ? '#A36C00' : '#1A1916',
+                borderColor: on ? 'rgba(245,168,0,0.3)' : '#E8E6DF',
                 fontWeight: on ? 700 : 500,
               }}
             >
@@ -97,13 +97,13 @@ export function SearchHero() {
 
 const s: Record<string, React.CSSProperties> = {
   wrap: { width: '100%', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' },
-  // Pill-shaped search shell with soft elevation.
+  // Pill-shaped search shell with soft elevation + focus ring (.hp-search).
   searchShell: {
     background: '#fff',
     borderRadius: 50,
-    boxShadow: '0 2px 20px rgba(0,0,0,0.08)',
-    border: '1px solid #efefe9',
-    padding: 6,
+    boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
+    border: '1.5px solid #E8E6DF',
+    padding: 5,
   },
   searchRow: { display: 'flex', flexDirection: 'column', gap: 6 },
   searchControls: { display: 'flex', gap: 6 },
@@ -116,6 +116,7 @@ const s: Record<string, React.CSSProperties> = {
     borderRadius: 50,
     outline: 'none',
     width: '100%',
+    color: '#1A1916',
   },
   select: {
     height: 58,
@@ -123,31 +124,32 @@ const s: Record<string, React.CSSProperties> = {
     minWidth: 0,
     padding: '0 16px',
     fontSize: 16,
-    background: '#faf9f5',
-    border: '1px solid #e2e2dc',
+    background: '#FAFAF8',
+    border: '1px solid #E8E6DF',
     borderRadius: 50,
     outline: 'none',
   },
   btn: {
     height: 58,
     flex: '0 0 auto',
-    padding: '0 28px',
+    margin: 0,
+    padding: '0 30px',
     fontSize: 16,
-    fontWeight: 700,
-    color: '#0f0e0c',
-    background: 'var(--color-brand)',
+    fontWeight: 600,
+    color: '#1A1916',
+    background: '#F5A800',
     border: 'none',
     borderRadius: 50,
     cursor: 'pointer',
   },
   chips: { display: 'flex', flexWrap: 'wrap', gap: 8 },
   chip: {
-    minHeight: 44,
-    padding: '0 18px',
-    fontSize: 14,
+    minHeight: 34,
+    padding: '0 16px',
+    fontSize: 13,
     fontWeight: 500,
-    border: '1px solid #e2e2dc',
-    borderRadius: 'var(--radius-pill)',
+    border: '1px solid #E8E6DF',
+    borderRadius: 34,
     cursor: 'pointer',
   },
 };
