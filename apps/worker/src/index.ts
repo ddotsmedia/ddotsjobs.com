@@ -1,5 +1,5 @@
 import { Worker, type Processor } from 'bullmq';
-import { db, tables } from '@ddotsjobs/db';
+import { db, eq, tables } from '@ddotsjobs/db';
 import { baseQueueOptions, connection, QUEUE_NAMES, type QueueName } from './queues.js';
 import { aiQueueProcessor, registerPscCron } from './workers/psc.worker.js';
 import { maintenanceQueueProcessor, registerItParkStatsCron } from './workers/itpark-stats.worker.js';
@@ -38,6 +38,24 @@ aiWorker.on('failed', async (job, err) => {
   console.error(`[ai] failed ${job?.name} ${job?.id}: ${err.message}`);
   const attempts = job?.opts.attempts ?? 1;
   if (job && job.attemptsMade >= attempts) {
+    // On terminal KNMC failure, fall back to manual review.
+    if (job.name === 'verify_professional_registration') {
+      const regId = (job.data as { registrationId?: string }).registrationId;
+      if (regId) {
+        try {
+          await db
+            .update(tables.professionalRegistrations)
+            .set({
+              statusCode: 'manual_review',
+              status: 'pending',
+              verifierNotes: 'Automated verification failed - manual review',
+            })
+            .where(eq(tables.professionalRegistrations.id, regId));
+        } catch (e) {
+          console.error(`[ai] knmc manual_review fallback failed: ${String(e)}`);
+        }
+      }
+    }
     try {
       await db.insert(tables.auditLog).values({
         action: 'ai_job_failed',

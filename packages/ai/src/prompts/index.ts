@@ -178,12 +178,41 @@ export function gulfTranslateTitlePrompt(input: {
   };
 }
 
+// ── KNMC / professional certificate extraction (Haiku) ──────────────────
+export const knmcExtractSchema = z.object({
+  registration_number: z.string().nullable(),
+  full_name: z.string().nullable(),
+  issue_date: z.string().nullable(),
+  expiry_date: z.string().nullable(),
+  is_valid_format: z.boolean(),
+  confidence: z.number().min(0).max(1),
+});
+export type KnmcExtractOutput = z.infer<typeof knmcExtractSchema>;
+
+export function knmcExtractCertificatePrompt(input: {
+  pdfText: string;
+}): PromptSpec<KnmcExtractOutput> {
+  return {
+    task: 'extract',
+    version: 1,
+    system:
+      'Extract fields from a Kerala professional-registration certificate ' +
+      '(nurses/teachers/medical/pharmacy councils). Return registration_number, ' +
+      'full_name, issue_date, expiry_date (ISO or null), is_valid_format (does the ' +
+      'document look like a genuine council certificate), and confidence 0..1. ' +
+      'Never invent values — use null when absent.',
+    prompt: input.pdfText,
+    schema: knmcExtractSchema,
+  };
+}
+
 // ── Registry of every prompt for introspection / eval harnesses ─────────
 export const PROMPTS = {
   fitScore: fitScorePrompt,
   gulfTitleTranslation: gulfTitleTranslationPrompt,
   gulfTranslateTitle: gulfTranslateTitlePrompt,
   jobNormalize: jobNormalizePrompt,
+  knmcExtractCertificate: knmcExtractCertificatePrompt,
   pscExtractNotification: pscExtractNotificationPrompt,
   pscGenerateSummaryMl: pscGenerateSummaryMlPrompt,
 } as const;

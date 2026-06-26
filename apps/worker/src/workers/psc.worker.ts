@@ -7,6 +7,7 @@ import { and, db, eq, isNull, sql, tables } from '@ddotsjobs/db';
 import { redis } from '@ddotsjobs/redis';
 import { queues, QUEUE_NAMES } from '../queues.js';
 import { runGulfTranslate } from './gulf.worker.js';
+import { runKnmcVerify } from './knmc.worker.js';
 
 const PSC_URL = 'https://www.keralapsc.gov.in/notifications';
 const LAST_HASH_KEY = 'psc:last_hash'; // -> ddotsjobs:psc:last_hash
@@ -29,6 +30,8 @@ export async function aiQueueProcessor(job: Job): Promise<unknown> {
       return runPscScrape();
     case 'gulf.translate':
       return runGulfTranslate(job.data);
+    case 'verify_professional_registration':
+      return runKnmcVerify(job.data);
     case 'fit.recompute':
       // Fit-score recomputation consumer lands in C5.
       console.log(`[ai] fit.recompute queued for ${JSON.stringify(job.data)}`);

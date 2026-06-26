@@ -6,6 +6,7 @@ import {
   integer,
   jsonb,
   pgTable,
+  real,
   text,
   timestamp,
   uniqueIndex,
@@ -94,20 +95,32 @@ export const professionalRegistrations = pgTable(
   'professional_registrations',
   {
     id: pk(),
-    seekerProfileId: uuid('seeker_profile_id')
-      .notNull()
-      .references(() => seekerProfiles.id, { onDelete: 'cascade' }),
+    seekerProfileId: uuid('seeker_profile_id').references(() => seekerProfiles.id, {
+      onDelete: 'cascade',
+    }),
+    userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }),
     type: professionalRegistrationType('type').notNull(),
+    // Spec credential code (KNMC / KTET / KMC / ...). Source of truth for the UI.
+    typeCode: varchar('type_code', { length: 40 }),
     registrationNumber: varchar('registration_number', { length: 100 }).notNull(),
     issuingBody: varchar('issuing_body', { length: 200 }),
     validUntil: timestamp('valid_until', { withTimezone: true }),
     status: verificationStatus('status').notNull().default('unverified'),
+    // pending | verified | failed | manual_review (superset of the enum).
+    statusCode: varchar('status_code', { length: 20 }).notNull().default('pending'),
+    verificationMethod: varchar('verification_method', { length: 30 }),
+    aiExtractedData: jsonb('ai_extracted_data').$type<Record<string, unknown>>().notNull().default({}),
+    aiConfidenceScore: real('ai_confidence_score'),
+    aiExtractionModel: varchar('ai_extraction_model', { length: 60 }),
+    verifierNotes: text('verifier_notes'),
     verifiedAt: timestamp('verified_at', { withTimezone: true }),
     documentR2Key: text('document_r2_key'),
     ...timestamps,
   },
   (t) => [
     index('prof_reg_seeker_idx').on(t.seekerProfileId),
+    index('prof_reg_user_idx').on(t.userId),
     index('prof_reg_type_idx').on(t.type),
+    uniqueIndex('prof_reg_user_type_uq').on(t.userId, t.typeCode).where(sql`deleted_at IS NULL`),
   ],
 );
