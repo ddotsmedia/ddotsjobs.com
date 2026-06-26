@@ -33,6 +33,8 @@ export const jobs = pgTable(
     employerId: uuid('employer_id')
       .notNull()
       .references(() => employers.id, { onDelete: 'cascade' }),
+    // URL slug — set on publish (D2); unique among live jobs.
+    slug: varchar('slug', { length: 255 }),
     titleMl: varchar('title_ml', { length: 255 }),
     titleEn: varchar('title_en', { length: 255 }).notNull(),
     descriptionMl: text('description_ml'),
@@ -72,6 +74,9 @@ export const jobs = pgTable(
     index('jobs_district_idx').on(t.district),
     index('jobs_category_idx').on(t.categorySlug),
     index('jobs_published_at_idx').on(t.publishedAt),
+    uniqueIndex('jobs_slug_uq')
+      .on(t.slug)
+      .where(sql`slug IS NOT NULL AND deleted_at IS NULL`),
   ],
 );
 

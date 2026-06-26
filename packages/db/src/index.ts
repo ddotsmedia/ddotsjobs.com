@@ -6,6 +6,9 @@ export * as tables from './schema/index.js';
 export {
   and,
   asc,
+  avg,
+  count,
+  countDistinct,
   desc,
   eq,
   gt,
@@ -19,4 +22,5 @@ export {
   ne,
   or,
   sql,
+  sum,
 } from 'drizzle-orm';

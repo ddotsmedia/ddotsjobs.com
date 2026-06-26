@@ -1,0 +1,133 @@
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { DISTRICTS, HERO_CHIPS } from '@/lib/constants';
+
+export function SearchHero() {
+  const router = useRouter();
+  const [q, setQ] = useState('');
+  const [district, setDistrict] = useState('');
+  const [active, setActive] = useState<Set<string>>(new Set());
+
+  function toggleChip(key: string, kind: string, value: string) {
+    if (kind === 'link') {
+      router.push(value);
+      return;
+    }
+    setActive((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
+  function submit() {
+    const params = new URLSearchParams();
+    if (q.trim()) params.set('q', q.trim());
+    if (district) params.set('district', district);
+    for (const chip of HERO_CHIPS) {
+      if (!active.has(chip.key)) continue;
+      if (chip.kind === 'category') params.set('category', chip.value);
+      if (chip.kind === 'flag') params.set(chip.value, '1');
+    }
+    router.push(`/jobs${params.toString() ? `?${params.toString()}` : ''}`);
+  }
+
+  return (
+    <div style={s.wrap}>
+      <div style={s.searchRow}>
+        <input
+          type="text"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && submit()}
+          placeholder="Job title, skill or company"
+          aria-label="Search jobs"
+          style={s.input}
+        />
+        <select
+          value={district}
+          onChange={(e) => setDistrict(e.target.value)}
+          aria-label="District"
+          style={s.select}
+        >
+          <option value="">All districts</option>
+          {DISTRICTS.map((d) => (
+            <option key={d.value} value={d.value}>
+              {d.label}
+            </option>
+          ))}
+        </select>
+        <button type="button" onClick={submit} style={s.btn}>
+          Search
+        </button>
+      </div>
+
+      <div style={s.chips}>
+        {HERO_CHIPS.map((c) => {
+          const on = active.has(c.key);
+          return (
+            <button
+              key={c.key}
+              type="button"
+              onClick={() => toggleChip(c.key, c.kind, c.value)}
+              style={{
+                ...s.chip,
+                background: on ? 'var(--color-accent)' : '#fff',
+                color: on ? '#fff' : '#0f0e0c',
+                borderColor: on ? 'var(--color-accent)' : '#e2e2dc',
+              }}
+            >
+              {c.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+const s: Record<string, React.CSSProperties> = {
+  wrap: { width: '100%', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' },
+  searchRow: { display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' },
+  input: {
+    height: 52,
+    padding: '0 16px',
+    fontSize: 16,
+    background: '#fff',
+    border: '1px solid #e2e2dc',
+    borderRadius: 'var(--radius-input)',
+    outline: 'none',
+  },
+  select: {
+    height: 52,
+    padding: '0 12px',
+    fontSize: 16,
+    background: '#fff',
+    border: '1px solid #e2e2dc',
+    borderRadius: 'var(--radius-input)',
+    outline: 'none',
+  },
+  btn: {
+    height: 52,
+    fontSize: 16,
+    fontWeight: 600,
+    color: '#0f0e0c',
+    background: 'var(--color-brand)',
+    border: 'none',
+    borderRadius: 'var(--radius-input)',
+    cursor: 'pointer',
+  },
+  chips: { display: 'flex', flexWrap: 'wrap', gap: 8 },
+  chip: {
+    minHeight: 44,
+    padding: '0 16px',
+    fontSize: 14,
+    fontWeight: 500,
+    border: '1px solid #e2e2dc',
+    borderRadius: 'var(--radius-pill)',
+    cursor: 'pointer',
+  },
+};
