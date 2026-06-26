@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
-import { and, desc, eq, isNull, sql, tables, type Database } from '@ddotsjobs/db';
+import { and, createNotification, desc, eq, isNull, sql, tables, type Database } from '@ddotsjobs/db';
 import { uploadFile } from '@ddotsjobs/storage';
 import { computeFitScore, type FitScoreResult } from '@/lib/services/fit-score.service';
 import { roleProcedure, router } from '../trpc.js';
@@ -291,9 +291,17 @@ export const applicationsRouter = router({
     .mutation(async ({ ctx, input }) => {
       const a = tables.applications;
       const [app] = await ctx.db
-        .select({ id: a.id, employerId: a.employerId, oldStatus: a.statusCode })
+        .select({
+          id: a.id,
+          employerId: a.employerId,
+          oldStatus: a.statusCode,
+          seekerUserId: a.seekerUserId,
+          jobTitle: tables.jobs.titleEn,
+          companyName: sql<string>`coalesce(${tables.employers.displayNameEn}, ${tables.employers.legalNameEn})`,
+        })
         .from(a)
         .innerJoin(tables.employers, eq(tables.employers.id, a.employerId))
+        .innerJoin(tables.jobs, eq(tables.jobs.id, a.jobId))
         .where(and(eq(a.id, input.applicationId), eq(tables.employers.ownerUserId, ctx.user.id)))
         .limit(1);
       if (!app) throw new TRPCError({ code: 'FORBIDDEN', message: 'Not your applicant' });
@@ -318,6 +326,32 @@ export const applicationsRouter = router({
         entityId: input.applicationId,
         diff: { old: app.oldStatus, new: input.status },
       });
+
+      // Notify the seeker on key transitions.
+      if (input.status === 'shortlisted') {
+        await createNotification({
+          userId: app.seekerUserId,
+          type: 'application.shortlisted',
+          title: 'You have been shortlisted',
+          titleMl: 'നിങ്ങൾ shortlist ചെയ്യപ്പെട്ടു',
+          body: `${app.companyName} shortlisted you for ${app.jobTitle}`,
+          bodyMl: `${app.jobTitle} തസ്തികയിലേക്ക് ${app.companyName} നിങ്ങളെ shortlist ചെയ്തിരിക്കുന്നു`,
+          actionUrl: '/seeker/applications',
+        });
+      } else if (input.status === 'interview_scheduled') {
+        const when = input.interviewAt
+          ? new Date(input.interviewAt).toLocaleString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+          : 'soon';
+        await createNotification({
+          userId: app.seekerUserId,
+          type: 'application.interview',
+          title: 'Interview scheduled',
+          titleMl: 'Interview schedule ചെയ്തിരിക്കുന്നു',
+          body: `Interview on ${when}`,
+          bodyMl: `Interview: ${when}`,
+          actionUrl: '/seeker/applications',
+        });
+      }
 
       return { success: true as const };
     }),

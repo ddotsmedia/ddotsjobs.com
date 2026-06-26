@@ -7,6 +7,7 @@ import { employerDashboardRouter } from './employer-dashboard.js';
 import { fitScoreRouter } from './fit-score.js';
 import { itParksRouter } from './it-parks.js';
 import { jobsRouter } from './jobs.js';
+import { notificationsRouter } from './notifications.js';
 import { pravasiRouter } from './pravasi.js';
 import { pscRouter } from './psc.js';
 import { seekerRouter } from './seeker.js';
@@ -25,6 +26,7 @@ export const appRouter = router({
   fitScore: fitScoreRouter,
   itParks: itParksRouter,
   jobs: jobsRouter,
+  notifications: notificationsRouter,
   pravasi: pravasiRouter,
   psc: pscRouter,
   seeker: seekerRouter,

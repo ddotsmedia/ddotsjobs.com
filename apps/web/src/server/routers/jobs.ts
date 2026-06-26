@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
-import { and, asc, count, desc, eq, gte, inArray, isNull, sql, tables, type SQL } from '@ddotsjobs/db';
+import { and, asc, count, createNotification, desc, eq, gte, inArray, isNull, sql, tables, type SQL } from '@ddotsjobs/db';
 import { callAI } from '@ddotsjobs/ai';
 import { jobAutoFillDescriptionPrompt } from '@ddotsjobs/ai/prompts';
 import { notifyGoogleIndexing } from '@/lib/google-indexing';
@@ -488,6 +488,27 @@ export const jobsRouter = router({
       entityType: 'job',
       entityId: row.id,
     });
+
+    if (status === 'active') {
+      await createNotification({
+        userId: ctx.user.id,
+        type: 'job.published',
+        title: 'Job published',
+        titleMl: 'Job publish ചെയ്തു',
+        body: `${input.title} is now live`,
+        bodyMl: `${input.title} ഇപ്പോൾ live ആണ്`,
+        actionUrl: `/jobs/${slug}`,
+      });
+    } else {
+      await createNotification({
+        userId: ctx.user.id,
+        type: 'job.pending',
+        title: 'Job under review',
+        titleMl: 'Job review-ൽ ഉണ്ട്',
+        body: 'Your job post is being reviewed. Usually approved within a few hours.',
+        actionUrl: '/employer/jobs',
+      });
+    }
 
     return { jobId: row.id, slug, status };
   }),

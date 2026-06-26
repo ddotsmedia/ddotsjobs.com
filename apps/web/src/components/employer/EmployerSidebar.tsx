@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { signOut } from 'next-auth/react';
 import { trpc } from '@/lib/trpc/client';
+import { NotificationBell } from '@/components/NotificationBell';
 import { initials } from '@/lib/format';
 
 const NAV = [
@@ -34,7 +35,10 @@ export function EmployerSidebar({ company, verified }: { company: string; verifi
 
   const inner = (
     <>
-      <div style={s.brand}>ddotsjobs</div>
+      <div style={s.brandRow}>
+        <span style={s.brand}>ddotsjobs</span>
+        <NotificationBell viewAllHref="/employer/notifications" />
+      </div>
       <div style={s.company}>
         <span style={s.avatar} aria-hidden>{initials(company || 'Co')}</span>
         <div style={{ minWidth: 0 }}>
@@ -75,6 +79,7 @@ export function EmployerSidebar({ company, verified }: { company: string; verifi
 
 const s: Record<string, React.CSSProperties> = {
   sidebar: { flex: '0 0 220px', width: 220, minHeight: '100dvh', position: 'sticky', top: 0, display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', padding: 'var(--space-3) var(--space-2)', background: '#fff', borderRight: '1px solid #efefe9' },
+  brandRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
   brand: { fontFamily: 'var(--font-display)', fontStyle: 'italic', fontSize: '1.5rem', color: 'var(--color-accent)' },
   company: { display: 'flex', gap: 10, alignItems: 'center' },
   avatar: { width: 40, height: 40, flex: '0 0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: 'var(--color-accent)', background: '#eef6f5', borderRadius: 10 },

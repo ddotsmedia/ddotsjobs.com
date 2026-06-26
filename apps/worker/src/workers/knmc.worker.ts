@@ -1,6 +1,6 @@
 import { callAI } from '@ddotsjobs/ai';
 import { knmcExtractCertificatePrompt } from '@ddotsjobs/ai/prompts';
-import { db, eq, tables } from '@ddotsjobs/db';
+import { createNotification, db, eq, tables } from '@ddotsjobs/db';
 import { getFileBuffer } from '@ddotsjobs/storage';
 import { Resend } from 'resend';
 
@@ -136,6 +136,15 @@ export async function runKnmcVerify(raw: unknown): Promise<{ status: string }> {
 
   if (status === 'verified') {
     await db.update(tables.users).set({ isVerifiedProfessional: true }).where(eq(tables.users.id, data.userId));
+    await createNotification({
+      userId: data.userId,
+      type: 'verification.verified',
+      title: 'Credential verified',
+      titleMl: 'Credential verified ആയി',
+      body: `Your ${data.type} registration has been verified`,
+      bodyMl: `നിങ്ങളുടെ ${data.type} registration verified ആയി`,
+      actionUrl: '/seeker/profile/verify',
+    });
   }
 
   await emailResult(data.userId, data.type, status);

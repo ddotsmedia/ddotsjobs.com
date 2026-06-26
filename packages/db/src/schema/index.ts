@@ -4,6 +4,7 @@ export * from './users.js';
 export * from './employers.js';
 export * from './it_parks.js';
 export * from './jobs.js';
+export * from './notifications.js';
 export * from './applications.js';
 export * from './alerts.js';
 export * from './psc.js';
