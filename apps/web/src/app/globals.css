@@ -77,3 +77,24 @@ a {
     display: block;
   }
 }
+
+/* Mobile sticky apply bar — hidden on desktop. */
+.ddj-sticky-apply {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  background: #fff;
+  border-top: 1px solid #ececdf;
+}
+@media (min-width: 880px) {
+  .ddj-sticky-apply {
+    display: none;
+  }
+}

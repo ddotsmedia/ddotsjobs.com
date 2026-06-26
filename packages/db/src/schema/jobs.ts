@@ -54,6 +54,14 @@ export const jobs = pgTable(
     vacancies: integer('vacancies').notNull().default(1),
     minExperienceYears: smallint('min_experience_years').notNull().default(0),
     skills: jsonb('skills').$type<string[]>().notNull().default([]),
+    requirementsEn: text('requirements_en'),
+    requirementsMl: text('requirements_ml'),
+    benefitsEn: text('benefits_en'),
+    benefitsMl: text('benefits_ml'),
+    employerQuestionEn: text('employer_question_en'),
+    employerQuestionMl: text('employer_question_ml'),
+    requiredCertifications: jsonb('required_certifications').$type<string[]>().notNull().default([]),
+    validThrough: timestamp('valid_through', { withTimezone: true }),
     categorySlug: varchar('category_slug', { length: 100 }),
     applicationDeadline: timestamp('application_deadline', { withTimezone: true }),
     publishedAt: timestamp('published_at', { withTimezone: true }),
@@ -137,6 +145,25 @@ export const fitScores = pgTable(
       .on(t.jobId, t.seekerUserId)
       .where(sql`deleted_at IS NULL`),
     index('fit_scores_seeker_idx').on(t.seekerUserId),
+  ],
+);
+
+// Seeker-saved jobs (soft-delete toggle).
+export const savedJobs = pgTable(
+  'saved_jobs',
+  {
+    id: pk(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    jobId: uuid('job_id')
+      .notNull()
+      .references(() => jobs.id, { onDelete: 'cascade' }),
+    ...timestamps,
+  },
+  (t) => [
+    uniqueIndex('saved_jobs_user_job_uq').on(t.userId, t.jobId),
+    index('saved_jobs_user_idx').on(t.userId).where(sql`deleted_at IS NULL`),
   ],
 );
 

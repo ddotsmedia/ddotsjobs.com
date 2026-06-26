@@ -1,6 +1,7 @@
 import { z } from 'zod';
-import { and, count, eq, gte, inArray, isNull, sql, tables, type SQL } from '@ddotsjobs/db';
-import { publicProcedure, router } from '../trpc.js';
+import { TRPCError } from '@trpc/server';
+import { and, asc, count, eq, gte, inArray, isNull, sql, tables, type SQL } from '@ddotsjobs/db';
+import { protectedProcedure, publicProcedure, router } from '../trpc.js';
 
 const DISTRICTS = [
   'thiruvananthapuram', 'kollam', 'pathanamthitta', 'alappuzha', 'kottayam',
@@ -151,4 +152,146 @@ export const jobsRouter = router({
 
     return { items, nextCursor };
   }),
+
+  getBySlug: publicProcedure
+    .input(z.object({ slug: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      const j = tables.jobs;
+      const e = tables.employers;
+      const [row] = await ctx.db
+        .select({
+          id: j.id,
+          slug: j.slug,
+          titleEn: j.titleEn,
+          titleMl: j.titleMl,
+          descriptionEn: j.descriptionEn,
+          descriptionMl: j.descriptionMl,
+          type: j.type,
+          district: j.district,
+          itPark: j.itPark,
+          gulfCountry: j.gulfCountry,
+          locationText: j.locationText,
+          isRemote: j.isRemote,
+          salaryMinPaise: j.salaryMinPaise,
+          salaryMaxPaise: j.salaryMaxPaise,
+          salaryPeriod: j.salaryPeriod,
+          salaryDisclosed: j.salaryDisclosed,
+          minExperienceYears: j.minExperienceYears,
+          skills: j.skills,
+          requirementsEn: j.requirementsEn,
+          requirementsMl: j.requirementsMl,
+          benefitsEn: j.benefitsEn,
+          benefitsMl: j.benefitsMl,
+          employerQuestionEn: j.employerQuestionEn,
+          employerQuestionMl: j.employerQuestionMl,
+          requiredCertifications: j.requiredCertifications,
+          validThrough: j.validThrough,
+          publishedAt: j.publishedAt,
+          viewCount: j.viewCount,
+          isWalkIn: j.isWalkIn,
+          valuesGulfExperience: j.valuesGulfExperience,
+          categorySlug: j.categorySlug,
+          employerId: j.employerId,
+          displayNameEn: e.displayNameEn,
+          legalNameEn: e.legalNameEn,
+          verificationStatus: e.verificationStatus,
+          logoR2Key: e.logoR2Key,
+          websiteUrl: e.websiteUrl,
+          employerDistrict: e.district,
+          employerType: e.type,
+        })
+        .from(j)
+        .innerJoin(e, eq(j.employerId, e.id))
+        .where(and(eq(j.slug, input.slug), isNull(j.deletedAt)))
+        .limit(1);
+
+      if (!row) throw new TRPCError({ code: 'NOT_FOUND', message: 'Job not found' });
+
+      let walkIn: {
+        venueEn: string;
+        venueMl: string | null;
+        district: string | null;
+        addressText: string | null;
+        startsAt: Date;
+        endsAt: Date | null;
+        instructionsEn: string | null;
+        instructionsMl: string | null;
+      } | null = null;
+      if (row.isWalkIn) {
+        const w = tables.walkInEvents;
+        const [ev] = await ctx.db
+          .select({
+            venueEn: w.venueEn,
+            venueMl: w.venueMl,
+            district: w.district,
+            addressText: w.addressText,
+            startsAt: w.startsAt,
+            endsAt: w.endsAt,
+            instructionsEn: w.instructionsEn,
+            instructionsMl: w.instructionsMl,
+          })
+          .from(w)
+          .where(and(eq(w.jobId, row.id), isNull(w.deletedAt)))
+          .orderBy(asc(w.startsAt))
+          .limit(1);
+        walkIn = ev ?? null;
+      }
+
+      const { displayNameEn, legalNameEn, verificationStatus, ...rest } = row;
+      return {
+        ...rest,
+        company: displayNameEn ?? legalNameEn,
+        isVerified: verificationStatus === 'verified',
+        walkIn,
+      };
+    }),
+
+  incrementView: publicProcedure
+    .input(z.object({ id: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db
+        .update(tables.jobs)
+        .set({ viewCount: sql`${tables.jobs.viewCount} + 1` })
+        .where(eq(tables.jobs.id, input.id));
+      return { ok: true as const };
+    }),
+
+  isSaved: protectedProcedure
+    .input(z.object({ jobId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      const [row] = await ctx.db
+        .select({ id: tables.savedJobs.id })
+        .from(tables.savedJobs)
+        .where(
+          and(
+            eq(tables.savedJobs.userId, ctx.user.id),
+            eq(tables.savedJobs.jobId, input.jobId),
+            isNull(tables.savedJobs.deletedAt),
+          ),
+        )
+        .limit(1);
+      return { saved: Boolean(row) };
+    }),
+
+  toggleSave: protectedProcedure
+    .input(z.object({ jobId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const s = tables.savedJobs;
+      const [existing] = await ctx.db
+        .select({ id: s.id, deletedAt: s.deletedAt })
+        .from(s)
+        .where(and(eq(s.userId, ctx.user.id), eq(s.jobId, input.jobId)))
+        .limit(1);
+
+      if (!existing) {
+        await ctx.db.insert(s).values({ userId: ctx.user.id, jobId: input.jobId });
+        return { saved: true as const };
+      }
+      if (existing.deletedAt) {
+        await ctx.db.update(s).set({ deletedAt: null }).where(eq(s.id, existing.id));
+        return { saved: true as const };
+      }
+      await ctx.db.update(s).set({ deletedAt: new Date() }).where(eq(s.id, existing.id));
+      return { saved: false as const };
+    }),
 });
