@@ -1,6 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import type { inferRouterOutputs } from '@trpc/server';
 import { trpc } from '@/lib/trpc/client';
 import type { AppRouter } from '@/server/routers/_app';
@@ -28,11 +29,41 @@ function riskColor(score: number | null): { bg: string; fg: string; label: strin
   return { bg: '#c0392b22', fg: '#e74c3c', label: `${score}` };
 }
 
-const NAV = ['Overview', 'Moderation', 'Employers', 'Users', 'Analytics', 'Audit Log'];
+const NAV = ['Overview', 'Moderation', 'Employers', 'Users', 'Audit Log', 'Settings'];
+
+function maskPhone(phone: string | null): string {
+  if (!phone) return '—';
+  if (phone.length <= 4) return phone;
+  return `${phone.slice(0, 3)}…${phone.slice(-4)}`;
+}
 
 export function AdminDashboard() {
+  const router = useRouter();
   const [dark, setDark] = useState(true);
   const t = useMemo(() => makeTheme(dark), [dark]);
+  const [now, setNow] = useState<string>('');
+
+  // Persisted theme preference.
+  useEffect(() => {
+    const saved = localStorage.getItem('ddj-admin-theme');
+    if (saved) setDark(saved === 'dark');
+  }, []);
+  function toggleTheme() {
+    setDark((v) => {
+      const next = !v;
+      localStorage.setItem('ddj-admin-theme', next ? 'dark' : 'light');
+      return next;
+    });
+  }
+
+  // IST clock.
+  useEffect(() => {
+    const fmt = () =>
+      new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' });
+    setNow(fmt());
+    const id = setInterval(() => setNow(fmt()), 30_000);
+    return () => clearInterval(id);
+  }, []);
 
   const utils = trpc.useUtils();
   const metrics = trpc.admin.metrics.useQuery();
@@ -40,12 +71,12 @@ export function AdminDashboard() {
   const newEmployers = trpc.admin.newEmployers.useQuery();
   const stats7d = trpc.admin.jobStats7d.useQuery();
   const coverage = trpc.admin.districtCoverage.useQuery();
-  const audit = trpc.admin.auditLog.useQuery();
+  const audit = trpc.admin.recentAuditLog.useQuery();
 
   function invalidateModeration() {
     void utils.admin.moderationQueue.invalidate();
     void utils.admin.metrics.invalidate();
-    void utils.admin.auditLog.invalidate();
+    void utils.admin.recentAuditLog.invalidate();
   }
   const approveJob = trpc.admin.approveJob.useMutation({ onSuccess: invalidateModeration });
   const rejectJob = trpc.admin.rejectJob.useMutation({ onSuccess: invalidateModeration });
@@ -53,7 +84,7 @@ export function AdminDashboard() {
     onSuccess: () => {
       void utils.admin.newEmployers.invalidate();
       void utils.admin.metrics.invalidate();
-      void utils.admin.auditLog.invalidate();
+      void utils.admin.recentAuditLog.invalidate();
     },
   });
 
@@ -75,20 +106,30 @@ export function AdminDashboard() {
           <span style={st.adminBadge}>Admin</span>
         </div>
         <nav style={st.nav}>
-          {NAV.map((n) => (
-            <a key={n} href={`#${n.toLowerCase().replace(/\s+/g, '-')}`} style={{ ...st.navItem, color: t.muted }}>
+          {NAV.map((n, i) => (
+            <a
+              key={n}
+              href={`#${n.toLowerCase().replace(/\s+/g, '-')}`}
+              style={{ ...st.navItem, color: i === 0 ? t.fg : t.muted, background: i === 0 ? t.activeNav : 'transparent' }}
+            >
               {n}
             </a>
           ))}
         </nav>
-        <button type="button" onClick={() => setDark((v) => !v)} style={{ ...st.themeToggle, borderColor: t.border, color: t.fg }}>
+        <button type="button" onClick={toggleTheme} style={{ ...st.themeToggle, borderColor: t.border, color: t.fg }}>
           {dark ? '☀ Light mode' : '🌙 Dark mode'}
         </button>
       </aside>
 
       {/* Main */}
       <main style={st.main}>
-        <h1 id="overview" style={st.h1}>Overview</h1>
+        <header id="overview" style={st.headerRow}>
+          <div>
+            <h1 style={st.h1}>Admin — Platform overview</h1>
+            <p style={{ ...st.clock, color: t.muted }}>{now} IST</p>
+          </div>
+          <button type="button" onClick={() => router.refresh()} style={{ ...st.refreshBtn, borderColor: t.border, color: t.fg }}>↻ Refresh</button>
+        </header>
 
         {/* Metrics */}
         <section style={st.metricsGrid}>
@@ -147,6 +188,7 @@ export function AdminDashboard() {
                       <th style={st.th}>Company</th>
                       <th style={st.th}>Type</th>
                       <th style={st.th}>District</th>
+                      <th style={st.th}>Phone</th>
                       <th style={st.th}>GST</th>
                       <th style={st.thRight}>Action</th>
                     </tr>
@@ -157,7 +199,8 @@ export function AdminDashboard() {
                         <td style={st.td}>{e.companyName}<div style={{ ...st.sub, color: t.muted }}>{relativeTime(e.createdAt)} · {e.jobCount} jobs</div></td>
                         <td style={st.td}>{e.employerType}</td>
                         <td style={st.td}>{e.district ?? '—'}</td>
-                        <td style={st.td}>{e.gstin ? <span style={{ color: '#2ec27a' }}>✓ GST</span> : <span style={{ color: t.muted }}>—</span>}</td>
+                        <td style={{ ...st.td, fontFamily: 'var(--font-mono)' }}>{maskPhone(e.phone)}</td>
+                        <td style={st.td}>{e.gstin ? <span style={{ color: '#2ec27a' }}>✓ {e.gstin}</span> : <span style={{ color: t.muted }}>—</span>}</td>
                         <td style={st.tdRight}>
                           <button
                             type="button"
@@ -197,7 +240,9 @@ export function AdminDashboard() {
                   {audit.data!.map((a, i) => (
                     <li key={i} style={{ ...st.auditItem, borderColor: t.border }}>
                       <span style={st.auditAction}>{a.action}</span>
-                      <span style={{ ...st.sub, color: t.muted }}>{a.entityType} · {relativeTime(a.createdAt)}</span>
+                      <span style={{ ...st.sub, color: t.muted }}>
+                        {a.entityType} · {a.actorName ?? 'system'} · {relativeTime(a.createdAt)}
+                      </span>
                     </li>
                   ))}
                 </ul>
@@ -226,7 +271,7 @@ function ModerationRow({
         <td style={st.td}>
           {row.title}
           <div style={{ ...st.sub, color: theme.muted }}>
-            {row.companyName}{row.isVerified ? ' ✓' : ''} · {row.district ?? '—'} · {row.employerTotalApps} apps
+            {row.companyName}{row.isVerified ? ' ✓' : ''} · {row.district ?? '—'} · {row.employerTotalJobs} jobs
           </div>
         </td>
         <td style={st.td}>{salaryLabel(row)}</td>
@@ -306,8 +351,8 @@ function DistrictBars({ data, theme }: { data: Out['admin']['districtCoverage'];
 
 function makeTheme(dark: boolean) {
   return dark
-    ? { bg: '#0F0E0C', panel: '#1a1916', border: '#2c2a25', fg: '#f1f1ec', muted: '#9a9a92', accent: '#e0a72e' }
-    : { bg: '#faf9f5', panel: '#ffffff', border: '#e2e2dc', fg: '#0f0e0c', muted: '#6b6b66', accent: '#b8860b' };
+    ? { bg: '#0F0E0C', panel: '#1A1916', border: '#2c2a25', fg: '#F0EFE8', muted: '#9a9a92', accent: '#e0a72e', activeNav: '#2c2a2566' }
+    : { bg: '#faf9f5', panel: '#ffffff', border: '#e2e2dc', fg: '#0f0e0c', muted: '#6b6b66', accent: '#b8860b', activeNav: '#f1f1ec' };
 }
 
 const st: Record<string, React.CSSProperties> = {
@@ -320,6 +365,9 @@ const st: Record<string, React.CSSProperties> = {
   navItem: { textDecoration: 'none', fontSize: 14, fontWeight: 600, padding: '8px 10px', borderRadius: 8 },
   themeToggle: { background: 'none', border: '1px solid', borderRadius: 'var(--radius-pill)', padding: '8px 12px', fontSize: 13, fontWeight: 600, cursor: 'pointer' },
   main: { flex: 1, minWidth: 0, padding: 'var(--space-3)', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' },
+  headerRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 'var(--space-2)', flexWrap: 'wrap' },
+  clock: { fontSize: 13, margin: '4px 0 0' },
+  refreshBtn: { background: 'none', border: '1px solid', borderRadius: 'var(--radius-pill)', padding: '8px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer' },
   h1: { fontFamily: 'var(--font-display)', fontStyle: 'italic', fontSize: 'clamp(1.8rem,5vw,2.4rem)', margin: 0 },
   h2: { fontSize: '1.1rem', fontWeight: 700, margin: 'var(--space-2) 0 8px' },
   metricsGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 'var(--space-2)' },
@@ -353,7 +401,7 @@ const st: Record<string, React.CSSProperties> = {
   districtTrack: { flex: 1, height: 10, background: '#80808022', borderRadius: 'var(--radius-pill)', overflow: 'hidden' },
   districtBar: { height: '100%', borderRadius: 'var(--radius-pill)' },
   districtCount: { fontSize: 12, width: 36, flex: '0 0 36px', textAlign: 'right' },
-  auditList: { listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column' },
-  auditItem: { display: 'flex', justifyContent: 'space-between', gap: 8, padding: '8px 0', borderTop: '1px solid', fontSize: 13 },
+  auditList: { listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', fontFamily: 'var(--font-mono)' },
+  auditItem: { display: 'flex', justifyContent: 'space-between', gap: 8, padding: '8px 0', borderTop: '1px solid', fontSize: 12 },
   auditAction: { fontWeight: 600 },
 };

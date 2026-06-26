@@ -60,7 +60,7 @@ export const adminRouter = router({
           companyName: companyNameSql,
           isVerified: sql<boolean>`(${employers.verificationStatus} = 'verified')`,
           employerType: sql<string>`coalesce(${employers.employerTypeCode}, ${employers.type}::text)`,
-          employerTotalApps: sql<number>`(select count(*)::int from applications a where a.employer_id = ${employers.id})`,
+          employerTotalJobs: sql<number>`(select count(*)::int from jobs jx where jx.employer_id = ${employers.id} and jx.deleted_at is null)`,
         })
         .from(jobs)
         .innerJoin(employers, eq(jobs.employerId, employers.id))
@@ -233,14 +233,16 @@ export const adminRouter = router({
     return rows;
   }),
 
-  auditLog: adminProcedure.query(async ({ ctx }) => {
+  recentAuditLog: adminProcedure.query(async ({ ctx }) => {
     return ctx.db
       .select({
         action: tables.auditLog.action,
         entityType: tables.auditLog.entityType,
         createdAt: tables.auditLog.createdAt,
+        actorName: sql<string | null>`coalesce(${tables.users.nameEn}, ${tables.users.phone})`,
       })
       .from(tables.auditLog)
+      .leftJoin(tables.users, eq(tables.users.id, tables.auditLog.actorUserId))
       .orderBy(desc(tables.auditLog.createdAt))
       .limit(10);
   }),
@@ -248,6 +250,9 @@ export const adminRouter = router({
   banUser: adminProcedure
     .input(z.object({ userId: z.string().uuid(), reason: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
+      if (input.userId === ctx.user.id) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'You cannot ban yourself' });
+      }
       await ctx.db
         .update(tables.users)
         .set({ isBanned: true, banReason: input.reason, bannedAt: new Date() })
