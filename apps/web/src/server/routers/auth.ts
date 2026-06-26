@@ -12,9 +12,10 @@ import {
 import { sendWhatsAppOtp } from '@/lib/greenapi';
 import { protectedProcedure, publicProcedure, router } from '../trpc.js';
 
+// E.164 international: + then 8–15 digits, leading digit non-zero.
 const phoneSchema = z
   .string()
-  .regex(/^\+91[6-9]\d{9}$/, 'Enter a valid +91 mobile number');
+  .regex(/^\+[1-9]\d{7,14}$/, 'Enter a valid mobile number with country code');
 
 export const authRouter = router({
   // ── Step 1: issue OTP ──────────────────────────────────────────────

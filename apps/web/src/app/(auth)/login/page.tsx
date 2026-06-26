@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { trpc } from '@/lib/trpc/client';
 
-const PHONE_RE = /^\+91[6-9]\d{9}$/;
+// E.164 international: + then 8–15 digits, leading digit non-zero.
+const PHONE_RE = /^\+[1-9]\d{7,14}$/;
 
 export default function LoginPage() {
   const router = useRouter();
@@ -31,11 +32,11 @@ export default function LoginPage() {
           autoComplete="tel"
           value={phone}
           onChange={(e) => setPhone(e.target.value.replace(/\s/g, ''))}
-          placeholder="+919876543210"
+          placeholder="+91XXXXXXXXXX or +971XXXXXXXXX"
           style={styles.input}
         />
         {phone.length > 3 && !valid && (
-          <span style={styles.err}>Enter a valid +91 mobile number</span>
+          <span style={styles.err}>Enter a valid mobile number with country code</span>
         )}
         {requestOtp.error && <span style={styles.err}>{requestOtp.error.message}</span>}
 
