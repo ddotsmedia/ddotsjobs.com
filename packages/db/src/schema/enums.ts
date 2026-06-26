@@ -97,6 +97,11 @@ export const subscriptionTier = pgEnum('subscription_tier', [
   'employer_basic',
   'employer_pro',
   'employer_enterprise',
+  // D7 employer plans.
+  'employer_starter',
+  'employer_growth',
+  'hospital_pro',
+  'agency',
 ]);
 
 // ── Geography ────────────────────────────────────────
