@@ -14,7 +14,7 @@ import {
   varchar,
 } from 'drizzle-orm/pg-core';
 import { pk, timestamps } from './_shared.js';
-import { district, employerType, itPark, verificationStatus } from './enums.js';
+import { district, employerType, itPark, subscriptionTier, verificationStatus } from './enums.js';
 import { users } from './users.js';
 import { jobs } from './jobs.js';
 
@@ -25,7 +25,10 @@ export const employers = pgTable(
     ownerUserId: uuid('owner_user_id')
       .notNull()
       .references(() => users.id, { onDelete: 'restrict' }),
+    slug: varchar('slug', { length: 120 }),
     type: employerType('type').notNull().default('direct'),
+    // Spec employer type (hospital / it_company / school / ...). Source of truth.
+    employerTypeCode: varchar('employer_type_code', { length: 30 }),
     legalNameEn: varchar('legal_name_en', { length: 255 }).notNull(),
     displayNameMl: varchar('display_name_ml', { length: 255 }),
     displayNameEn: varchar('display_name_en', { length: 255 }),
@@ -41,8 +44,13 @@ export const employers = pgTable(
     verificationStatus: verificationStatus('verification_status').notNull().default('unverified'),
     verifiedAt: timestamp('verified_at', { withTimezone: true }),
     isBlacklisted: boolean('is_blacklisted').notNull().default(false),
+    contactName: varchar('contact_name', { length: 255 }),
     contactPhone: varchar('contact_phone', { length: 20 }),
     contactEmail: varchar('contact_email', { length: 255 }),
+    employeeCountRange: varchar('employee_count_range', { length: 20 }),
+    subscriptionTier: subscriptionTier('subscription_tier').notNull().default('free'),
+    jobsPostedThisPeriod: integer('jobs_posted_this_period').notNull().default(0),
+    jobsLimitThisPeriod: integer('jobs_limit_this_period').notNull().default(3),
     ...timestamps,
   },
   (t) => [
@@ -52,6 +60,9 @@ export const employers = pgTable(
     uniqueIndex('employers_gstin_uq')
       .on(t.gstin)
       .where(sql`gstin IS NOT NULL AND deleted_at IS NULL`),
+    uniqueIndex('employers_slug_uq')
+      .on(t.slug)
+      .where(sql`slug IS NOT NULL AND deleted_at IS NULL`),
   ],
 );
 

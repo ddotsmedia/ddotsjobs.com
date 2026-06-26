@@ -23,10 +23,14 @@ export const authConfig = {
   pages: { signIn: '/login' },
   providers: [], // concrete providers are attached in auth.ts (Node runtime)
   callbacks: {
-    jwt({ token, user }) {
+    jwt({ token, user, trigger, session }) {
       if (user) {
         token.uid = user.id ?? token.uid;
         token.role = user.role ?? token.role ?? 'seeker';
+      }
+      // Client-initiated session.update({ role }) — e.g. after employer.register.
+      if (trigger === 'update' && session && typeof (session as { role?: unknown }).role === 'string') {
+        token.role = (session as { role: string }).role;
       }
       return token;
     },

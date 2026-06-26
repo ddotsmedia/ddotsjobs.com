@@ -46,6 +46,27 @@ export const SALARY_MIN_RUPEES = 10_000;
 export const SALARY_MAX_RUPEES = 100_000;
 export const SALARY_STEP_RUPEES = 5_000;
 
+// Employer registration options.
+export const EMPLOYER_TYPES = [
+  { value: 'hospital', label: 'Hospital' },
+  { value: 'clinic', label: 'Clinic' },
+  { value: 'it_company', label: 'IT Company' },
+  { value: 'school', label: 'School' },
+  { value: 'college', label: 'College' },
+  { value: 'cooperative', label: 'Cooperative' },
+  { value: 'government', label: 'Government' },
+  { value: 'manufacturing', label: 'Manufacturing' },
+  { value: 'retail', label: 'Retail' },
+  { value: 'construction', label: 'Construction' },
+  { value: 'hospitality', label: 'Hospitality' },
+  { value: 'ngo', label: 'NGO' },
+  { value: 'other', label: 'Other' },
+] as const;
+
+export const EMPLOYEE_COUNTS = ['1-10', '11-50', '51-200', '200+'] as const;
+
+export const GST_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+
 // Seeker profile setup options.
 export const PROFESSIONS = [
   'Nursing', 'Teaching', 'IT/Software', 'Engineering', 'Accounting', 'Management',

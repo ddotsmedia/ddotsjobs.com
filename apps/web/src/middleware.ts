@@ -12,6 +12,9 @@ const RULES: { prefix: string; role: string | null }[] = [
   { prefix: '/seeker', role: null },
 ];
 
+// Auth required but no specific role — the employer on-ramp for any user.
+const AUTH_ONLY = ['/employer/register'];
+
 export default auth((req) => {
   const { pathname } = req.nextUrl;
   const rule = RULES.find((r) => pathname.startsWith(r.prefix));
@@ -24,8 +27,9 @@ export default auth((req) => {
     return NextResponse.redirect(url);
   }
 
+  const authOnly = AUTH_ONLY.some((p) => pathname.startsWith(p));
   // admins may traverse any protected area; otherwise role must match.
-  if (rule.role && user.role !== rule.role && user.role !== 'admin') {
+  if (!authOnly && rule.role && user.role !== rule.role && user.role !== 'admin') {
     return NextResponse.redirect(new URL('/', req.nextUrl));
   }
   return NextResponse.next();

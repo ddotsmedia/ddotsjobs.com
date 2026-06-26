@@ -2,6 +2,7 @@ import { publicProcedure, router } from '../trpc.js';
 import { alertsRouter } from './alerts.js';
 import { applicationsRouter } from './applications.js';
 import { authRouter } from './auth.js';
+import { employerRouter } from './employer.js';
 import { fitScoreRouter } from './fit-score.js';
 import { itParksRouter } from './it-parks.js';
 import { jobsRouter } from './jobs.js';
@@ -17,6 +18,7 @@ export const appRouter = router({
   alerts: alertsRouter,
   applications: applicationsRouter,
   auth: authRouter,
+  employer: employerRouter,
   fitScore: fitScoreRouter,
   itParks: itParksRouter,
   jobs: jobsRouter,

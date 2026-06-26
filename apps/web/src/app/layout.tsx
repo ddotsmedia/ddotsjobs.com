@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono, Instrument_Serif } from 'next/font/google';
 import type { ReactNode } from 'react';
+import { SessionProvider } from 'next-auth/react';
 import { TRPCProvider } from '@/lib/trpc/client';
 import './globals.css';
 
@@ -28,7 +29,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="ml" className={`${geistSans.variable} ${geistMono.variable} ${instrumentSerif.variable}`}>
       <body>
-        <TRPCProvider>{children}</TRPCProvider>
+        <SessionProvider>
+          <TRPCProvider>{children}</TRPCProvider>
+        </SessionProvider>
       </body>
     </html>
   );
