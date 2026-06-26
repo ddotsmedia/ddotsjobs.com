@@ -22,6 +22,15 @@ const nextConfig: NextConfig = {
   },
   eslint: { ignoreDuringBuilds: false },
   typescript: { ignoreBuildErrors: false },
+  // Workspace packages use explicit .js specifiers (NodeNext/Bundler style) that
+  // point at .ts sources. Teach webpack to resolve .js -> .ts/.tsx.
+  webpack(config) {
+    config.resolve.extensionAlias = {
+      '.js': ['.ts', '.tsx', '.js', '.jsx'],
+      '.mjs': ['.mts', '.mjs'],
+    };
+    return config;
+  },
 };
 
 export default nextConfig;

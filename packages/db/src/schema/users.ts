@@ -32,6 +32,7 @@ export const users = pgTable(
     nameEn: varchar('name_en', { length: 200 }),
     preferredLanguage: contentLanguage('preferred_language').notNull().default('ml'),
     phoneVerified: boolean('phone_verified').notNull().default(false),
+    phoneVerifiedAt: timestamp('phone_verified_at', { withTimezone: true }),
     emailVerified: boolean('email_verified').notNull().default(false),
     lastLoginAt: timestamp('last_login_at', { withTimezone: true }),
     ...timestamps,
