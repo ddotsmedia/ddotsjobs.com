@@ -28,8 +28,9 @@ export default auth((req) => {
   }
 
   const authOnly = AUTH_ONLY.some((p) => pathname.startsWith(p));
-  // admins may traverse any protected area; otherwise role must match.
-  if (!authOnly && rule.role && user.role !== rule.role && user.role !== 'admin') {
+  const isAdmin = user.role === 'admin' || user.role === 'super_admin';
+  // admins/super_admins may traverse any protected area; otherwise role must match.
+  if (!authOnly && rule.role && user.role !== rule.role && !isAdmin) {
     return NextResponse.redirect(new URL('/', req.nextUrl));
   }
   return NextResponse.next();

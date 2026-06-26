@@ -73,6 +73,12 @@ export const jobs = pgTable(
     publishedAt: timestamp('published_at', { withTimezone: true }),
     expiresAt: timestamp('expires_at', { withTimezone: true }),
     closedAt: timestamp('closed_at', { withTimezone: true }),
+    // Moderation (admin dashboard F1).
+    riskScore: smallint('risk_score'),
+    moderationStatus: varchar('moderation_status', { length: 20 }),
+    moderationNote: text('moderation_note'),
+    moderatedByUserId: uuid('moderated_by_user_id').references(() => users.id),
+    moderatedAt: timestamp('moderated_at', { withTimezone: true }),
     googleIndexedAt: timestamp('google_indexed_at', { withTimezone: true }),
     viewCount: integer('view_count').notNull().default(0),
     applicationCount: integer('application_count').notNull().default(0),
