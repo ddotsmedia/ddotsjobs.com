@@ -8,6 +8,7 @@ import { jobsRouter } from './jobs.js';
 import { pravasiRouter } from './pravasi.js';
 import { pscRouter } from './psc.js';
 import { seekerRouter } from './seeker.js';
+import { seekerDashboardRouter } from './seeker-dashboard.js';
 import { verificationRouter } from './verification.js';
 
 // Root tRPC router. Feature routers merge here.
@@ -22,6 +23,7 @@ export const appRouter = router({
   pravasi: pravasiRouter,
   psc: pscRouter,
   seeker: seekerRouter,
+  seekerDashboard: seekerDashboardRouter,
   verification: verificationRouter,
 });
 
