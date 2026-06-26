@@ -46,6 +46,23 @@ export const SALARY_MIN_RUPEES = 10_000;
 export const SALARY_MAX_RUPEES = 100_000;
 export const SALARY_STEP_RUPEES = 5_000;
 
+// PSC notification status -> label + colors.
+export const PSC_STATUS: Record<string, { label: string; color: string; bg: string }> = {
+  active: { label: 'Active', color: '#1d7a3a', bg: '#e6f5ea' },
+  exam_scheduled: { label: 'Exam scheduled', color: '#9a6b00', bg: '#fdf0d5' },
+  rank_list: { label: 'Rank list', color: '#2a4d9b', bg: '#e8eefc' },
+  closed: { label: 'Closed', color: '#6b6b66', bg: '#f1f1ec' },
+};
+
+// PSC tracker Kanban columns (status -> column).
+export const PSC_KANBAN = [
+  { key: 'active', label: 'Active' },
+  { key: 'exam_scheduled', label: 'Exam Scheduled' },
+  { key: 'rank_list', label: 'Rank List' },
+  { key: 'advice', label: 'Advice' },
+  { key: 'closed', label: 'Completed' },
+] as const;
+
 // Hero filter chips. `kind` decides how the chip maps to /jobs query params.
 export const HERO_CHIPS = [
   { key: 'nursing', label: 'Nursing', kind: 'category' as const, value: 'nursing' },

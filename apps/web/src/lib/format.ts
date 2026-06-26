@@ -30,6 +30,29 @@ export function walkInDateLabel(d: Date | string | null): string {
   return `Walk-in ${date}`;
 }
 
+export function formatDate(d: Date | string | null): string {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  });
+}
+
+/** Whole days from now until d (negative if past). */
+export function daysUntil(d: Date | string | null): number | null {
+  if (!d) return null;
+  return Math.ceil((new Date(d).getTime() - Date.now()) / 86_400_000);
+}
+
+export function daysLeftLabel(d: Date | string | null): string {
+  const n = daysUntil(d);
+  if (n == null) return '';
+  if (n < 0) return 'past';
+  if (n === 0) return 'today';
+  return `${n} day${n === 1 ? '' : 's'} left`;
+}
+
 export function initials(name: string): string {
   return name
     .split(/\s+/)

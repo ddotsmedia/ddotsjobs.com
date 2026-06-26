@@ -93,11 +93,68 @@ export function jobNormalizePrompt(input: {
   };
 }
 
+// ── PSC notification extraction (Haiku) ─────────────────────────────────
+export const pscNotificationSchema = z.object({
+  categoryNo: z.string().min(1),
+  postName: z.string().min(1),
+  department: z.string().nullable(),
+  totalVacancies: z.number().int().nonnegative().nullable(),
+  qualificationText: z.string().nullable(),
+  scaleOfPay: z.string().nullable(),
+  applicationEnd: z.string().nullable(), // ISO date or null
+  examDate: z.string().nullable(), // ISO date or null
+  status: z.enum(['active', 'exam_scheduled', 'rank_list', 'closed']),
+  sourceUrl: z.string().nullable(),
+});
+export const pscExtractSchema = z.object({
+  notifications: z.array(pscNotificationSchema).max(200),
+});
+export type PscExtractOutput = z.infer<typeof pscExtractSchema>;
+export type PscNotification = z.infer<typeof pscNotificationSchema>;
+
+export function pscExtractNotificationPrompt(input: {
+  html: string;
+}): PromptSpec<PscExtractOutput> {
+  return {
+    task: 'extract',
+    version: 1,
+    system:
+      'Extract Kerala PSC notifications from the provided HTML. Return one entry ' +
+      'per notification. categoryNo is the official category number. Dates must be ' +
+      'ISO-8601 (YYYY-MM-DD) or null. status: active (open), exam_scheduled, ' +
+      'rank_list (list published), closed. Never invent data — use null when a ' +
+      'field is absent.',
+    prompt: input.html,
+    schema: pscExtractSchema,
+  };
+}
+
+// ── PSC Malayalam post-name summary (Haiku) ─────────────────────────────
+export const pscSummaryMlSchema = z.object({ postNameMl: z.string().min(1) });
+export type PscSummaryMlOutput = z.infer<typeof pscSummaryMlSchema>;
+
+export function pscGenerateSummaryMlPrompt(input: {
+  postName: string;
+  department: string | null;
+}): PromptSpec<PscSummaryMlOutput> {
+  return {
+    task: 'translate',
+    version: 1,
+    system:
+      'Translate the PSC post name into natural Malayalam (postNameMl). Keep it ' +
+      'concise and faithful; do not add commentary.',
+    prompt: JSON.stringify(input),
+    schema: pscSummaryMlSchema,
+  };
+}
+
 // ── Registry of every prompt for introspection / eval harnesses ─────────
 export const PROMPTS = {
   fitScore: fitScorePrompt,
   gulfTitleTranslation: gulfTitleTranslationPrompt,
   jobNormalize: jobNormalizePrompt,
+  pscExtractNotification: pscExtractNotificationPrompt,
+  pscGenerateSummaryMl: pscGenerateSummaryMlPrompt,
 } as const;
 
 export type PromptName = keyof typeof PROMPTS;

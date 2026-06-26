@@ -11,7 +11,7 @@ import {
   uuid,
   varchar,
 } from 'drizzle-orm/pg-core';
-import { pk, timestamps } from './_shared.js';
+import { pk, timestamps, tsvector } from './_shared.js';
 import { alertChannel, district } from './enums.js';
 import { users } from './users.js';
 
@@ -33,9 +33,14 @@ export const pscNotifications = pgTable(
     district: district('district'),
     vacancies: integer('vacancies'),
     lastDateToApply: timestamp('last_date_to_apply', { withTimezone: true }),
+    examDate: timestamp('exam_date', { withTimezone: true }),
+    // active | exam_scheduled | rank_list | closed
+    status: varchar('status', { length: 30 }).notNull().default('active'),
     sourceUrl: text('source_url'),
     gazetteDate: timestamp('gazette_date', { withTimezone: true }),
     isActive: boolean('is_active').notNull().default(true),
+    // FTS vector — maintained by DB trigger.
+    tsv: tsvector('tsv'),
     ...timestamps,
   },
   (t) => [
@@ -43,6 +48,8 @@ export const pscNotifications = pgTable(
       .on(t.categoryNumber)
       .where(sql`deleted_at IS NULL`),
     index('psc_notifications_active_idx').on(t.isActive),
+    index('psc_notifications_status_idx').on(t.status),
+    index('psc_notifications_exam_date_idx').on(t.examDate),
     index('psc_notifications_last_date_idx').on(t.lastDateToApply),
   ],
 );
@@ -55,13 +62,22 @@ export const pscSubscriptions = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
     channel: alertChannel('channel').notNull().default('whatsapp'),
+    // 'category' (per category_no). Future: 'department', 'qualification'.
+    subscriptionType: varchar('subscription_type', { length: 30 }).notNull().default('category'),
+    subscriptionValue: varchar('subscription_value', { length: 60 }),
+    alertFor: jsonb('alert_for')
+      .$type<string[]>()
+      .notNull()
+      .default(['new_notification', 'exam_date', 'rank_list', 'advice']),
     // Filter sets — qualification levels, departments, districts of interest.
     filters: jsonb('filters').$type<Record<string, unknown>>().notNull().default({}),
     isActive: boolean('is_active').notNull().default(true),
     ...timestamps,
   },
   (t) => [
-    uniqueIndex('psc_subscriptions_user_uq').on(t.userId).where(sql`deleted_at IS NULL`),
+    uniqueIndex('psc_subscriptions_user_value_uq')
+      .on(t.userId, t.subscriptionValue)
+      .where(sql`deleted_at IS NULL`),
     index('psc_subscriptions_active_idx').on(t.isActive),
   ],
 );

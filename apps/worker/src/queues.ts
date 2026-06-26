@@ -21,6 +21,8 @@ const baseQueueOptions: QueueOptions = {
 
 // Canonical queue names. One queue per async domain.
 export const QUEUE_NAMES = {
+  ai: 'ai', // AI-bound jobs (PSC scrape, gulf translate, knmc, ...)
+  dispatch: 'dispatch', // outbound WhatsApp/notification dispatch
   jobEmbedding: 'job-embedding',
   alertDispatch: 'alert-dispatch',
   pscScrape: 'psc-scrape',
@@ -30,8 +32,15 @@ export const QUEUE_NAMES = {
 
 export type QueueName = (typeof QUEUE_NAMES)[keyof typeof QUEUE_NAMES];
 
+// Dispatch payloads are discriminated by `kind`.
+export type DispatchPayload =
+  | { kind: 'psc_alert'; userId: string; categoryNo: string; event: string }
+  | { kind: 'job_alert'; userId: string; jobId: string };
+
 // ── Typed job payloads ──────────────────────────────────────────────────
 export interface JobPayloads {
+  [QUEUE_NAMES.ai]: Record<string, unknown>; // job.name dispatches (e.g. 'psc.scrape')
+  [QUEUE_NAMES.dispatch]: DispatchPayload;
   [QUEUE_NAMES.jobEmbedding]: { jobId: string };
   [QUEUE_NAMES.alertDispatch]: { subscriptionId: string; jobId: string };
   [QUEUE_NAMES.pscScrape]: { sourceUrl?: string };
@@ -45,6 +54,8 @@ export interface JobPayloads {
 }
 
 export const queues = {
+  ai: new Queue<JobPayloads['ai']>(QUEUE_NAMES.ai, baseQueueOptions),
+  dispatch: new Queue<JobPayloads['dispatch']>(QUEUE_NAMES.dispatch, baseQueueOptions),
   jobEmbedding: new Queue<JobPayloads['job-embedding']>(QUEUE_NAMES.jobEmbedding, baseQueueOptions),
   alertDispatch: new Queue<JobPayloads['alert-dispatch']>(QUEUE_NAMES.alertDispatch, baseQueueOptions),
   pscScrape: new Queue<JobPayloads['psc-scrape']>(QUEUE_NAMES.pscScrape, baseQueueOptions),

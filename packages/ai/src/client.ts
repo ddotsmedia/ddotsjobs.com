@@ -84,7 +84,7 @@ export async function callAI<T = string>(
   const maxTokens = options.maxTokens ?? MAX_TOKENS[tier];
   const temperature = options.temperature ?? 0.2;
 
-  const systemParts = [UNIVERSAL_PROMPT_LAW];
+  const systemParts: string[] = [UNIVERSAL_PROMPT_LAW];
   if (options.system) systemParts.push(options.system);
   if (options.schema) systemParts.push(SCHEMA_INSTRUCTION);
   const system = systemParts.join('\n\n');
