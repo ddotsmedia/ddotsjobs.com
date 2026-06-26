@@ -32,6 +32,13 @@ pnpm --filter @ddotsjobs/db migrate
 echo "==> [ddotsjobs] build"
 pnpm build
 
+echo "==> [ddotsjobs] copy standalone static assets"
+# Next standalone output excludes .next/static and public/ — copy them in.
+STANDALONE="$APP_DIR/apps/web/.next/standalone/apps/web"
+rm -rf "$STANDALONE/.next/static"
+cp -r "$APP_DIR/apps/web/.next/static" "$STANDALONE/.next/static"
+[ -d "$APP_DIR/apps/web/public" ] && cp -r "$APP_DIR/apps/web/public" "$STANDALONE/public" || true
+
 echo "==> [ddotsjobs] reload PM2 (zero-downtime)"
 pm2 reload ecosystem.config.js --only ddotsjobs-web
 pm2 reload ecosystem.config.js --only ddotsjobs-worker

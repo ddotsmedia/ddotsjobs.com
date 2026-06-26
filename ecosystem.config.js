@@ -4,15 +4,17 @@ module.exports = {
   apps: [
     {
       name: 'ddotsjobs-web',
-      cwd: '/opt/ddotsjobs/apps/web',
-      script: 'node_modules/next/dist/bin/next',
-      args: 'start -p 3100',
+      cwd: '/opt/ddotsjobs',
+      // Next standalone server (see next.config.ts output: 'standalone').
+      // Plain Node server → PM2 cluster shares the listen socket on :3100.
+      script: 'apps/web/.next/standalone/apps/web/server.js',
       exec_mode: 'cluster',
       instances: 2,
       max_memory_restart: '600M',
       env: {
         NODE_ENV: 'production',
         PORT: '3100',
+        HOSTNAME: '127.0.0.1',
       },
       error_file: '/var/log/ddotsjobs/web-error.log',
       out_file: '/var/log/ddotsjobs/web-out.log',
