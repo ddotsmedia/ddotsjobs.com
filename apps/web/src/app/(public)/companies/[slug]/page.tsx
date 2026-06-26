@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { TRPCError } from '@trpc/server';
@@ -44,8 +45,7 @@ export default async function CompanyPage({ params }: { params: Promise<{ slug: 
         <header style={s.header}>
           <div style={{ ...s.logo, background: employer.logoUrl ? '#fff' : '#0f0e0c' }}>
             {employer.logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={employer.logoUrl} alt={employer.name} style={s.logoImg} />
+              <Image src={employer.logoUrl} alt={employer.name} width={64} height={64} sizes="64px" priority style={s.logoImg} />
             ) : (
               <span style={s.logoText}>{initials(employer.name)}</span>
             )}

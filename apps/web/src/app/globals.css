@@ -89,12 +89,66 @@ a {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  padding: 12px 16px;
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
   background: #fff;
-  border-top: 1px solid #ececdf;
+  border-top: 1px solid #e8e6df;
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.08);
 }
-@media (min-width: 880px) {
+@media (min-width: 1024px) {
   .ddj-sticky-apply {
+    display: none;
+  }
+}
+
+/* ── Mobile touch targets (G1) ── */
+@media (max-width: 768px) {
+  button,
+  a[role='button'],
+  .nav-item {
+    min-height: 44px;
+  }
+}
+
+/* ── Seeker bottom navigation (G1) — mobile only ── */
+.ddj-bottom-nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 50;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  background: #fff;
+  border-top: 1px solid #e8e6df;
+  padding-bottom: env(safe-area-inset-bottom);
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.06);
+}
+.ddj-bottom-nav a {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 56px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #6b6b66;
+}
+.ddj-bottom-nav a .ddj-bn-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+.ddj-bottom-nav a[data-active='true'] {
+  color: var(--color-brand);
+}
+/* Spacer so fixed bottom nav never covers page content on mobile. */
+.ddj-bottom-nav-spacer {
+  height: calc(56px + env(safe-area-inset-bottom));
+}
+@media (min-width: 1024px) {
+  .ddj-bottom-nav,
+  .ddj-bottom-nav-spacer {
     display: none;
   }
 }

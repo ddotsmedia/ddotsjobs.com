@@ -1,6 +1,7 @@
 import { cache } from 'react';
 import type { Metadata } from 'next';
 import type { inferRouterOutputs } from '@trpc/server';
+import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { auth } from '@/lib/auth';
@@ -207,8 +208,7 @@ export default async function JobDetailPage({ params }: Props) {
             <header style={s.header}>
               <div style={s.logo} aria-hidden>
                 {logoUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={logoUrl} alt="" width={56} height={56} style={s.logoImg} />
+                  <Image src={logoUrl} alt="" width={56} height={56} sizes="56px" priority style={s.logoImg} />
                 ) : (
                   initials(job.company)
                 )}
@@ -306,8 +306,7 @@ export default async function JobDetailPage({ params }: Props) {
               <div style={s.companyHead}>
                 <div style={s.logoSmall} aria-hidden>
                   {logoUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={logoUrl} alt="" width={40} height={40} style={s.logoImg} />
+                    <Image src={logoUrl} alt="" width={40} height={40} sizes="40px" style={s.logoImg} />
                   ) : (
                     initials(job.company)
                   )}

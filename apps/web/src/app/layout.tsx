@@ -22,6 +22,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
+  viewportFit: 'cover', // expose env(safe-area-inset-*) for notched devices
   themeColor: '#f5a800',
 };
 
