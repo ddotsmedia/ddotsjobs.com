@@ -12,10 +12,11 @@ export type ModelTier = keyof typeof MODELS;
 export type ModelId = (typeof MODELS)[ModelTier];
 
 // Active provider: Gemini (Anthropic kept above for reference). The default tier
-// maps to Flash, the reasoning tier to Pro.
+// maps to Flash, the reasoning tier to Pro. (Gemini 1.5 was retired by Google;
+// 2.5 is the current stable generation.)
 export const GEMINI_MODELS = {
-  flash: 'gemini-1.5-flash',
-  pro: 'gemini-1.5-pro',
+  flash: 'gemini-2.5-flash',
+  pro: 'gemini-2.5-pro',
 } as const;
 
 const TIER_TO_GEMINI: Record<ModelTier, string> = {
