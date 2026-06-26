@@ -5,60 +5,59 @@ import { redis } from '@ddotsjobs/redis';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-type Svc = 'ok' | 'error';
+interface ServiceResult {
+  status: 'ok' | 'error';
+  latencyMs?: number;
+}
 
-async function checkDb(): Promise<Svc> {
+async function timed(fn: () => Promise<void>): Promise<ServiceResult> {
+  const start = Date.now();
   try {
-    await pool.query('SELECT 1 FROM users LIMIT 1');
-    return 'ok';
+    await fn();
+    return { status: 'ok', latencyMs: Date.now() - start };
   } catch {
-    return 'error';
+    return { status: 'error', latencyMs: Date.now() - start };
   }
 }
 
-async function checkRedis(): Promise<Svc> {
-  try {
-    const pong = await redis.ping();
-    return pong === 'PONG' ? 'ok' : 'error';
-  } catch {
-    return 'error';
-  }
-}
-
-async function checkMeili(): Promise<Svc> {
+async function checkMeili(): Promise<ServiceResult> {
   try {
     const url = process.env.MEILISEARCH_URL ?? 'http://localhost:7700';
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 2000);
-    try {
-      const res = await fetch(`${url}/health`, { signal: controller.signal });
-      return res.ok ? 'ok' : 'error';
-    } finally {
-      clearTimeout(timer);
-    }
+    const res = await fetch(`${url}/health`, { signal: AbortSignal.timeout(2000) });
+    return { status: res.ok ? 'ok' : 'error' };
   } catch {
-    return 'error';
+    return { status: 'error' };
   }
 }
 
 export async function GET() {
-  const [database, redisStatus, meilisearch] = await Promise.all([
-    checkDb(),
-    checkRedis(),
+  const [db, redisRes, meili] = await Promise.allSettled([
+    timed(async () => {
+      await pool.query('SELECT 1');
+    }),
+    timed(async () => {
+      await redis.ping();
+    }),
     checkMeili(),
   ]);
 
-  const services = { database, redis: redisStatus, meilisearch };
-  const degraded = Object.values(services).some((v) => v === 'error');
+  const settle = (r: PromiseSettledResult<ServiceResult>): ServiceResult =>
+    r.status === 'fulfilled' ? r.value : { status: 'error' };
+
+  const services = {
+    database: settle(db),
+    redis: settle(redisRes),
+    meilisearch: settle(meili),
+  };
+  const degraded = Object.values(services).some((s) => s.status === 'error');
 
   return NextResponse.json(
     {
       status: degraded ? 'degraded' : 'ok',
       timestamp: new Date().toISOString(),
-      version: process.env.npm_package_version ?? null,
-      services,
       uptime: process.uptime(),
+      services,
     },
-    { headers: { 'cache-control': 'no-store' } },
+    { status: 200, headers: { 'cache-control': 'no-store, no-cache' } },
   );
 }

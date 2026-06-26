@@ -15,15 +15,22 @@ import { notificationProcessor } from './workers/notification.worker.js';
 // Single fork process hosting every BullMQ worker (PM2 ddotsjobs-worker).
 const CONCURRENCY = Number(process.env.WORKER_CONCURRENCY ?? 5);
 
+function jobDuration(job: { processedOn?: number | null; finishedOn?: number | null }): number | null {
+  if (job.processedOn && job.finishedOn) return job.finishedOn - job.processedOn;
+  return null;
+}
+
 function makeWorker(name: QueueName, processor: Processor): Worker {
   const worker = new Worker(name, processor, {
     connection,
     prefix: baseQueueOptions.prefix,
     concurrency: CONCURRENCY,
   });
-  worker.on('completed', (job) => logger.info({ task: name, jobId: job.id }, 'job completed'));
+  worker.on('completed', (job) =>
+    logger.info({ task: name, jobId: job.id, durationMs: jobDuration(job) }, 'Worker job completed'),
+  );
   worker.on('failed', (job, err) =>
-    logger.error({ task: name, jobId: job?.id, error: err.message }, 'job failed'),
+    logger.error({ task: name, jobId: job?.id, error: err.message }, 'Worker job failed'),
   );
   return worker;
 }
@@ -36,9 +43,11 @@ const aiWorker = new Worker(QUEUE_NAMES.ai, aiQueueProcessor, {
   // PSC scrape (rare cron) + gulf translate (spec concurrency 3) share this queue.
   concurrency: 3,
 });
-aiWorker.on('completed', (job) => logger.info({ task: 'ai', name: job.name, jobId: job.id }, 'job completed'));
+aiWorker.on('completed', (job) =>
+  logger.info({ task: 'ai', name: job.name, jobId: job.id, durationMs: jobDuration(job) }, 'Worker job completed'),
+);
 aiWorker.on('failed', async (job, err) => {
-  logger.error({ task: 'ai', name: job?.name, jobId: job?.id, error: err.message }, 'job failed');
+  logger.error({ task: 'ai', name: job?.name, jobId: job?.id, error: err.message }, 'Worker job failed');
   const attempts = job?.opts.attempts ?? 1;
   if (job && job.attemptsMade >= attempts) {
     // On terminal KNMC failure, fall back to manual review.
