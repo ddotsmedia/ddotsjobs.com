@@ -34,10 +34,22 @@ function todayKey(): string {
 
 /** Throw if breaker is open. Call before dispatching a request. */
 export async function assertCircuitClosed(): Promise<void> {
-  const state = await redis.get(BREAKER_KEY);
-  if (state === 'open') {
+  const [state, active] = await Promise.all([
+    redis.get(BREAKER_KEY),
+    redis.get('ai:circuit_breaker:active'),
+  ]);
+  if (state === 'open' || active) {
     throw new AICircuitOpenError('AI circuit breaker is open — cooling down');
   }
+}
+
+/** Track daily USD cost + call count for the 9am budget cron. */
+export async function trackUsage(usdCost: number): Promise<void> {
+  const day = new Date().toISOString().slice(0, 10);
+  await Promise.all([
+    redis.incrbyfloat(`ai:cost:${day}`, usdCost).then(() => redis.expire(`ai:cost:${day}`, 60 * 60 * 48)),
+    redis.incr(`ai:calls:${day}`).then(() => redis.expire(`ai:calls:${day}`, 60 * 60 * 48)),
+  ]);
 }
 
 /**

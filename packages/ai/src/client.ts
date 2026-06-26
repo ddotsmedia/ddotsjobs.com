@@ -16,6 +16,7 @@ import {
   recordFailure,
   recordSuccess,
   reserveBudget,
+  trackUsage,
 } from './enforce.js';
 
 const apiKey = process.env.GEMINI_API_KEY;
@@ -108,6 +109,8 @@ export async function callAI<T = string>(
     const costPaise = projectCostPaise(tier, usage.inputTokens, usage.outputTokens);
     await reconcileBudget(dayKey, projected, costPaise);
     await recordSuccess();
+    // Daily USD tracking for the budget cron (≈₹83/$ — order-of-magnitude).
+    await trackUsage(costPaise / 100 / 83);
 
     let data: T;
     if (options.schema) {

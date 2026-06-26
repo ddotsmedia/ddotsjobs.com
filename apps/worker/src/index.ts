@@ -1,8 +1,9 @@
 import { Worker, type Processor } from 'bullmq';
 import { db, eq, tables } from '@ddotsjobs/db';
 import { baseQueueOptions, connection, QUEUE_NAMES, type QueueName } from './queues.js';
+import { logger } from './lib/logger.js';
 import { aiQueueProcessor, registerPscCron } from './workers/psc.worker.js';
-import { maintenanceQueueProcessor, registerItParkStatsCron } from './workers/itpark-stats.worker.js';
+import { maintenanceQueueProcessor, registerBudgetCron, registerItParkStatsCron } from './workers/itpark-stats.worker.js';
 import { alertsQueueProcessor } from './workers/alerts.worker.js';
 import { dispatchQueueProcessor } from './workers/dispatch.worker.js';
 import { jobEmbeddingProcessor } from './workers/job-embedding.worker.js';
@@ -20,9 +21,9 @@ function makeWorker(name: QueueName, processor: Processor): Worker {
     prefix: baseQueueOptions.prefix,
     concurrency: CONCURRENCY,
   });
-  worker.on('completed', (job) => console.log(`[${name}] completed ${job.id}`));
+  worker.on('completed', (job) => logger.info({ task: name, jobId: job.id }, 'job completed'));
   worker.on('failed', (job, err) =>
-    console.error(`[${name}] failed ${job?.id ?? '?'}: ${err.message}`),
+    logger.error({ task: name, jobId: job?.id, error: err.message }, 'job failed'),
   );
   return worker;
 }
@@ -35,9 +36,9 @@ const aiWorker = new Worker(QUEUE_NAMES.ai, aiQueueProcessor, {
   // PSC scrape (rare cron) + gulf translate (spec concurrency 3) share this queue.
   concurrency: 3,
 });
-aiWorker.on('completed', (job) => console.log(`[ai] completed ${job.name} ${job.id}`));
+aiWorker.on('completed', (job) => logger.info({ task: 'ai', name: job.name, jobId: job.id }, 'job completed'));
 aiWorker.on('failed', async (job, err) => {
-  console.error(`[ai] failed ${job?.name} ${job?.id}: ${err.message}`);
+  logger.error({ task: 'ai', name: job?.name, jobId: job?.id, error: err.message }, 'job failed');
   const attempts = job?.opts.attempts ?? 1;
   if (job && job.attemptsMade >= attempts) {
     // On terminal KNMC failure, fall back to manual review.
@@ -77,7 +78,7 @@ const maintenanceWorker = new Worker(QUEUE_NAMES.maintenance, maintenanceQueuePr
   concurrency: 1,
 });
 maintenanceWorker.on('failed', (job, err) =>
-  console.error(`[maintenance] failed ${job?.name}: ${err.message}`),
+  logger.error({ task: 'maintenance', name: job?.name, error: err.message }, 'job failed'),
 );
 
 // Alerts matching (concurrency 5) and WhatsApp dispatch (concurrency 3, 30/min).
@@ -86,7 +87,7 @@ const alertsWorker = new Worker(QUEUE_NAMES.alerts, alertsQueueProcessor, {
   prefix: baseQueueOptions.prefix,
   concurrency: 5,
 });
-alertsWorker.on('failed', (job, err) => console.error(`[alerts] failed ${job?.id}: ${err.message}`));
+alertsWorker.on('failed', (job, err) => logger.error({ task: 'alerts', jobId: job?.id, error: err.message }, 'job failed'));
 
 const dispatchWorker = new Worker(QUEUE_NAMES.dispatch, dispatchQueueProcessor, {
   connection,
@@ -94,7 +95,7 @@ const dispatchWorker = new Worker(QUEUE_NAMES.dispatch, dispatchQueueProcessor, 
   concurrency: 3,
   limiter: { max: 30, duration: 60_000 },
 });
-dispatchWorker.on('failed', (job, err) => console.error(`[dispatch] failed ${job?.id}: ${err.message}`));
+dispatchWorker.on('failed', (job, err) => logger.error({ task: 'dispatch', jobId: job?.id, error: err.message }, 'job failed'));
 
 const workers: Worker[] = [
   aiWorker,
@@ -110,13 +111,16 @@ const workers: Worker[] = [
 
 // Register repeatable crons (idempotent — keyed by jobId).
 registerPscCron()
-  .then(() => console.log('[ai] PSC scrape cron registered (0 */4 * * *)'))
-  .catch((err: unknown) => console.error('[ai] cron registration failed:', err));
+  .then(() => logger.info('[ai] PSC scrape cron registered (0 */4 * * *)'))
+  .catch((err: unknown) => logger.error({ err }, '[ai] cron registration failed'));
 registerItParkStatsCron()
-  .then(() => console.log('[maintenance] IT park stats cron registered (0 * * * *)'))
-  .catch((err: unknown) => console.error('[maintenance] cron registration failed:', err));
+  .then(() => logger.info('[maintenance] IT park stats cron registered (0 * * * *)'))
+  .catch((err: unknown) => logger.error({ err }, '[maintenance] cron registration failed'));
+registerBudgetCron()
+  .then(() => logger.info('[maintenance] AI budget cron registered (0 9 * * *)'))
+  .catch((err: unknown) => logger.error({ err }, '[maintenance] budget cron registration failed'));
 
-console.log(`ddotsjobs-worker up — ${workers.length} queues, concurrency ${CONCURRENCY}`);
+logger.info({ queues: workers.length, concurrency: CONCURRENCY }, 'ddotsjobs-worker up');
 
 async function shutdown(signal: string): Promise<void> {
   console.log(`\n${signal} received — draining workers`);
