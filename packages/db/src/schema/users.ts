@@ -85,6 +85,8 @@ export const seekerProfiles = pgTable(
     showCurrentEmployer: boolean('show_current_employer').notNull().default(false),
     isOpenToWork: boolean('is_open_to_work').notNull().default(true),
     completionPct: integer('completion_pct').notNull().default(0),
+    // Availability signal for the talent pool: immediate | one_month | flexible.
+    urgencyLevel: varchar('urgency_level', { length: 20 }),
     resumeR2Key: text('resume_r2_key'),
     profileComplete: boolean('profile_complete').notNull().default(false),
     ...timestamps,

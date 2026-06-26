@@ -13,6 +13,7 @@ import { pravasiRouter } from './pravasi.js';
 import { pscRouter } from './psc.js';
 import { seekerRouter } from './seeker.js';
 import { seekerDashboardRouter } from './seeker-dashboard.js';
+import { talentPoolRouter } from './talent-pool.js';
 import { verificationRouter } from './verification.js';
 import { walkinRouter } from './walkin.js';
 
@@ -33,6 +34,7 @@ export const appRouter = router({
   psc: pscRouter,
   seeker: seekerRouter,
   seekerDashboard: seekerDashboardRouter,
+  talentPool: talentPoolRouter,
   verification: verificationRouter,
   walkin: walkinRouter,
 });
