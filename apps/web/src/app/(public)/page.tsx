@@ -5,7 +5,10 @@ import { Logo } from '@/components/Logo';
 import { SECTORS } from '@/lib/constants';
 import { getHomeStats, getLatestJobs, getSectorCounts, type LatestJob } from './_data';
 
-export const revalidate = 60; // ISR
+// Stats + latest jobs must reflect live data. ISR baked stale 0s under the
+// standalone/PM2-cluster cache, so render dynamically (queries are cheap; the
+// HTML is still edge-cached by Cloudflare).
+export const dynamic = 'force-dynamic';
 
 export function generateMetadata(): Metadata {
   const title = 'Jobs in Kerala — ddotsjobs.com';
