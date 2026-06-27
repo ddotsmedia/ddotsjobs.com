@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { signOut } from 'next-auth/react';
 import { trpc } from '@/lib/trpc/client';
 import { NotificationBell } from '@/components/NotificationBell';
+import { Logo } from '@/components/Logo';
 import { initials } from '@/lib/format';
 
 const NAV = [
@@ -37,7 +38,7 @@ export function SeekerSidebar({ name }: { name: string }) {
   const inner = (
     <>
       <div style={s.brandRow}>
-        <span style={s.brand}>ddotsjobs</span>
+        <Logo size="sm" showText href="/" />
         <NotificationBell viewAllHref="/seeker/notifications" />
       </div>
       <div style={s.user}>
@@ -66,7 +67,7 @@ export function SeekerSidebar({ name }: { name: string }) {
       {/* Mobile top bar */}
       <div style={s.mobileBar} className="ddj-mobile-only">
         <button type="button" onClick={() => setOpen(true)} aria-label="Menu" style={s.hamburger}>☰</button>
-        <span style={s.mobileBrand}>ddotsjobs</span>
+        <Logo size="sm" showText href="/" />
       </div>
 
       {/* Desktop sidebar */}

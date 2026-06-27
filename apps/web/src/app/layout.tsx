@@ -19,6 +19,13 @@ const instrumentSerif = Instrument_Serif({
 export const metadata: Metadata = {
   title: 'ddotsjobs — Kerala Jobs',
   description: 'Kerala job portal — local, gulf, PSC and walk-in jobs.',
+  icons: {
+    icon: [
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+      { url: '/logo.svg' },
+    ],
+    apple: '/logo.svg',
+  },
 };
 
 export const viewport: Viewport = {

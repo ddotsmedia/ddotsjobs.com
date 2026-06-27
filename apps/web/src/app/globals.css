@@ -11,7 +11,7 @@
   --brand: #3a9ea5;
   --brand-hover: #2e8a91;
   --brand-dark: #1f6b70;
-  --brand-light: #edf7f8;
+  --brand-light: rgba(58, 158, 165, 0.1);
   --brand-subtle: rgba(58, 158, 165, 0.08);
 
   /* Accent — Yellow (CTAs, highlights) */
@@ -37,6 +37,7 @@
   --text-tertiary: #b0ad9f;
   --border-subtle: rgba(26, 25, 22, 0.08);
   --border-default: rgba(26, 25, 22, 0.14);
+  --border-strong: rgba(26, 25, 22, 0.24);
 
   /* Semantic */
   --success: #8dc63f;

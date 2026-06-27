@@ -196,7 +196,7 @@ export default async function HomePage() {
       <footer style={s.footer}>
         <div style={{ ...s.container, ...s.footerInner }}>
           <div style={s.footerBrand}>
-            <Logo variant="full" size={30} color="#1A1916" />
+            <Logo size="sm" showText href="/" />
             <span style={s.footerTagline}>Kerala&rsquo;s career platform · Ddotsmedia IT Solutions</span>
           </div>
           <nav style={s.footerNav}>

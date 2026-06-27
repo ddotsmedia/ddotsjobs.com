@@ -21,7 +21,7 @@ export default function LoginPage() {
     <main style={styles.main}>
       <div style={styles.card}>
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
-          <Logo variant="full" size={36} />
+          <Logo size="lg" showText href="/" />
         </div>
         <p style={styles.sub}>കേരളത്തിന്റെ തൊഴിൽ പോർട്ടൽ</p>
 

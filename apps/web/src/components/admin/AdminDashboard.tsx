@@ -6,6 +6,7 @@ import type { inferRouterOutputs } from '@trpc/server';
 import { trpc } from '@/lib/trpc/client';
 import type { AppRouter } from '@/server/routers/_app';
 import { NotificationBell } from '@/components/NotificationBell';
+import { Logo } from '@/components/Logo';
 import { relativeTime } from '@/lib/format';
 
 type Out = inferRouterOutputs<AppRouter>;
@@ -104,7 +105,7 @@ export function AdminDashboard() {
       <aside style={{ ...st.sidebar, background: t.panel, borderColor: t.border }}>
         <div style={st.brandRow}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ ...st.brand, color: t.accent }}>ddotsjobs</span>
+            <Logo size="sm" variant={dark ? 'white' : 'default'} showText href="/" />
             <NotificationBell viewAllHref="/admin/notifications" />
           </div>
           <span style={st.adminBadge}>Admin</span>

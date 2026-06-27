@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { signOut } from 'next-auth/react';
 import { trpc } from '@/lib/trpc/client';
 import { NotificationBell } from '@/components/NotificationBell';
+import { Logo } from '@/components/Logo';
 import { initials } from '@/lib/format';
 
 const NAV = [
@@ -36,7 +37,7 @@ export function EmployerSidebar({ company, verified }: { company: string; verifi
   const inner = (
     <>
       <div style={s.brandRow}>
-        <span style={s.brand}>ddotsjobs</span>
+        <Logo size="sm" showText href="/" />
         <NotificationBell viewAllHref="/employer/notifications" />
       </div>
       <div style={s.company}>
@@ -65,7 +66,7 @@ export function EmployerSidebar({ company, verified }: { company: string; verifi
     <>
       <div style={s.mobileBar} className="ddj-mobile-only">
         <button type="button" onClick={() => setOpen(true)} aria-label="Menu" style={s.hamburger}>☰</button>
-        <span style={s.mobileBrand}>ddotsjobs</span>
+        <Logo size="sm" showText href="/" />
       </div>
       <aside style={s.sidebar} className="ddj-desktop-only">{inner}</aside>
       {open && (
