@@ -5,6 +5,7 @@ import { Resend } from 'resend';
 import { and, eq, isNull, tables, type Database } from '@ddotsjobs/db';
 import { uploadFile } from '@ddotsjobs/storage';
 import { protectedProcedure, router } from '../trpc.js';
+import { stripHtml } from '@/lib/sanitize';
 
 const DISTRICTS = [
   'thiruvananthapuram', 'kollam', 'pathanamthitta', 'alappuzha', 'kottayam',
@@ -102,9 +103,9 @@ export const employerRouter = router({
         slug,
         type: typeEnum(input.employerType),
         employerTypeCode: input.employerType,
-        legalNameEn: input.companyName,
-        displayNameEn: input.companyName,
-        displayNameMl: input.companyNameMl ?? null,
+        legalNameEn: stripHtml(input.companyName),
+        displayNameEn: stripHtml(input.companyName),
+        displayNameMl: input.companyNameMl ? stripHtml(input.companyNameMl) : null,
         district: input.district,
         gstin: input.gstNumber ?? null,
         contactName: input.contactName,

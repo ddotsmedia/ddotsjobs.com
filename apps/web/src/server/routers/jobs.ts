@@ -5,6 +5,7 @@ import { and, asc, count, createNotification, desc, eq, gte, inArray, isNull, sq
 import { callAI } from '@ddotsjobs/ai';
 import { jobAutoFillDescriptionPrompt, searchParseNaturalLanguagePrompt } from '@ddotsjobs/ai/prompts';
 import { SECTORS } from '@/lib/constants';
+import { sanitizeHtml, stripHtml } from '@/lib/sanitize';
 import { notifyGoogleIndexing } from '@/lib/google-indexing';
 import { alertsQueue, searchSyncQueue } from '../queue.js';
 import { protectedProcedure, publicProcedure, roleProcedure, router } from '../trpc.js';
@@ -113,6 +114,17 @@ const jobInput = z.object({
   validThrough: z.string().datetime().optional(),
   itParkId: z.string().uuid().optional(),
 });
+
+// Create uses extra cross-field rules; update reuses the base object (.omit/.partial).
+const jobCreateInput = jobInput
+  .refine((v) => v.salaryMinPaise == null || v.salaryMaxPaise == null || v.salaryMaxPaise >= v.salaryMinPaise, {
+    message: 'Maximum salary must be greater than or equal to minimum salary',
+    path: ['salaryMaxPaise'],
+  })
+  .refine((v) => !v.validThrough || new Date(v.validThrough).getTime() > Date.now(), {
+    message: 'Valid-through date must be in the future',
+    path: ['validThrough'],
+  });
 
 function jobSlug(title: string, district: string): string {
   const base = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80) || 'job';
@@ -423,7 +435,7 @@ export const jobsRouter = router({
     }),
 
   // ── Employer: post a job ─────────────────────────────────────────────
-  create: roleProcedure('employer').input(jobInput).mutation(async ({ ctx, input }) => {
+  create: roleProcedure('employer').input(jobCreateInput).mutation(async ({ ctx, input }) => {
     const [emp] = await ctx.db
       .select({
         id: tables.employers.id,
@@ -454,10 +466,10 @@ export const jobsRouter = router({
       .values({
         employerId: emp.id,
         slug,
-        titleEn: input.title,
-        titleMl: input.titleMl ?? null,
-        descriptionEn: input.description,
-        descriptionMl: input.descriptionMl ?? null,
+        titleEn: stripHtml(input.title),
+        titleMl: input.titleMl ? stripHtml(input.titleMl) : null,
+        descriptionEn: sanitizeHtml(input.description),
+        descriptionMl: input.descriptionMl ? sanitizeHtml(input.descriptionMl) : null,
         requirementsEn: input.requirements ?? null,
         type: JOB_TYPE_ENUM[input.jobType],
         status,

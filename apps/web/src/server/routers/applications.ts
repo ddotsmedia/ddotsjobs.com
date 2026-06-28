@@ -5,6 +5,7 @@ import { uploadFile } from '@ddotsjobs/storage';
 import { callAI } from '@ddotsjobs/ai';
 import { applicationCoverLetterPrompt } from '@ddotsjobs/ai/prompts';
 import { computeFitScore, type FitScoreResult } from '@/lib/services/fit-score.service';
+import { stripHtml } from '@/lib/sanitize';
 import { roleProcedure, router } from '../trpc.js';
 
 const VOICE_EXT: Record<string, string> = {
@@ -196,7 +197,7 @@ export const applicationsRouter = router({
             language: fit.language,
             certBonus: fit.certBonus,
           },
-          questionResponse: input.questionResponse ?? null,
+          questionResponse: input.questionResponse ? stripHtml(input.questionResponse) : null,
           hasVoiceNote: Boolean(voiceKey),
           voiceNoteR2Key: voiceKey,
           voiceNoteDurationS: input.voiceNoteDurationS ?? null,

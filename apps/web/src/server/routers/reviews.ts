@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
 import { and, desc, eq, isNull, sql, tables } from '@ddotsjobs/db';
 import { protectedProcedure, publicProcedure, roleProcedure, router } from '../trpc.js';
+import { sanitizeHtml } from '@/lib/sanitize';
 
 const seekerProc = roleProcedure('seeker');
 
@@ -71,8 +72,8 @@ export const reviewsRouter = router({
           ratingWorkLifeBalance: input.ratingWorkLifeBalance ?? null,
           ratingPay: input.ratingPay ?? null,
           ratingWomenFriendly: input.ratingWomenFriendly ?? null,
-          bodyEn: input.reviewText ?? null,
-          bodyMl: input.reviewTextMl ?? null,
+          bodyEn: input.reviewText ? sanitizeHtml(input.reviewText) : null,
+          bodyMl: input.reviewTextMl ? sanitizeHtml(input.reviewTextMl) : null,
           isAnonymous: input.isAnonymous,
           isVerifiedEmployee,
           status: 'verified',
