@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { and, asc, count, createNotification, desc, eq, gte, isNull, ne, sql, tables } from '@ddotsjobs/db';
+import { and, asc, count, createNotification, desc, eq, gte, isNull, sql, tables } from '@ddotsjobs/db';
 import { TRPCError } from '@trpc/server';
 import { roleProcedure, router } from '../trpc.js';
 import { alertsQueue, searchSyncQueue } from '../queue.js';
@@ -106,7 +106,7 @@ export const adminRouter = router({
       await createNotification({
         userId: job.ownerUserId,
         type: 'job.approved',
-        title: 'Job approved',
+        title: 'Job approved and live',
         titleMl: 'Job approve ചെയ്തു',
         body: `${job.title} is now live`,
         bodyMl: `${job.title} ഇപ്പോൾ live ആണ്`,
@@ -172,7 +172,7 @@ export const adminRouter = router({
       })
       .from(employers)
       .innerJoin(users, eq(users.id, employers.ownerUserId))
-      .where(and(ne(employers.verificationStatus, 'verified'), isNull(employers.deletedAt)))
+      .where(and(eq(employers.verificationStatus, 'unverified'), isNull(employers.deletedAt)))
       .orderBy(desc(employers.createdAt))
       .limit(20);
   }),

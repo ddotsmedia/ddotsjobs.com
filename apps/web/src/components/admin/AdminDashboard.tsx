@@ -26,17 +26,16 @@ function salaryLabel(r: QueueRow): string {
 
 function riskColor(score: number | null): { bg: string; fg: string; label: string } {
   if (score == null) return { bg: '#6b6b6622', fg: '#9a9a92', label: 'No score' };
-  if (score <= 30) return { bg: '#1f7a3d22', fg: '#2ec27a', label: `${score}` };
-  if (score <= 70) return { bg: '#b8860022', fg: '#e0a72e', label: `${score}` };
-  return { bg: '#c0392b22', fg: '#e74c3c', label: `${score}` };
+  if (score <= 30) return { bg: '#1f7a3d22', fg: '#2ec27a', label: 'Low' };
+  if (score <= 70) return { bg: '#b8860022', fg: '#e0a72e', label: 'Review' };
+  return { bg: '#c0392b22', fg: '#e74c3c', label: 'High' };
 }
 
 const NAV = ['Overview', 'Moderation', 'Employers', 'Users', 'Audit Log', 'Settings'];
 
 function maskPhone(phone: string | null): string {
   if (!phone) return '—';
-  if (phone.length <= 4) return phone;
-  return `${phone.slice(0, 3)}…${phone.slice(-4)}`;
+  return `•••• ${phone.slice(-4)}`;
 }
 
 export function AdminDashboard() {
@@ -328,7 +327,7 @@ function BarChart7d({ data, theme }: { data: Out['admin']['jobStats7d']; theme: 
       {data.map((d) => (
         <div key={d.date} style={st.barCol}>
           <span style={{ ...st.barCount, color: theme.fg }}>{d.jobCount}</span>
-          <div style={{ ...st.bar, height: `${Math.round((d.jobCount / max) * 120) + 4}px`, background: theme.accent }} />
+          <div style={{ ...st.bar, height: `${Math.round((d.jobCount / max) * 120) + 4}px`, background: '#3A9EA5' }} />
           <span style={{ ...st.barLabel, color: theme.muted }}>{d.date.slice(5)}</span>
         </div>
       ))}
@@ -345,7 +344,7 @@ function DistrictBars({ data, theme }: { data: Out['admin']['districtCoverage'];
         <div key={d.district ?? 'none'} style={st.districtRow}>
           <span style={{ ...st.districtName, color: theme.fg }}>{d.district ?? '—'}</span>
           <div style={st.districtTrack}>
-            <div style={{ ...st.districtBar, width: `${Math.round((d.jobCount / max) * 100)}%`, background: theme.accent }} />
+            <div style={{ ...st.districtBar, width: `${Math.round((d.jobCount / max) * 100)}%`, background: '#F5C842' }} />
           </div>
           <span style={{ ...st.districtCount, color: theme.muted }}>{d.jobCount}</span>
         </div>
