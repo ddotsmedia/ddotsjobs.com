@@ -26,3 +26,7 @@ Thumbs.db
 
 # pm2
 .pm2/
+
+# Backups (DB dumps)
+backups/
+/opt/ddotsjobs/backups/
