@@ -3,6 +3,7 @@ import { Geist, Geist_Mono, Instrument_Serif } from 'next/font/google';
 import type { ReactNode } from 'react';
 import { SessionProvider } from 'next-auth/react';
 import { TRPCProvider } from '@/lib/trpc/client';
+import { Analytics } from '@/components/Analytics';
 import './globals.css';
 
 const geistSans = Geist({ subsets: ['latin'], display: 'swap', preload: true, variable: '--font-geist-sans' });
@@ -20,6 +21,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? 'https://ddotsjobs.com'),
   title: 'ddotsjobs — Kerala Jobs',
   description: 'Kerala job portal — local, gulf, PSC and walk-in jobs.',
+  verification: process.env.GOOGLE_SITE_VERIFICATION ? { google: process.env.GOOGLE_SITE_VERIFICATION } : undefined,
   icons: {
     icon: [
       { url: '/favicon.svg', type: 'image/svg+xml' },
@@ -43,6 +45,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <SessionProvider>
           <TRPCProvider>{children}</TRPCProvider>
         </SessionProvider>
+        <Analytics />
       </body>
     </html>
   );
