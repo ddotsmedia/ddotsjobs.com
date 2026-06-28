@@ -13,13 +13,32 @@ import { getHomeStats, getLatestJobs, getSectorCounts, type LatestJob } from './
 export const dynamic = 'force-dynamic';
 
 export function generateMetadata(): Metadata {
-  const title = 'Jobs in Kerala — ddotsjobs.com';
+  const title = 'Jobs in Kerala 2026 — ddotsjobs.com | Verified Kerala Jobs';
   const description =
-    'Find verified jobs across all 14 Kerala districts. Nursing, IT, teaching, government and more.';
+    'Find verified jobs across all 14 Kerala districts. Nursing, IT, Teaching, PSC, Gulf Return jobs with salary shown upfront. Malayalam & English.';
   return {
     title,
     description,
-    openGraph: { title, description },
+    keywords: [
+      'jobs in kerala',
+      'kerala jobs 2026',
+      'nursing jobs kerala',
+      'IT jobs kerala',
+      'kerala psc jobs',
+      'gulf return jobs kerala',
+      'walk in interview kerala',
+      'government jobs kerala',
+      'teaching jobs kerala',
+    ],
+    alternates: { canonical: 'https://ddotsjobs.com' },
+    openGraph: {
+      title,
+      description,
+      url: 'https://ddotsjobs.com',
+      siteName: 'ddotsjobs.com',
+      locale: 'en_IN',
+      type: 'website',
+    },
   };
 }
 

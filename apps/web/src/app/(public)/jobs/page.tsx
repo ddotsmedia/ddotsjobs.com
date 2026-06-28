@@ -23,8 +23,14 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
     if (label) title = `Jobs in ${label} — ddotsjobs.com`;
   }
   const description =
-    'Browse verified jobs across all 14 Kerala districts. Filter by sector, district, salary and job type.';
-  return { title, description, openGraph: { title, description } };
+    'Browse verified jobs across all 14 Kerala districts. Filter by sector, district, salary and job type. New jobs added daily.';
+  // Canonical points at the clean /jobs base — filtered param URLs do not create duplicates.
+  return {
+    title,
+    description,
+    alternates: { canonical: 'https://ddotsjobs.com/jobs' },
+    openGraph: { title, description, url: 'https://ddotsjobs.com/jobs', siteName: 'ddotsjobs.com', type: 'website' },
+  };
 }
 
 function headingFor(f: ReturnType<typeof parseJobFilters>): string {
