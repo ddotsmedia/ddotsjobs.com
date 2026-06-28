@@ -10,6 +10,7 @@ const r2Host = new URL(r2Url).hostname;
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  compress: true,
   // Standalone server so PM2 cluster (2 instances) can share the :3100 socket.
   // `next start` does not support cluster socket sharing and EADDRINUSEs.
   output: 'standalone',
@@ -27,12 +28,25 @@ const nextConfig: NextConfig = {
     optimizePackageImports: ['@trpc/react-query', '@tanstack/react-query'],
   },
   images: {
-    formats: ['image/webp'],
+    formats: ['image/webp', 'image/avif'],
     minimumCacheTTL: 86400,
     remotePatterns: [
       { protocol: 'https', hostname: r2Host },
+      { protocol: 'https', hostname: 'assets.ddotsjobs.com' },
       { protocol: 'https', hostname: '*.r2.cloudflarestorage.com' },
     ],
+  },
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          { key: 'X-DNS-Prefetch-Control', value: 'on' },
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+        ],
+      },
+    ];
   },
   eslint: { ignoreDuringBuilds: false },
   typescript: { ignoreBuildErrors: false },
