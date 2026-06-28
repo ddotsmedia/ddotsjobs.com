@@ -26,6 +26,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE}/technopark-jobs`, changeFrequency: 'daily', priority: 0.8, lastModified: now },
     { url: `${BASE}/infopark-jobs`, changeFrequency: 'daily', priority: 0.8, lastModified: now },
     { url: `${BASE}/cyberpark-jobs`, changeFrequency: 'daily', priority: 0.8, lastModified: now },
+    { url: `${BASE}/about`, changeFrequency: 'monthly', priority: 0.5, lastModified: now },
+    { url: `${BASE}/privacy`, changeFrequency: 'yearly', priority: 0.2, lastModified: now },
   ];
 
   const districtRoutes: MetadataRoute.Sitemap = DISTRICTS.map((d) => ({
