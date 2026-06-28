@@ -189,7 +189,7 @@ a {
   line-height: 1;
 }
 .ddj-bottom-nav a[data-active='true'] {
-  color: var(--color-brand);
+  color: #3a9ea5;
 }
 /* Spacer so fixed bottom nav never covers page content on mobile. */
 .ddj-bottom-nav-spacer {
