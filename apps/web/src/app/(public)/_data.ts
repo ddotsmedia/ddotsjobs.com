@@ -23,6 +23,7 @@ export interface LatestJob {
   isWalkIn: boolean;
   publishedAt: Date | null;
   company: string;
+  employerTypeCode: string | null;
 }
 
 async function safe<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
@@ -100,6 +101,7 @@ export function getLatestJobs(): Promise<LatestJob[]> {
           publishedAt: tables.jobs.publishedAt,
           displayNameEn: tables.employers.displayNameEn,
           legalNameEn: tables.employers.legalNameEn,
+          employerTypeCode: tables.employers.employerTypeCode,
         })
         .from(tables.jobs)
         .innerJoin(tables.employers, eq(tables.jobs.employerId, tables.employers.id))
@@ -118,6 +120,7 @@ export function getLatestJobs(): Promise<LatestJob[]> {
         isWalkIn: r.isWalkIn,
         publishedAt: r.publishedAt,
         company: r.displayNameEn ?? r.legalNameEn,
+        employerTypeCode: r.employerTypeCode,
       }));
     },
     [],

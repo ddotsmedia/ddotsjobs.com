@@ -31,6 +31,7 @@ export function PublicHeader() {
           <Link href="/gulf-return" style={s.link}>Gulf Return</Link>
           <Link href="/technopark-jobs" style={s.link}>IT Parks</Link>
           <Link href="/jobs?type=walk_in" style={s.link}>Walk-in</Link>
+          <Link href="/about" style={s.link}>About</Link>
           {dashboardHref ? (
             <Link href={dashboardHref} style={s.loginBtn}>Dashboard</Link>
           ) : (

@@ -32,6 +32,10 @@ export function WhatsappCta() {
           <button type="button" onClick={join} style={s.btn}>Join Now</button>
         </div>
         <p style={s.note}>💬 76 active job groups</p>
+        <p style={s.cred}>
+          Same groups trusted by 120K+ nurses, teachers and IT professionals across Kerala.
+        </p>
+        <p style={s.cred}>Managed by Ddotsmedia IT Solutions, Sharjah UAE — since 2019.</p>
       </div>
     </section>
   );
@@ -46,4 +50,5 @@ const s: Record<string, React.CSSProperties> = {
   input: { flex: '1 1 220px', minWidth: 0, height: 52, padding: '0 18px', fontSize: 16, border: 'none', borderRadius: 50, outline: 'none', color: '#1A1916' },
   btn: { height: 52, padding: '0 28px', fontSize: 16, fontWeight: 700, color: '#1A1916', background: '#F5C842', border: 'none', borderRadius: 50, cursor: 'pointer', whiteSpace: 'nowrap' },
   note: { fontSize: 13, color: 'rgba(255,255,255,0.8)', marginTop: 8 },
+  cred: { fontSize: 12, color: 'rgba(255,255,255,0.7)', margin: '2px 0 0', maxWidth: 520 },
 };

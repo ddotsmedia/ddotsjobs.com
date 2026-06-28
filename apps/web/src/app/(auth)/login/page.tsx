@@ -23,7 +23,8 @@ export default function LoginPage() {
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
           <Logo size="lg" showText href="/" />
         </div>
-        <p style={styles.sub}>കേരളത്തിന്റെ തൊഴിൽ പോർട്ടൽ</p>
+        <p style={styles.welcome}>സ്വാഗതം 👋</p>
+        <p style={styles.sub}>Kerala-ലെ ഏറ്റവും നല്ല job portal-ലേക്ക്</p>
 
         <label htmlFor="phone" style={styles.label}>
           Mobile number
@@ -51,6 +52,8 @@ export default function LoginPage() {
         >
           {requestOtp.isPending ? 'Sending…' : 'Send OTP'}
         </button>
+        <p style={styles.otpNote}>OTP will be sent via SMS or WhatsApp.</p>
+        <p style={styles.privacy}>🔒 We never share your number.</p>
       </div>
     </main>
   );
@@ -77,7 +80,10 @@ const styles: Record<string, React.CSSProperties> = {
     boxShadow: '0 1px 3px rgba(15,14,12,0.08)',
   },
   title: { fontSize: '2rem', color: 'var(--color-accent)', margin: 0 },
-  sub: { fontSize: 14, color: '#6b6b66', marginBottom: 'var(--space-2)' },
+  welcome: { fontSize: '1.4rem', fontWeight: 700, color: '#1A1916', margin: '8px 0 2px', textAlign: 'center' },
+  sub: { fontSize: 14, color: '#6b6b66', marginBottom: 'var(--space-2)', textAlign: 'center' },
+  otpNote: { fontSize: 12, color: '#6B6860', textAlign: 'center', marginTop: 10 },
+  privacy: { fontSize: 12, color: '#B0AD9F', textAlign: 'center', marginTop: 2 },
   label: { fontSize: 13, fontWeight: 600 },
   input: {
     height: 48,

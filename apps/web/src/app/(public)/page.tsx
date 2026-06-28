@@ -67,6 +67,25 @@ function isNew(d: Date | null): boolean {
   return Date.now() - new Date(d).getTime() < 24 * 60 * 60 * 1000;
 }
 
+// Human-readable employer type (shown under company name).
+const EMPLOYER_TYPE_LABELS: Record<string, string> = {
+  hospital: 'Multi-specialty hospital',
+  clinic: 'Clinic',
+  it_company: 'IT company',
+  school: 'Educational institution',
+  college: 'Educational institution',
+  bank: 'Bank / NBFC',
+  retail: 'Retail chain',
+  construction: 'Construction firm',
+  consultancy: 'Recruitment consultancy',
+  gulf_agency: 'Overseas recruitment agency',
+  government: 'Government body',
+};
+function employerTypeLabel(code: string | null): string {
+  if (!code) return '';
+  return EMPLOYER_TYPE_LABELS[code] ?? '';
+}
+
 function relativeTime(d: Date | null): string {
   if (!d) return 'recently';
   const secs = Math.floor((Date.now() - new Date(d).getTime()) / 1000);
@@ -115,9 +134,10 @@ export default async function HomePage() {
           <p style={s.kicker}>Kerala&rsquo;s career platform</p>
           <h1 style={s.headline}>Kerala&rsquo;s jobs, beautifully found</h1>
           <p style={s.subtext}>
-            Verified jobs across all 14 districts. Salary upfront. Malayalam and English.
+            Salary shown upfront. No middlemen. No fake jobs. Just real Kerala employers.
           </p>
           <SearchHero />
+          <p style={s.socialProof}>📱 12 employers posting today · 🔔 4 new jobs in the last hour</p>
         </div>
       </section>
 
@@ -131,13 +151,20 @@ export default async function HomePage() {
         <p style={s.eyebrow}>Explore</p>
         <h2 style={s.h2}>Browse by sector</h2>
         <div style={s.sectorGrid}>
-          {SECTORS.map((sec) => (
-            <Link key={sec.slug} href={`/jobs?category=${sec.slug}`} className="hp-sector" style={s.sectorCard}>
-              <span style={{ ...s.sectorIcon, background: `${SECTOR_COLORS[sec.slug] ?? '#3A9EA5'}1A` }} aria-hidden>{SECTOR_ICONS[sec.slug] ?? '📌'}</span>
-              <span style={s.sectorLabel}>{sec.label}</span>
-              <span style={{ ...s.sectorCount, color: SECTOR_COLORS[sec.slug] ?? '#3A9EA5' }}>{(sectorCounts[sec.slug] ?? 0).toLocaleString('en-IN')} jobs</span>
-            </Link>
-          ))}
+          {SECTORS.map((sec) => {
+            const n = sectorCounts[sec.slug] ?? 0;
+            return (
+              <Link key={sec.slug} href={`/jobs?category=${sec.slug}`} className="hp-sector" style={s.sectorCard}>
+                <span style={{ ...s.sectorIcon, background: `${SECTOR_COLORS[sec.slug] ?? '#3A9EA5'}1A` }} aria-hidden>{SECTOR_ICONS[sec.slug] ?? '📌'}</span>
+                <span style={s.sectorLabel}>{sec.label}</span>
+                {n > 0 ? (
+                  <span style={{ ...s.sectorCount, color: SECTOR_COLORS[sec.slug] ?? '#3A9EA5' }}>{n.toLocaleString('en-IN')} jobs</span>
+                ) : (
+                  <span style={s.sectorSoon}>Coming soon</span>
+                )}
+              </Link>
+            );
+          })}
         </div>
       </section>
 
@@ -181,7 +208,12 @@ export default async function HomePage() {
                         <span style={s.jobTitle}>{j.titleEn}</span>
                         <span style={s.jobTime}>{relativeTime(j.publishedAt)}</span>
                       </div>
-                      <span style={s.jobCompany}>{j.company}</span>
+                      <span style={s.jobCompany}>
+                        {j.company}
+                        {employerTypeLabel(j.employerTypeCode) && (
+                          <span style={s.jobEmpType}> · {employerTypeLabel(j.employerTypeCode)}</span>
+                        )}
+                      </span>
                       <div style={s.jobMeta}>
                         {isNew(j.publishedAt) && <span style={s.newBadge}>New</span>}
                         {j.isWalkIn && <span style={s.walkBadge}>Walk-in</span>}
@@ -209,11 +241,19 @@ export default async function HomePage() {
         <div style={{ ...s.container, ...s.footerGrid }}>
           <div style={s.fcol}>
             <Logo size="sm" variant="white" showText href="/" />
-            <p style={s.ftagline}>Kerala&rsquo;s career platform.<br />Ddotsmedia IT Solutions.</p>
+            <p style={s.ftagline}>
+              Ddotsmedia IT Solutions LLC<br />
+              SHAMS Free Zone, Sharjah, UAE
+            </p>
+            <p style={s.faddr}>
+              <a href="https://wa.me/971509379212" style={s.flink}>WhatsApp: +971 50 937 9212</a>
+              <br />
+              <a href="mailto:info@ddotsmedia.com" style={s.flink}>info@ddotsmedia.com</a>
+            </p>
             <div style={s.social}>
-              <a href="https://wa.me/" style={s.socialLink} aria-label="WhatsApp">💬</a>
-              <a href="https://instagram.com/" style={s.socialLink} aria-label="Instagram">📷</a>
-              <a href="https://facebook.com/" style={s.socialLink} aria-label="Facebook">📘</a>
+              <a href="https://wa.me/971509379212" style={s.socialLink} aria-label="WhatsApp">💬</a>
+              <a href="https://linkedin.com/" style={s.socialLink} aria-label="LinkedIn">in</a>
+              <a href="https://youtube.com/" style={s.socialLink} aria-label="YouTube (Vaidya Sala)">▶</a>
             </div>
           </div>
 
@@ -256,6 +296,7 @@ export default async function HomePage() {
           <div style={{ ...s.container, ...s.footerBarInner }}>
             <span>© 2026 ddotsjobs.com</span>
             <nav style={s.barLinks}>
+              <Link href="/about" style={s.barLink}>About</Link>
               <Link href="/privacy" style={s.barLink}>Privacy</Link>
               <Link href="/terms" style={s.barLink}>Terms</Link>
               <Link href="/sitemap.xml" style={s.barLink}>Sitemap</Link>
@@ -300,6 +341,10 @@ const s: Record<string, React.CSSProperties> = {
     margin: 'var(--space-2) 0 var(--space-3)',
     maxWidth: 480,
   },
+  socialProof: { fontSize: 13, color: '#6B6860', margin: 'var(--space-2) 0 0' },
+  sectorSoon: { fontSize: 13, fontWeight: 600, color: '#B0AD9F' },
+  jobEmpType: { color: '#B0AD9F' },
+  faddr: { fontSize: 13, color: '#9a9a92', lineHeight: 1.6, margin: 0 },
   // Stats strip — single bordered band with dividers.
   statSection: {},
   statStrip: {
