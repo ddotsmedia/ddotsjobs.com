@@ -16,11 +16,17 @@ export type Context = Awaited<ReturnType<typeof createContext>>;
 const t = initTRPC.context<Context>().create({
   transformer: superjson,
   errorFormatter({ shape, error }) {
+    // Never leak internals (stack/SQL/paths) to clients in production.
+    const isInternal = shape.data?.code === 'INTERNAL_SERVER_ERROR';
+    const masked = isInternal && process.env.NODE_ENV === 'production';
+    if (masked) console.error('[trpc] internal error:', error);
     return {
       ...shape,
+      message: masked ? 'Something went wrong. Please try again.' : shape.message,
       data: {
         ...shape.data,
         zod: error.cause instanceof ZodError ? error.cause.flatten() : null,
+        ...(masked ? { stack: undefined } : {}),
       },
     };
   },
