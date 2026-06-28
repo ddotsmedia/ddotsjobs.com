@@ -3,6 +3,13 @@ import { and, db, eq, isNull, tables } from '@ddotsjobs/db';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic'; // render on demand (CDN-cached), not at build
+
+// Decouple from the [slug] page's generateStaticParams (district landing slugs)
+// so the build never tries to statically collect this OG route.
+export function generateStaticParams() {
+  return [];
+}
+
 export const alt = 'Job on ddotsjobs.com';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
