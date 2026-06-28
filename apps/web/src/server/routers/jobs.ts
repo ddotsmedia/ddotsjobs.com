@@ -6,6 +6,7 @@ import { callAI } from '@ddotsjobs/ai';
 import { jobAutoFillDescriptionPrompt, searchParseNaturalLanguagePrompt } from '@ddotsjobs/ai/prompts';
 import { SECTORS } from '@/lib/constants';
 import { sanitizeHtml, stripHtml } from '@/lib/sanitize';
+import { rateLimit } from '../rate-limit.js';
 import { notifyGoogleIndexing } from '@/lib/google-indexing';
 import { alertsQueue, searchSyncQueue } from '../queue.js';
 import { protectedProcedure, publicProcedure, roleProcedure, router } from '../trpc.js';
@@ -436,6 +437,7 @@ export const jobsRouter = router({
 
   // ── Employer: post a job ─────────────────────────────────────────────
   create: roleProcedure('employer').input(jobCreateInput).mutation(async ({ ctx, input }) => {
+    await rateLimit(ctx.redis, `jobcreate:${ctx.user.id}`, 10, 3600);
     const [emp] = await ctx.db
       .select({
         id: tables.employers.id,

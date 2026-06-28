@@ -21,7 +21,18 @@ export const authRouter = router({
   // ── Step 1: issue OTP ──────────────────────────────────────────────
   requestOtp: publicProcedure
     .input(z.object({ phone: phoneSchema }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      // Blocked after repeated failed verifications?
+      if (await ctx.redis.get(`otp:blocked:${input.phone}`)) {
+        throw new TRPCError({ code: 'TOO_MANY_REQUESTS', message: 'Too many attempts. Try again in an hour.' });
+      }
+      // Max 5 OTP requests per phone per hour.
+      const rlKey = `otp:ratelimit:${input.phone}`;
+      const n = await ctx.redis.incr(rlKey);
+      if (n === 1) await ctx.redis.expire(rlKey, 3600);
+      if (n > 5) {
+        throw new TRPCError({ code: 'TOO_MANY_REQUESTS', message: 'Too many OTP requests. Try again later.' });
+      }
       const code = generateOtp();
       await storeOtp(input.phone, code);
       await sendWhatsAppOtp(input.phone, code);
@@ -30,13 +41,22 @@ export const authRouter = router({
 
   // ── Step 2: verify OTP, upsert user, write sign-in handoff ─────────
   verifyOtp: publicProcedure
-    .input(z.object({ phone: phoneSchema, otp: z.string().length(6) }))
+    .input(z.object({ phone: phoneSchema, otp: z.string().length(6).regex(/^\d+$/, 'OTP must be 6 digits') }))
     .mutation(async ({ ctx, input }) => {
+      if (await ctx.redis.get(`otp:blocked:${input.phone}`)) {
+        throw new TRPCError({ code: 'TOO_MANY_REQUESTS', message: 'Too many failed attempts. Try again in an hour.' });
+      }
       const stored = await readOtp(input.phone);
       if (!stored || stored !== input.otp) {
+        // Track failed attempts; block the phone for 1 hour after 5 fails.
+        const fk = `otp:fails:${input.phone}`;
+        const fails = await ctx.redis.incr(fk);
+        if (fails === 1) await ctx.redis.expire(fk, 3600);
+        if (fails >= 5) await ctx.redis.set(`otp:blocked:${input.phone}`, '1', 'EX', 3600);
         throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid or expired OTP' });
       }
       await clearOtp(input.phone);
+      await ctx.redis.del(`otp:fails:${input.phone}`);
 
       const now = new Date();
       const [user] = await ctx.db

@@ -3,11 +3,13 @@ import { and, eq, isNull, tables } from '@ddotsjobs/db';
 import { callAI } from '@ddotsjobs/ai';
 import { resumeGenerateKeralaCvPrompt } from '@ddotsjobs/ai/prompts';
 import { roleProcedure, router } from '../trpc.js';
+import { rateLimit } from '../rate-limit.js';
 
 const seekerProc = roleProcedure('seeker');
 
 export const resumeRouter = router({
   generate: seekerProc.mutation(async ({ ctx }) => {
+    await rateLimit(ctx.redis, `resume:${ctx.user.id}`, 10, 86_400);
     const [u] = await ctx.db
       .select({ nameEn: tables.users.nameEn, nameMl: tables.users.nameMl, primaryProfession: tables.users.primaryProfession })
       .from(tables.users)

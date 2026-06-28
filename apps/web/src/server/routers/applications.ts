@@ -7,6 +7,7 @@ import { applicationCoverLetterPrompt } from '@ddotsjobs/ai/prompts';
 import { computeFitScore, type FitScoreResult } from '@/lib/services/fit-score.service';
 import { stripHtml } from '@/lib/sanitize';
 import { roleProcedure, router } from '../trpc.js';
+import { rateLimit } from '../rate-limit.js';
 
 const VOICE_EXT: Record<string, string> = {
   'audio/webm': 'webm',
@@ -91,6 +92,7 @@ export const applicationsRouter = router({
   generateCoverLetter: roleProcedure('seeker')
     .input(z.object({ jobId: z.string().uuid(), language: z.enum(['ml', 'en']).default('en') }))
     .mutation(async ({ ctx, input }) => {
+      await rateLimit(ctx.redis, `coverletter:${ctx.user.id}`, 20, 86_400);
       const [job] = await ctx.db
         .select({
           titleEn: tables.jobs.titleEn,
@@ -140,6 +142,7 @@ export const applicationsRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      await rateLimit(ctx.redis, `apply:${ctx.user.id}`, 20, 86_400);
       const j = tables.jobs;
       const [job] = await ctx.db
         .select({ id: j.id, employerId: j.employerId, employerQuestionEn: j.employerQuestionEn })

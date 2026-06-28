@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { and, db, eq, tables } from '@ddotsjobs/db';
+import { redis } from '@ddotsjobs/redis';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -28,6 +29,13 @@ export async function POST(req: Request) {
 
   try {
     if (event.event === 'payment.captured') {
+      // Replay-attack prevention: process each payment id at most once.
+      const pid = (event.payload as { payment?: { entity?: { id?: string } } } | undefined)?.payment?.entity?.id;
+      if (pid) {
+        const seenKey = `webhook:seen:${pid}`;
+        const fresh = await redis.set(seenKey, '1', 'EX', 86_400, 'NX');
+        if (fresh === null) return NextResponse.json({ received: true, duplicate: true });
+      }
       await db.insert(tables.auditLog).values({
         action: 'razorpay.payment_captured',
         entityType: 'payment',

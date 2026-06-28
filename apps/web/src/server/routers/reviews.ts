@@ -3,6 +3,7 @@ import { TRPCError } from '@trpc/server';
 import { and, desc, eq, isNull, sql, tables } from '@ddotsjobs/db';
 import { protectedProcedure, publicProcedure, roleProcedure, router } from '../trpc.js';
 import { sanitizeHtml } from '@/lib/sanitize';
+import { rateLimit } from '../rate-limit.js';
 
 const seekerProc = roleProcedure('seeker');
 
@@ -32,6 +33,7 @@ export const reviewsRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      await rateLimit(ctx.redis, `review:${ctx.user.id}`, 5, 86_400);
       const cr = tables.companyReviews;
 
       const [profile] = await ctx.db
