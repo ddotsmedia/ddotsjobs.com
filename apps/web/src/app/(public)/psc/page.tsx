@@ -55,7 +55,7 @@ export default async function PscPage({ searchParams }: { searchParams: Promise<
 
         {/* Feed */}
         <section style={{ marginTop: 'var(--space-3)' }}>
-          <h2 style={s.h2}>Notifications</h2>
+          <h2 style={s.h2}>PSC Notifications · PSC അറിയിപ്പുകൾ</h2>
           {list.items.length === 0 ? (
             <div style={s.empty}>
               <p style={{ fontWeight: 600 }}>{q ? 'No matching notifications.' : 'No notifications yet.'}</p>

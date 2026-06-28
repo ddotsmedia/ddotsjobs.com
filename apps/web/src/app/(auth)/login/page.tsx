@@ -36,7 +36,7 @@ export default function LoginPage() {
           autoComplete="tel"
           value={phone}
           onChange={(e) => setPhone(e.target.value.replace(/\s/g, ''))}
-          placeholder="+91XXXXXXXXXX or +971XXXXXXXXX"
+          placeholder="+91 നിങ്ങളുടെ mobile number"
           style={styles.input}
         />
         {phone.length > 3 && !valid && (
@@ -50,7 +50,7 @@ export default function LoginPage() {
           onClick={() => requestOtp.mutate({ phone })}
           style={{ ...styles.btn, opacity: !valid || requestOtp.isPending ? 0.55 : 1 }}
         >
-          {requestOtp.isPending ? 'Sending…' : 'Send OTP'}
+          {requestOtp.isPending ? 'Sending…' : 'OTP അയക്കൂ · Send OTP'}
         </button>
         <p style={styles.otpNote}>OTP will be sent via SMS or WhatsApp.</p>
         <p style={styles.privacy}>🔒 We never share your number.</p>

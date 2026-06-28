@@ -4,6 +4,16 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { DISTRICTS, HERO_CHIPS } from '@/lib/constants';
 
+// Malayalam suffix per chip (Unicode, no transliteration).
+const CHIP_ML: Record<string, string> = {
+  nursing: 'നഴ്‌സിംഗ്',
+  it: 'ഐ.ടി',
+  teaching: 'അദ്ധ്യാപനം',
+  walk_in: 'നേരിട്ട്',
+  gulf_return: 'ഗൾഫ് തിരിച്ചുവരവ്',
+  psc: 'കേരള PSC',
+};
+
 export function SearchHero() {
   const router = useRouter();
   const [q, setQ] = useState('');
@@ -87,6 +97,7 @@ export function SearchHero() {
               }}
             >
               {c.label}
+              {CHIP_ML[c.key] && <span style={s.chipMl}> · {CHIP_ML[c.key]}</span>}
             </button>
           );
         })}
@@ -152,4 +163,5 @@ const s: Record<string, React.CSSProperties> = {
     borderRadius: 34,
     cursor: 'pointer',
   },
+  chipMl: { fontSize: 11, color: '#9a9a92' },
 };

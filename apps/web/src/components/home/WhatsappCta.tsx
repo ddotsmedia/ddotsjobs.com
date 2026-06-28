@@ -16,8 +16,8 @@ export function WhatsappCta() {
   return (
     <section style={s.section}>
       <div style={s.inner}>
-        <p style={s.title}>Join 120K+ professionals on WhatsApp</p>
-        <p style={s.sub}>Get Kerala jobs delivered to your phone daily.</p>
+        <p style={s.title}>ഇനി job alerts WhatsApp-ൽ കിട്ടും</p>
+        <p style={s.sub}>Malayalam or English — your choice. Join 120K+ professionals.</p>
         <div style={s.form}>
           <input
             type="tel"

@@ -65,10 +65,10 @@ export function StatsStrip({ stats }: { stats: { activeJobs: number; verifiedEmp
   }, []);
 
   const cells: Stat[] = [
-    { value: stats.activeJobs, label: 'Active jobs', sub: 'across 14 districts' },
-    { value: stats.verifiedEmployers, label: 'Verified employers', sub: 'background checked' },
-    { value: null, text: stats.whatsapp, label: 'WhatsApp members', sub: 'daily job alerts' },
-    { value: stats.placements, label: 'Placements', sub: 'and counting' },
+    { value: stats.activeJobs, label: 'Active jobs', sub: 'സജീവ ജോലികൾ · across 14 districts' },
+    { value: stats.verifiedEmployers, label: 'Verified employers', sub: 'verified employers · background checked' },
+    { value: null, text: stats.whatsapp, label: 'WhatsApp members', sub: 'WhatsApp അംഗങ്ങൾ · daily alerts' },
+    { value: stats.placements, label: 'Placements', sub: 'placements · and counting' },
   ];
 
   return (

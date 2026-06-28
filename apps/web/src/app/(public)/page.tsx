@@ -38,6 +38,29 @@ const SECTOR_ICONS: Record<string, string> = {
 // Avatar palette — cycled by card index (Phase 6).
 const LOGO_COLORS = ['#3A9EA5', '#F5C842', '#534AB7', '#1A7F4E', '#C4242B', '#378ADD'];
 
+// District → Malayalam (Unicode, no transliteration).
+const DISTRICT_ML: Record<string, string> = {
+  thiruvananthapuram: 'തിരുവനന്തപുരം',
+  kollam: 'കൊല്ലം',
+  pathanamthitta: 'പത്തനംതിട്ട',
+  alappuzha: 'ആലപ്പുഴ',
+  kottayam: 'കോട്ടയം',
+  idukki: 'ഇടുക്കി',
+  ernakulam: 'എറണാകുളം',
+  thrissur: 'തൃശ്ശൂർ',
+  palakkad: 'പാലക്കാട്',
+  malappuram: 'മലപ്പുറം',
+  kozhikode: 'കോഴിക്കോട്',
+  wayanad: 'വയനാട്',
+  kannur: 'കണ്ണൂർ',
+  kasaragod: 'കാസർഗോഡ്',
+};
+function districtLabel(d: string | null): string {
+  if (!d) return '';
+  const ml = DISTRICT_ML[d];
+  return ml ? `${titleCase(d)} · ${ml}` : titleCase(d);
+}
+
 // Per-sector brand accent (Ddotsmedia 4-color system).
 const SECTOR_COLORS: Record<string, string> = {
   nursing: '#E8623A',
@@ -136,6 +159,7 @@ export default async function HomePage() {
           <p style={s.subtext}>
             Salary shown upfront. No middlemen. No fake jobs. Just real Kerala employers.
           </p>
+          <p style={s.subtextMl}>കേരളത്തിലെ verified jobs — salary upfront, no middlemen</p>
           <SearchHero />
           <p style={s.socialProof}>📱 12 employers posting today · 🔔 4 new jobs in the last hour</p>
         </div>
@@ -216,9 +240,9 @@ export default async function HomePage() {
                       </span>
                       <div style={s.jobMeta}>
                         {isNew(j.publishedAt) && <span style={s.newBadge}>New</span>}
-                        {j.isWalkIn && <span style={s.walkBadge}>Walk-in</span>}
+                        {j.isWalkIn && <span style={s.walkBadge}>Walk-in · നേരിട്ട് apply ചെയ്യാം</span>}
                         {cat && <span style={{ ...s.catChip, color: catColor, background: `${catColor}1A` }}>{cat}</span>}
-                        {j.district && <span style={s.jobDistrict}>{titleCase(j.district)}</span>}
+                        {j.district && <span style={s.jobDistrict}>{districtLabel(j.district)}</span>}
                         <span style={s.jobSalary}>{salaryLabel(j)}</span>
                       </div>
                     </div>
@@ -241,6 +265,7 @@ export default async function HomePage() {
         <div style={{ ...s.container, ...s.footerGrid }}>
           <div style={s.fcol}>
             <Logo size="sm" variant="white" showText href="/" />
+            <p style={s.ftaglineMl}>കേരളത്തിന്റെ തൊഴിൽ പോർട്ടൽ</p>
             <p style={s.ftagline}>
               Ddotsmedia IT Solutions LLC<br />
               SHAMS Free Zone, Sharjah, UAE
@@ -341,6 +366,7 @@ const s: Record<string, React.CSSProperties> = {
     margin: 'var(--space-2) 0 var(--space-3)',
     maxWidth: 480,
   },
+  subtextMl: { fontSize: 14, color: '#6B6860', margin: '0 0 var(--space-3)' },
   socialProof: { fontSize: 13, color: '#6B6860', margin: 'var(--space-2) 0 0' },
   sectorSoon: { fontSize: 13, fontWeight: 600, color: '#B0AD9F' },
   jobEmpType: { color: '#B0AD9F' },
@@ -474,6 +500,7 @@ const s: Record<string, React.CSSProperties> = {
     paddingBottom: 'var(--space-4)',
   },
   fcol: { display: 'flex', flexDirection: 'column', gap: 10 },
+  ftaglineMl: { fontSize: 14, color: '#c7c5bd', margin: '2px 0 0' },
   ftagline: { fontSize: 13, color: '#9a9a92', lineHeight: 1.5, margin: 0 },
   social: { display: 'flex', gap: 12, marginTop: 4, fontSize: 18 },
   socialLink: { textDecoration: 'none' },

@@ -61,7 +61,7 @@ function VerifyInner() {
           onClick={() => verifyOtp.mutate({ phone, otp })}
           style={{ ...styles.btn, opacity: !valid || busy || !phone ? 0.55 : 1 }}
         >
-          {busy ? 'Verifying…' : 'Verify'}
+          {busy ? 'Verifying…' : 'Verify ചെയ്യൂ'}
         </button>
 
         <button type="button" onClick={() => router.push('/login')} style={styles.link}>

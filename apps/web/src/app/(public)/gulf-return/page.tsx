@@ -32,7 +32,7 @@ export default async function GulfReturnPage() {
           <h1 style={s.headlineMl}>ഗൾഫിൽ നിന്ന് തിരിച്ചെത്തിയോ?</h1>
           <p style={s.headlineEn}>Returned from the Gulf?</p>
           <p style={s.sub}>
-            2.1 million Keralites returned. Zero job platforms serve you. We do.
+            Kerala has 2.1M returning professionals. We help you find your next chapter.
           </p>
 
           <div style={s.ctaGrid}>
