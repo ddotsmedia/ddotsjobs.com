@@ -22,15 +22,15 @@ export function Logo({
   const logoMark = (
     <svg width={w} height={h} viewBox="0 0 60 72" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ flex: '0 0 auto' }} role="img" aria-label="ddotsjobs">
       <path
-        d="M8 4 C4 4 2 6 2 10 L2 62 C2 66 4 68 8 68 L32 68 C48 68 58 58 58 36 C58 14 48 4 32 4 Z"
+        d="M10 4 C4 4 2 8 2 12 L2 60 C2 64 4 68 10 68 L28 68 C46 68 58 56 58 36 C58 16 46 4 28 4 Z"
         stroke={stroke}
-        strokeWidth="2.5"
+        strokeWidth="3"
         fill="none"
       />
-      <circle cx="18" cy="22" r="11" fill="#F5C842" />
-      <circle cx="40" cy="22" r="11" fill="#E8623A" />
-      <circle cx="18" cy="50" r="11" fill="#8DC63F" />
-      <circle cx="40" cy="50" r="11" fill="#F5C842" />
+      <circle cx="18" cy="20" r="11" fill="#F5C842" />
+      <circle cx="40" cy="20" r="11" fill="#E8623A" />
+      <circle cx="18" cy="52" r="11" fill="#8DC63F" />
+      <circle cx="40" cy="52" r="11" fill="#F5C842" />
     </svg>
   );
 
