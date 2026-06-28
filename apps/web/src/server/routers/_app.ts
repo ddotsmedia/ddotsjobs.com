@@ -1,4 +1,5 @@
 import { publicProcedure, router } from '../trpc.js';
+import { accountRouter } from './account.js';
 import { adminRouter } from './admin.js';
 import { alertsRouter } from './alerts.js';
 import { billingRouter } from './billing.js';
@@ -24,6 +25,7 @@ import { walkinRouter } from './walkin.js';
 // Root tRPC router. Feature routers merge here.
 export const appRouter = router({
   health: publicProcedure.query(() => ({ ok: true as const, service: 'ddotsjobs-web' })),
+  account: accountRouter,
   admin: adminRouter,
   alerts: alertsRouter,
   billing: billingRouter,

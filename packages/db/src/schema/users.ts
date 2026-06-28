@@ -44,6 +44,8 @@ export const users = pgTable(
     isBanned: boolean('is_banned').notNull().default(false),
     banReason: text('ban_reason'),
     bannedAt: timestamp('banned_at', { withTimezone: true }),
+    // GDPR-style deletion request (processed within 30 days).
+    deletionRequestedAt: timestamp('deletion_requested_at', { withTimezone: true }),
     ...timestamps,
   },
   (t) => [
