@@ -168,8 +168,32 @@ export default async function HomePage() {
   const catLabel = (slug: string | null): string =>
     SECTORS.find((sec) => sec.slug === slug)?.label ?? (slug ? titleCase(slug) : '');
 
+  const jsonLd = [
+    {
+      '@context': 'https://schema.org',
+      '@type': 'WebSite',
+      name: 'ddotsjobs.com',
+      url: 'https://ddotsjobs.com',
+      potentialAction: {
+        '@type': 'SearchAction',
+        target: { '@type': 'EntryPoint', urlTemplate: 'https://ddotsjobs.com/jobs?q={query}' },
+        'query-input': 'required name=query',
+      },
+    },
+    {
+      '@context': 'https://schema.org',
+      '@type': 'Organization',
+      name: 'Ddotsmedia IT Solutions',
+      url: 'https://ddotsjobs.com',
+      logo: 'https://ddotsjobs.com/logo.svg',
+      sameAs: ['https://ddotsmedia.com', 'https://ddotsmediajobs.com'],
+      address: { '@type': 'PostalAddress', addressCountry: 'AE', addressRegion: 'Sharjah' },
+    },
+  ];
+
   return (
     <main style={s.page}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       {/* ── Hero ── */}
       <section style={s.hero}>
         <div style={s.container}>
