@@ -110,7 +110,7 @@ export const adminRouter = router({
         titleMl: 'Job approve ചെയ്തു',
         body: `${job.title} is now live`,
         bodyMl: `${job.title} ഇപ്പോൾ live ആണ്`,
-        actionUrl: job.slug ? `/jobs/${job.slug}` : '/employer/jobs',
+        actionUrl: '/employer/jobs',
       });
       return { success: true as const };
     }),
