@@ -29,9 +29,9 @@ export function PublicHeader() {
           <Link href="/jobs" style={s.link}>Jobs</Link>
           <Link href="/psc" style={s.link}>PSC</Link>
           <Link href="/gulf-return" style={s.link}>Gulf Return</Link>
-          <Link href="/technopark-jobs" style={s.link}>IT Parks</Link>
+          <Link href="/healthcare-jobs" style={s.link}>Healthcare</Link>
+          <Link href="/salary-guide" style={s.link}>Salary</Link>
           <Link href="/jobs?type=walk_in" style={s.link}>Walk-in</Link>
-          <Link href="/about" style={s.link}>About</Link>
           {dashboardHref ? (
             <Link href={dashboardHref} style={s.loginBtn}>Dashboard</Link>
           ) : (
@@ -60,9 +60,17 @@ export function PublicHeader() {
             </>
           )}
           <Link href="/jobs" style={s.dropItem} onClick={() => setOpen(false)}>Browse jobs</Link>
-          <Link href="/psc" style={s.dropItem} onClick={() => setOpen(false)}>PSC Tracker</Link>
-          <Link href="/gulf-return" style={s.dropItem} onClick={() => setOpen(false)}>Gulf Return</Link>
+          <Link href="/healthcare-jobs" style={s.dropItem} onClick={() => setOpen(false)}>Healthcare</Link>
           <Link href="/technopark-jobs" style={s.dropItem} onClick={() => setOpen(false)}>IT Parks</Link>
+          <Link href="/cooperative-jobs" style={s.dropItem} onClick={() => setOpen(false)}>Cooperative</Link>
+          <Link href="/driver-jobs" style={s.dropItem} onClick={() => setOpen(false)}>Driver & Transport</Link>
+          <Link href="/startup-jobs" style={s.dropItem} onClick={() => setOpen(false)}>Startup Jobs</Link>
+          <Link href="/gulf-return" style={s.dropItem} onClick={() => setOpen(false)}>Gulf Return</Link>
+          <Link href="/overseas-jobs" style={s.dropItem} onClick={() => setOpen(false)}>Overseas Jobs</Link>
+          <Link href="/women-friendly-jobs" style={s.dropItem} onClick={() => setOpen(false)}>Jobs for Women</Link>
+          <Link href="/psc" style={s.dropItem} onClick={() => setOpen(false)}>PSC Tracker</Link>
+          <Link href="/salary-guide" style={s.dropItem} onClick={() => setOpen(false)}>Salary Guide</Link>
+          <Link href="/skill-development" style={s.dropItem} onClick={() => setOpen(false)}>Skill Development</Link>
           <Link href="/jobs?type=walk_in" style={s.dropItem} onClick={() => setOpen(false)}>Walk-in Jobs</Link>
         </div>
       )}

@@ -326,14 +326,26 @@ export default async function HomePage() {
           </div>
 
           <div style={s.fcol}>
+            <p style={s.fhead}>Sectors</p>
+            <Link href="/healthcare-jobs" style={s.flink}>Healthcare Jobs</Link>
+            <Link href="/technopark-jobs" style={s.flink}>IT Park Jobs</Link>
+            <Link href="/cooperative-jobs" style={s.flink}>Cooperative Jobs</Link>
+            <Link href="/startup-jobs" style={s.flink}>Startup Jobs</Link>
+            <Link href="/driver-jobs" style={s.flink}>Driver & Transport</Link>
+            <Link href="/gulf-return" style={s.flink}>Gulf Return Hub</Link>
+            <Link href="/overseas-jobs" style={s.flink}>Overseas Jobs</Link>
+            <Link href="/women-friendly-jobs" style={s.flink}>Jobs for Women</Link>
+          </div>
+
+          <div style={s.fcol}>
             <p style={s.fhead}>For Jobseekers</p>
             <Link href="/jobs" style={s.flink}>Browse Jobs</Link>
-            <Link href="/login" style={s.flink}>Create Account</Link>
+            <Link href="/jobs?type=walk_in" style={s.flink}>Walk-in Jobs</Link>
             <Link href="/seeker/alerts" style={s.flink}>Job Alerts</Link>
             <Link href="/psc" style={s.flink}>PSC Tracker</Link>
-            <Link href="/gulf-return" style={s.flink}>Gulf Return Hub</Link>
-            <Link href="/technopark-jobs" style={s.flink}>IT Park Jobs</Link>
-            <Link href="/jobs?type=walk_in" style={s.flink}>Walk-in Jobs</Link>
+            <Link href="/salary-guide" style={s.flink}>Salary Guide</Link>
+            <Link href="/skill-development" style={s.flink}>Skill Development</Link>
+            <Link href="/about" style={s.flink}>About</Link>
           </div>
 
           <div style={s.fcol}>
