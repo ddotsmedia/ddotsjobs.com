@@ -17,6 +17,7 @@ const instrumentSerif = Instrument_Serif({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? 'https://ddotsjobs.com'),
   title: 'ddotsjobs — Kerala Jobs',
   description: 'Kerala job portal — local, gulf, PSC and walk-in jobs.',
   icons: {
