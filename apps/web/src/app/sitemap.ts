@@ -2,6 +2,9 @@ import type { MetadataRoute } from 'next';
 import { and, db, desc, eq, isNull, ne, tables } from '@ddotsjobs/db';
 import { CATEGORY_SEO, DISTRICTS } from '@/lib/constants';
 
+// Render on demand (DB-backed) — never statically collect at build time.
+export const dynamic = 'force-dynamic';
+
 const BASE = process.env.NEXT_PUBLIC_APP_URL ?? 'https://ddotsjobs.com';
 
 async function safe<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
