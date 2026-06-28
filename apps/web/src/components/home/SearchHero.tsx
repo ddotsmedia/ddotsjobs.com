@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { trpc } from '@/lib/trpc/client';
 import { DISTRICTS, HERO_CHIPS } from '@/lib/constants';
 
 // Malayalam suffix per chip (Unicode, no transliteration).
@@ -19,6 +20,8 @@ export function SearchHero() {
   const [q, setQ] = useState('');
   const [district, setDistrict] = useState('');
   const [active, setActive] = useState<Set<string>>(new Set());
+  const [parsing, setParsing] = useState(false);
+  const aiSearch = trpc.jobs.aiSearch.useMutation();
 
   function toggleChip(key: string, kind: string, value: string) {
     if (kind === 'link') {
@@ -33,15 +36,41 @@ export function SearchHero() {
     });
   }
 
-  function submit() {
+  function baseParams(): URLSearchParams {
     const params = new URLSearchParams();
-    if (q.trim()) params.set('q', q.trim());
     if (district) params.set('district', district);
     for (const chip of HERO_CHIPS) {
       if (!active.has(chip.key)) continue;
       if (chip.kind === 'category') params.set('category', chip.value);
       if (chip.kind === 'flag') params.set(chip.value, '1');
     }
+    return params;
+  }
+
+  async function submit() {
+    const query = q.trim();
+    const params = baseParams();
+    // Smart search: try AI natural-language parse first; fall back to text q.
+    if (query && !district && active.size === 0) {
+      setParsing(true);
+      try {
+        const r = await aiSearch.mutateAsync({ query });
+        if (r.confidence > 0.7) {
+          if (r.category) params.set('category', r.category);
+          if (r.district) params.set('district', r.district);
+          if (r.salaryMin) params.set('salaryMin', String(r.salaryMin));
+          if (r.jobType) params.set('type', r.jobType);
+          if (r.isWalkIn) params.set('type', 'walk_in');
+          router.push(`/jobs?${params.toString()}`);
+          return;
+        }
+      } catch {
+        // fall through to text search
+      } finally {
+        setParsing(false);
+      }
+    }
+    if (query) params.set('q', query);
     router.push(`/jobs${params.toString() ? `?${params.toString()}` : ''}`);
   }
 
@@ -53,8 +82,8 @@ export function SearchHero() {
             type="text"
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && submit()}
-            placeholder="Job title, skill or company"
+            onKeyDown={(e) => { if (e.key === 'Enter') void submit(); }}
+            placeholder="Try: nurse jobs ernakulam above ₹30,000"
             aria-label="Search jobs"
             style={s.input}
           />
@@ -72,8 +101,8 @@ export function SearchHero() {
                 </option>
               ))}
             </select>
-            <button type="button" onClick={submit} className="hp-btn" style={s.btn}>
-              Search
+            <button type="button" onClick={() => void submit()} disabled={parsing} className="hp-btn" style={s.btn}>
+              {parsing ? '…' : 'Search'}
             </button>
           </div>
         </div>

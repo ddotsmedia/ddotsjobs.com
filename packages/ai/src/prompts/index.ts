@@ -296,6 +296,133 @@ export function walkinGenerateNoticePrompt(input: {
   };
 }
 
+// ── Interview prep (Pro) ────────────────────────────────────────────────
+export const interviewQuestionsSchema = z.object({
+  common_questions: z.array(z.string()),
+  technical_questions: z.array(z.string()),
+  malayalam_questions: z.array(z.string()),
+  tips: z.array(z.string()),
+  tips_ml: z.array(z.string()),
+  dress_code: z.string(),
+  documents_to_bring: z.array(z.string()),
+});
+export type InterviewQuestionsOutput = z.infer<typeof interviewQuestionsSchema>;
+
+export function interviewGenerateQuestionsPrompt(input: {
+  jobTitle: string;
+  category: string;
+  employerType: string;
+  language: string;
+}): PromptSpec<InterviewQuestionsOutput> {
+  return {
+    task: 'reasoning',
+    version: 1,
+    system:
+      'You are an interview coach for Kerala job seekers. For the given role, return: ' +
+      '5 common_questions, 5 technical_questions, 3 malayalam_questions (in Malayalam), ' +
+      '3 tips and 3 tips_ml (Malayalam), a short dress_code line, and documents_to_bring ' +
+      '(typical for Kerala interviews: resume copies, ID proof, certificates). Be specific ' +
+      'to the role and realistic for Kerala employers.',
+    prompt: JSON.stringify(input),
+    schema: interviewQuestionsSchema,
+  };
+}
+
+// ── Cover letter (Pro) ──────────────────────────────────────────────────
+export const coverLetterSchema = z.object({ cover_letter: z.string().min(1) });
+export type CoverLetterOutput = z.infer<typeof coverLetterSchema>;
+
+export function applicationCoverLetterPrompt(input: {
+  seekerName: string;
+  seekerProfession: string;
+  totalExperienceMonths: number;
+  jobTitle: string;
+  companyName: string;
+  district: string;
+  employerQuestion: string | null;
+  language: string;
+}): PromptSpec<CoverLetterOutput> {
+  const lang = input.language === 'ml' ? 'Malayalam' : 'English';
+  return {
+    task: 'reasoning',
+    version: 1,
+    system:
+      `Write a concise, sincere cover letter (120-180 words) in ${lang} for this Kerala ` +
+      'job application. First person, specific to the role, no clichés or invented facts. ' +
+      'If an employer question is provided, address it. Return as `cover_letter`.',
+    prompt: JSON.stringify(input),
+    schema: coverLetterSchema,
+  };
+}
+
+// ── Resume / CV generator (Pro) ─────────────────────────────────────────
+export const resumeGenerateSchema = z.object({
+  summary: z.string(),
+  summary_ml: z.string(),
+  skills: z.array(z.string()),
+  experience_placeholder: z.string(),
+  education_placeholder: z.string(),
+  certifications: z.array(z.string()),
+  strengths: z.array(z.string()),
+});
+export type ResumeGenerateOutput = z.infer<typeof resumeGenerateSchema>;
+
+export function resumeGenerateKeralaCvPrompt(input: {
+  fullName: string;
+  fullNameMl: string | null;
+  primaryProfession: string | null;
+  district: string | null;
+  totalExperienceMonths: number;
+  preferredCategories: string[];
+  verifiedCerts: string[];
+  salaryMin: number | null;
+  salaryMax: number | null;
+}): PromptSpec<ResumeGenerateOutput> {
+  return {
+    task: 'reasoning',
+    version: 1,
+    system:
+      'Draft a professional CV skeleton for a Kerala job seeker from the structured data. ' +
+      'Return: summary (3-4 sentences, professional) + summary_ml (Malayalam), skills[], ' +
+      'experience_placeholder (a fill-in template line), education_placeholder, ' +
+      'certifications[] (include any provided verified certs), strengths[]. ' +
+      'Never fabricate employers, dates or qualifications — use placeholders the user edits.',
+    prompt: JSON.stringify(input),
+    schema: resumeGenerateSchema,
+  };
+}
+
+// ── Smart search NL parser (Flash) ──────────────────────────────────────
+export const smartSearchSchema = z.object({
+  category: z.string().nullable(),
+  district: z.string().nullable(),
+  salaryMin: z.number().nullable(),
+  jobType: z.string().nullable(),
+  isWalkIn: z.boolean().nullable(),
+  valuesGulfExperience: z.boolean().nullable(),
+  confidence: z.number(),
+});
+export type SmartSearchOutput = z.infer<typeof smartSearchSchema>;
+
+export function searchParseNaturalLanguagePrompt(input: {
+  query: string;
+  availableCategories: string[];
+  availableDistricts: string[];
+}): PromptSpec<SmartSearchOutput> {
+  return {
+    task: 'extract',
+    version: 1,
+    system:
+      'Parse a Kerala job-search query into structured filters. Map to the provided ' +
+      'availableCategories and availableDistricts slugs only (else null). salaryMin in ' +
+      'rupees/month (number) or null. jobType one of full_time|part_time|contract|walk_in| ' +
+      'internship or null. isWalkIn/valuesGulfExperience booleans or null. confidence 0-1 ' +
+      '(how sure the parse is). Return null for anything not clearly stated.',
+    prompt: JSON.stringify(input),
+    schema: smartSearchSchema,
+  };
+}
+
 // ── Registry of every prompt for introspection / eval harnesses ─────────
 export const PROMPTS = {
   fitScore: fitScorePrompt,
@@ -308,6 +435,10 @@ export const PROMPTS = {
   knmcExtractCertificate: knmcExtractCertificatePrompt,
   pscExtractNotification: pscExtractNotificationPrompt,
   pscGenerateSummaryMl: pscGenerateSummaryMlPrompt,
+  interviewGenerateQuestions: interviewGenerateQuestionsPrompt,
+  applicationCoverLetter: applicationCoverLetterPrompt,
+  resumeGenerateKeralaCv: resumeGenerateKeralaCvPrompt,
+  searchParseNaturalLanguage: searchParseNaturalLanguagePrompt,
 } as const;
 
 export type PromptName = keyof typeof PROMPTS;

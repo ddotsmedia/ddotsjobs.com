@@ -2,6 +2,8 @@ import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
 import { and, createNotification, desc, eq, isNull, sql, tables, type Database } from '@ddotsjobs/db';
 import { uploadFile } from '@ddotsjobs/storage';
+import { callAI } from '@ddotsjobs/ai';
+import { applicationCoverLetterPrompt } from '@ddotsjobs/ai/prompts';
 import { computeFitScore, type FitScoreResult } from '@/lib/services/fit-score.service';
 import { roleProcedure, router } from '../trpc.js';
 
@@ -85,6 +87,47 @@ async function computeFitForApply(db: Database, userId: string, jobId: string): 
 }
 
 export const applicationsRouter = router({
+  generateCoverLetter: roleProcedure('seeker')
+    .input(z.object({ jobId: z.string().uuid(), language: z.enum(['ml', 'en']).default('en') }))
+    .mutation(async ({ ctx, input }) => {
+      const [job] = await ctx.db
+        .select({
+          titleEn: tables.jobs.titleEn,
+          district: tables.jobs.district,
+          employerQuestionEn: tables.jobs.employerQuestionEn,
+          company: sql<string>`coalesce(${tables.employers.displayNameEn}, ${tables.employers.legalNameEn})`,
+        })
+        .from(tables.jobs)
+        .innerJoin(tables.employers, eq(tables.employers.id, tables.jobs.employerId))
+        .where(and(eq(tables.jobs.id, input.jobId), isNull(tables.jobs.deletedAt)))
+        .limit(1);
+      if (!job) throw new TRPCError({ code: 'NOT_FOUND', message: 'Job not found' });
+
+      const [u] = await ctx.db
+        .select({ nameEn: tables.users.nameEn, primaryProfession: tables.users.primaryProfession })
+        .from(tables.users)
+        .where(eq(tables.users.id, ctx.user.id))
+        .limit(1);
+      const [p] = await ctx.db
+        .select({ months: tables.seekerProfiles.totalExperienceMonths })
+        .from(tables.seekerProfiles)
+        .where(eq(tables.seekerProfiles.userId, ctx.user.id))
+        .limit(1);
+
+      const spec = applicationCoverLetterPrompt({
+        seekerName: u?.nameEn ?? 'Applicant',
+        seekerProfession: u?.primaryProfession ?? 'professional',
+        totalExperienceMonths: p?.months ?? 0,
+        jobTitle: job.titleEn,
+        companyName: job.company,
+        district: job.district ?? '',
+        employerQuestion: job.employerQuestionEn,
+        language: input.language,
+      });
+      const { data } = await callAI({ task: spec.task, prompt: spec.prompt, system: spec.system, schema: spec.schema });
+      return data;
+    }),
+
   create: roleProcedure('seeker')
     .input(
       z.object({

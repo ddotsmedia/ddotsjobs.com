@@ -3,7 +3,8 @@ import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
 import { and, asc, count, createNotification, desc, eq, gte, inArray, isNull, sql, tables, type SQL } from '@ddotsjobs/db';
 import { callAI } from '@ddotsjobs/ai';
-import { jobAutoFillDescriptionPrompt } from '@ddotsjobs/ai/prompts';
+import { jobAutoFillDescriptionPrompt, searchParseNaturalLanguagePrompt } from '@ddotsjobs/ai/prompts';
+import { SECTORS } from '@/lib/constants';
 import { notifyGoogleIndexing } from '@/lib/google-indexing';
 import { alertsQueue, searchSyncQueue } from '../queue.js';
 import { protectedProcedure, publicProcedure, roleProcedure, router } from '../trpc.js';
@@ -119,6 +120,25 @@ function jobSlug(title: string, district: string): string {
 }
 
 export const jobsRouter = router({
+  // Natural-language → structured filters (Gemini Flash). Returns parsed filters
+  // + confidence; the client decides whether to auto-apply.
+  aiSearch: publicProcedure
+    .input(z.object({ query: z.string().min(2).max(160) }))
+    .mutation(async ({ input }) => {
+      const spec = searchParseNaturalLanguagePrompt({
+        query: input.query,
+        availableCategories: SECTORS.map((s) => s.slug),
+        availableDistricts: [...DISTRICTS],
+      });
+      try {
+        const { data } = await callAI({ task: spec.task, prompt: spec.prompt, system: spec.system, schema: spec.schema });
+        return data;
+      } catch {
+        // AI unavailable → caller falls back to plain text search.
+        return { category: null, district: null, salaryMin: null, jobType: null, isWalkIn: null, valuesGulfExperience: null, confidence: 0 };
+      }
+    }),
+
   count: publicProcedure.input(countInput).query(async ({ ctx, input }) => {
     const rows = await ctx.db
       .select({ c: count() })

@@ -43,6 +43,9 @@ export function ApplyForm({
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const create = trpc.applications.create.useMutation();
+  const coverLetter = trpc.applications.generateCoverLetter.useMutation({
+    onSuccess: (d) => setResponse(d.cover_letter.slice(0, 1000)),
+  });
 
   async function startRec() {
     const mime = pickMime();
@@ -132,7 +135,18 @@ export function ApplyForm({
             rows={4}
             style={s.textarea}
           />
-          <span style={s.counter}>{response.length} / 1000</span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={() => coverLetter.mutate({ jobId, language: 'en' })}
+              disabled={coverLetter.isPending}
+              style={{ fontSize: 13, fontWeight: 600, color: '#3A9EA5', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+            >
+              {coverLetter.isPending ? 'Writing…' : '✨ Generate cover letter with AI'}
+            </button>
+            <span style={s.counter}>{response.length} / 1000</span>
+          </div>
+          {coverLetter.data && <p style={{ fontSize: 12, color: '#A36C00', margin: '4px 0 0' }}>AI generated — please review before submitting.</p>}
         </div>
       )}
 

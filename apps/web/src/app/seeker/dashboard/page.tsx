@@ -78,6 +78,26 @@ export default async function SeekerDashboardPage() {
           ))}
         </div>
 
+        {/* AI tools */}
+        <section style={s.aiCard}>
+          <h2 style={s.h2}>AI tools</h2>
+          <div style={s.aiGrid}>
+            {[
+              { icon: '🎯', name: 'Job Match Scores', desc: 'See how well you fit', href: '/jobs' },
+              { icon: '📄', name: 'Resume Builder', desc: 'AI-drafted CV', href: '/seeker/profile/resume' },
+              { icon: '💬', name: 'Interview Prep', desc: 'Questions + tips', href: '/seeker/interview-prep' },
+              { icon: '🔍', name: 'Smart Search', desc: 'Search in plain language', href: '/jobs' },
+            ].map((t) => (
+              <Link key={t.name} href={t.href} style={s.aiTile}>
+                <span style={s.aiIcon} aria-hidden>{t.icon}</span>
+                <span style={s.aiName}>{t.name}</span>
+                <span style={s.aiDesc}>{t.desc}</span>
+                <span style={s.aiTry}>Try it →</span>
+              </Link>
+            ))}
+          </div>
+        </section>
+
         <div style={s.columns}>
           {/* Left */}
           <div style={s.colLeft}>
@@ -224,6 +244,13 @@ const s: Record<string, React.CSSProperties> = {
   colLeft: { flex: '2 1 360px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' },
   colRight: { flex: '1 1 280px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' },
   card: { padding: 'var(--space-2)', background: '#fff', borderRadius: 'var(--radius-card)', border: '1px solid #efefe9' },
+  aiCard: { padding: 'var(--space-2)', background: '#fff', borderRadius: 'var(--radius-card)', border: '1px solid #efefe9', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' },
+  aiGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 'var(--space-1)' },
+  aiTile: { display: 'flex', flexDirection: 'column', gap: 2, padding: 'var(--space-2)', background: '#faf9f5', borderRadius: 'var(--radius-card)', border: '1px solid #efefe9' },
+  aiIcon: { fontSize: 24, lineHeight: 1 },
+  aiName: { fontSize: 14, fontWeight: 700, color: '#1A1916', marginTop: 4 },
+  aiDesc: { fontSize: 12, color: '#6B6860' },
+  aiTry: { fontSize: 12, fontWeight: 600, color: '#3A9EA5', marginTop: 4 },
   cardHead: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-1)' },
   h2: { fontFamily: 'var(--font-display)', fontStyle: 'italic', fontSize: '1.3rem', margin: 0 },
   viewAll: { fontSize: 13, fontWeight: 600, color: 'var(--color-accent)' },
