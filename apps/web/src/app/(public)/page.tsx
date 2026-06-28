@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { SearchHero } from '@/components/home/SearchHero';
+import { StatsStrip } from '@/components/home/StatsStrip';
+import { WhatsappCta } from '@/components/home/WhatsappCta';
 import { Logo } from '@/components/Logo';
 import { SECTORS } from '@/lib/constants';
 import { getHomeStats, getLatestJobs, getSectorCounts, type LatestJob } from './_data';
@@ -48,9 +50,21 @@ const SECTOR_COLORS: Record<string, string> = {
   retail: '#8DC63F',
 };
 
-function rupees(paise: number | null): string {
-  if (paise == null) return 'Salary undisclosed';
-  return `₹${Math.round(paise / 100).toLocaleString('en-IN')}/mo`;
+function rupee(paise: number): string {
+  return `₹${Math.round(paise / 100).toLocaleString('en-IN')}`;
+}
+
+// Card salary: explicit "not disclosed" text rather than hiding it.
+function salaryLabel(j: LatestJob): string {
+  if (!j.salaryDisclosed) return 'Salary not disclosed';
+  if (j.salaryMinPaise != null && j.salaryMaxPaise != null) return `${rupee(j.salaryMinPaise)}–${rupee(j.salaryMaxPaise)}/mo`;
+  if (j.salaryMinPaise != null) return `${rupee(j.salaryMinPaise)}/mo`;
+  return 'Salary not disclosed';
+}
+
+function isNew(d: Date | null): boolean {
+  if (!d) return false;
+  return Date.now() - new Date(d).getTime() < 24 * 60 * 60 * 1000;
 }
 
 function relativeTime(d: Date | null): string {
@@ -90,12 +104,8 @@ export default async function HomePage() {
     getLatestJobs(),
   ]);
 
-  const statCards = [
-    { label: 'Active jobs', value: stats.activeJobs.toLocaleString('en-IN'), color: '#3A9EA5' },
-    { label: 'Verified employers', value: stats.verifiedEmployers.toLocaleString('en-IN'), color: '#3A9EA5' },
-    { label: 'Placements', value: stats.placements.toLocaleString('en-IN'), color: '#3A9EA5' },
-    { label: 'WhatsApp subscribers', value: stats.whatsapp, color: '#8DC63F' },
-  ];
+  const catLabel = (slug: string | null): string =>
+    SECTORS.find((sec) => sec.slug === slug)?.label ?? (slug ? titleCase(slug) : '');
 
   return (
     <main style={s.page}>
@@ -111,18 +121,9 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ── Stats strip ── */}
-      <section style={s.statSection}>
-        <div style={s.container}>
-          <div style={s.statStrip}>
-            {statCards.map((c, i) => (
-              <div key={c.label} style={{ ...s.statCell, ...(i > 0 ? s.statDivider : {}) }}>
-                <span style={{ ...s.statValue, color: c.color }}>{c.value}</span>
-                <span style={s.statLabel}>{c.label}</span>
-              </div>
-            ))}
-          </div>
-        </div>
+      {/* ── Stats strip (animated) ── */}
+      <section style={s.container}>
+        <StatsStrip stats={stats} />
       </section>
 
       {/* ── Sector grid ── */}
@@ -144,6 +145,16 @@ export default async function HomePage() {
       <section className="hp-section" style={s.container}>
         <p style={s.eyebrow}>Fresh</p>
         <h2 style={s.h2}>Latest jobs</h2>
+
+        {/* Filter tabs */}
+        <div style={s.tabs}>
+          <Link href="/jobs" style={{ ...s.tab, ...s.tabActive }}>All Jobs</Link>
+          <Link href="/jobs?type=walk_in" style={s.tab}>Walk-in</Link>
+          <Link href="/gulf-return" style={s.tab}>Gulf Return</Link>
+          <Link href="/jobs?category=government" style={s.tab}>Government</Link>
+          <Link href="/jobs" style={s.tab}>Latest</Link>
+        </div>
+
         {latest.length === 0 ? (
           <div style={s.empty}>
             <p style={{ fontWeight: 600 }}>New jobs are arriving soon.</p>
@@ -155,57 +166,101 @@ export default async function HomePage() {
             </Link>
           </div>
         ) : (
-          <div style={s.jobList}>
-            {latest.map((j: LatestJob, i: number) => (
-              <Link key={j.id} href={`/jobs/${j.slug ?? j.id}`} className="hp-job" style={s.jobCard}>
-                <div style={{ ...s.logo, background: logoColor(i) }} aria-hidden>
-                  {companyInitials(j.company)}
-                </div>
-                <div style={s.jobBody}>
-                  <div style={s.jobTop}>
-                    <span style={s.jobTitle}>{j.titleEn}</span>
-                    <span style={s.jobTime}>{relativeTime(j.publishedAt)}</span>
-                  </div>
-                  <span style={s.jobCompany}>{j.company}</span>
-                  <div style={s.jobMeta}>
-                    <span style={s.jobSalary}>{rupees(j.salaryMinPaise)}</span>
-                    {j.district && <span style={s.jobDistrict}>{titleCase(j.district)}</span>}
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
+          <>
+            <div style={s.jobList}>
+              {latest.map((j: LatestJob, i: number) => {
+                const cat = catLabel(j.categorySlug);
+                const catColor = SECTOR_COLORS[j.categorySlug ?? ''] ?? '#3A9EA5';
+                return (
+                  <Link key={j.id} href={`/jobs/${j.slug ?? j.id}`} className="hp-job" style={s.jobCard}>
+                    <div style={{ ...s.logo, background: logoColor(i) }} aria-hidden>
+                      {companyInitials(j.company)}
+                    </div>
+                    <div style={s.jobBody}>
+                      <div style={s.jobTop}>
+                        <span style={s.jobTitle}>{j.titleEn}</span>
+                        <span style={s.jobTime}>{relativeTime(j.publishedAt)}</span>
+                      </div>
+                      <span style={s.jobCompany}>{j.company}</span>
+                      <div style={s.jobMeta}>
+                        {isNew(j.publishedAt) && <span style={s.newBadge}>New</span>}
+                        {j.isWalkIn && <span style={s.walkBadge}>Walk-in</span>}
+                        {cat && <span style={{ ...s.catChip, color: catColor, background: `${catColor}1A` }}>{cat}</span>}
+                        {j.district && <span style={s.jobDistrict}>{titleCase(j.district)}</span>}
+                        <span style={s.jobSalary}>{salaryLabel(j)}</span>
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+            <Link href="/jobs" style={s.viewAll}>
+              View all {stats.activeJobs.toLocaleString('en-IN')} jobs →
+            </Link>
+          </>
         )}
       </section>
 
-      {/* ── WhatsApp alert banner ── */}
-      <section className="hp-section" style={{ ...s.container, paddingTop: 0 }}>
-        <div style={s.waBanner}>
-          <span style={s.waIcon} aria-hidden>💬</span>
-          <div style={s.waText}>
-            <p style={s.waTitle}>Get job alerts on WhatsApp</p>
-            <p style={s.waSub}>Malayalam or English — your choice.</p>
-          </div>
-          <Link href="/seeker/alerts" className="hp-btn" style={s.waBtn}>
-            Set alerts
-          </Link>
-        </div>
-      </section>
+      {/* ── WhatsApp CTA (full-width dark teal) ── */}
+      <WhatsappCta />
 
-      {/* ── Footer ── */}
+      {/* ── Footer (dark, 4 columns) ── */}
       <footer style={s.footer}>
-        <div style={{ ...s.container, ...s.footerInner }}>
-          <div style={s.footerBrand}>
-            <Logo size="sm" showText href="/" />
-            <span style={s.footerTagline}>Kerala&rsquo;s career platform · Ddotsmedia IT Solutions</span>
+        <div style={{ ...s.container, ...s.footerGrid }}>
+          <div style={s.fcol}>
+            <Logo size="sm" variant="white" showText href="/" />
+            <p style={s.ftagline}>Kerala&rsquo;s career platform.<br />Ddotsmedia IT Solutions.</p>
+            <div style={s.social}>
+              <a href="https://wa.me/" style={s.socialLink} aria-label="WhatsApp">💬</a>
+              <a href="https://instagram.com/" style={s.socialLink} aria-label="Instagram">📷</a>
+              <a href="https://facebook.com/" style={s.socialLink} aria-label="Facebook">📘</a>
+            </div>
           </div>
-          <nav style={s.footerNav}>
-            <Link href="/about" className="hp-link" style={s.footerLink}>About</Link>
-            <Link href="/employer/register" className="hp-link" style={s.footerLink}>For Employers</Link>
-            <Link href="/psc" className="hp-link" style={s.footerLink}>PSC Tracker</Link>
-            <Link href="/privacy" className="hp-link" style={s.footerLink}>Privacy</Link>
-          </nav>
-          <p style={s.copyright}>© 2026 ddotsjobs.com · Ddotsmedia IT Solutions</p>
+
+          <div style={s.fcol}>
+            <p style={s.fhead}>For Jobseekers</p>
+            <Link href="/jobs" style={s.flink}>Browse Jobs</Link>
+            <Link href="/login" style={s.flink}>Create Account</Link>
+            <Link href="/seeker/alerts" style={s.flink}>Job Alerts</Link>
+            <Link href="/psc" style={s.flink}>PSC Tracker</Link>
+            <Link href="/gulf-return" style={s.flink}>Gulf Return Hub</Link>
+            <Link href="/technopark-jobs" style={s.flink}>IT Park Jobs</Link>
+            <Link href="/jobs?type=walk_in" style={s.flink}>Walk-in Jobs</Link>
+          </div>
+
+          <div style={s.fcol}>
+            <p style={s.fhead}>For Employers</p>
+            <Link href="/employer/register" style={s.flink}>Post a Job</Link>
+            <Link href="/employer/dashboard" style={s.flink}>Employer Dashboard</Link>
+            <Link href="/employer/talent" style={s.flink}>Talent Pool</Link>
+            <Link href="/employer/profile" style={s.flink}>Company Profile</Link>
+            <Link href="/employer/billing" style={s.flink}>Pricing Plans</Link>
+          </div>
+
+          <div style={s.fcol}>
+            <p style={s.fhead}>Top Districts</p>
+            {[
+              ['ernakulam', 'Ernakulam'],
+              ['thiruvananthapuram', 'Thiruvananthapuram'],
+              ['kozhikode', 'Kozhikode'],
+              ['thrissur', 'Thrissur'],
+              ['malappuram', 'Malappuram'],
+              ['kannur', 'Kannur'],
+            ].map(([v, label]) => (
+              <Link key={v} href={`/jobs?district=${v}`} style={s.flink}>Jobs in {label}</Link>
+            ))}
+          </div>
+        </div>
+
+        <div style={s.footerBar}>
+          <div style={{ ...s.container, ...s.footerBarInner }}>
+            <span>© 2026 ddotsjobs.com</span>
+            <nav style={s.barLinks}>
+              <Link href="/privacy" style={s.barLink}>Privacy</Link>
+              <Link href="/terms" style={s.barLink}>Terms</Link>
+              <Link href="/sitemap.xml" style={s.barLink}>Sitemap</Link>
+            </nav>
+          </div>
         </div>
       </footer>
     </main>
@@ -213,7 +268,7 @@ export default async function HomePage() {
 }
 
 const s: Record<string, React.CSSProperties> = {
-  page: { background: 'var(--color-neutral)', minHeight: '100dvh', paddingBottom: 'var(--space-5)' },
+  page: { background: 'var(--color-neutral)', minHeight: '100dvh' },
   container: { width: '100%', maxWidth: 1040, margin: '0 auto', padding: '0 var(--space-2)' },
   hero: {
     padding: 'clamp(48px, 9vw, 80px) 0',
@@ -303,27 +358,29 @@ const s: Record<string, React.CSSProperties> = {
   sectorIcon: { fontSize: 24, lineHeight: 1, width: 44, height: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: 12 },
   sectorLabel: { fontSize: 15, fontWeight: 600, color: 'var(--color-dark)' },
   sectorCount: { fontSize: 13, fontWeight: 600, color: '#3A9EA5' },
-  jobList: { display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' },
+  tabs: { display: 'flex', flexWrap: 'wrap', gap: 8, margin: '0 0 var(--space-2)' },
+  tab: { fontSize: 13, fontWeight: 600, color: '#6B6860', background: '#fff', border: '1px solid #E8E6DF', padding: '7px 16px', borderRadius: 999, minHeight: 36, display: 'inline-flex', alignItems: 'center' },
+  tabActive: { color: '#1A1916', background: 'rgba(58,158,165,0.12)', borderColor: 'rgba(58,158,165,0.35)' },
+  jobList: { display: 'flex', flexDirection: 'column', background: '#fff', borderRadius: 'var(--radius-card)', border: '1px solid #efefe9', overflow: 'hidden' },
   jobCard: {
     display: 'flex',
     gap: 'var(--space-2)',
     alignItems: 'flex-start',
     padding: 'var(--space-2)',
     background: '#fff',
-    borderRadius: 'var(--radius-card)',
-    border: '1px solid #efefe9',
+    borderBottom: '1px solid #f1f1ec',
   },
   logo: {
-    flex: '0 0 40px',
-    width: 40,
-    height: 40,
+    flex: '0 0 48px',
+    width: 48,
+    height: 48,
     borderRadius: '9999px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     color: '#fff',
     fontWeight: 600,
-    fontSize: 14,
+    fontSize: 16,
   },
   jobBody: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 6 },
   jobTop: { display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'baseline' },
@@ -358,47 +415,37 @@ const s: Record<string, React.CSSProperties> = {
     background: 'var(--color-brand)',
     borderRadius: 'var(--radius-pill)',
   },
-  // WhatsApp banner — green-tinted.
-  waBanner: {
+  newBadge: { fontSize: 11, fontWeight: 700, color: '#fff', background: '#8DC63F', padding: '2px 8px', borderRadius: 'var(--radius-pill)' },
+  walkBadge: { fontSize: 11, fontWeight: 700, color: '#1A1916', background: 'rgba(245,200,66,0.25)', padding: '2px 8px', borderRadius: 'var(--radius-pill)' },
+  catChip: { fontSize: 12, fontWeight: 600, padding: '2px 10px', borderRadius: 'var(--radius-pill)' },
+  viewAll: { display: 'inline-block', marginTop: 'var(--space-2)', fontSize: 14, fontWeight: 700, color: '#3A9EA5' },
+  // Dark footer.
+  footer: { background: '#0F0E0C', color: '#F0EFE8', marginTop: 0 },
+  footerGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+    gap: 'var(--space-3)',
+    paddingTop: 'var(--space-5)',
+    paddingBottom: 'var(--space-4)',
+  },
+  fcol: { display: 'flex', flexDirection: 'column', gap: 10 },
+  ftagline: { fontSize: 13, color: '#9a9a92', lineHeight: 1.5, margin: 0 },
+  social: { display: 'flex', gap: 12, marginTop: 4, fontSize: 18 },
+  socialLink: { textDecoration: 'none' },
+  fhead: { fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#F5C842', margin: '0 0 2px' },
+  flink: { fontSize: 14, color: '#c7c5bd' },
+  footerBar: { borderTop: '1px solid rgba(255,255,255,0.1)' },
+  footerBarInner: {
     display: 'flex',
     flexWrap: 'wrap',
     gap: 'var(--space-2)',
-    alignItems: 'center',
-    padding: 'var(--space-3)',
-    background: 'rgba(37,211,102,0.06)',
-    borderLeft: '3px solid #25D366',
-    borderRadius: 12,
-  },
-  waIcon: { fontSize: 24, lineHeight: 1 },
-  waText: { flex: 1, minWidth: 180 },
-  waTitle: { fontSize: '1.2rem', fontWeight: 700, color: '#1A1916', margin: 0 },
-  waSub: { fontSize: 14, color: '#6B6860', margin: '4px 0 0' },
-  waBtn: {
-    padding: '12px 24px',
-    fontWeight: 600,
-    color: '#fff',
-    background: '#25D366',
-    borderRadius: 8,
-  },
-  footer: { borderTop: '1px solid #E8E6DF', background: '#FAFAF8' },
-  footerInner: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: 'var(--space-3)',
     justifyContent: 'space-between',
-    paddingTop: 'var(--space-4)',
-    paddingBottom: 'var(--space-4)',
+    alignItems: 'center',
+    paddingTop: 'var(--space-2)',
+    paddingBottom: 'var(--space-2)',
+    fontSize: 12,
+    color: '#9a9a92',
   },
-  footerBrand: { display: 'flex', flexDirection: 'column', gap: 4, flex: '1 1 240px' },
-  wordmark: {
-    fontFamily: 'var(--font-display)',
-    fontStyle: 'italic',
-    fontSize: '1.7rem',
-    color: '#1A1916',
-    lineHeight: 1,
-  },
-  footerTagline: { fontSize: 13, color: '#B0AD9F' },
-  footerNav: { display: 'flex', flexWrap: 'wrap', gap: 'var(--space-3)', alignItems: 'center' },
-  footerLink: { fontSize: 14, color: '#6B6860' },
-  copyright: { fontSize: 12, color: '#B0AD9F', flexBasis: '100%' },
+  barLinks: { display: 'flex', gap: 'var(--space-2)' },
+  barLink: { fontSize: 12, color: '#9a9a92' },
 };

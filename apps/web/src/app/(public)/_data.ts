@@ -16,7 +16,11 @@ export interface LatestJob {
   slug: string | null;
   titleEn: string;
   district: string | null;
+  categorySlug: string | null;
   salaryMinPaise: number | null;
+  salaryMaxPaise: number | null;
+  salaryDisclosed: boolean;
+  isWalkIn: boolean;
   publishedAt: Date | null;
   company: string;
 }
@@ -88,7 +92,11 @@ export function getLatestJobs(): Promise<LatestJob[]> {
           slug: tables.jobs.slug,
           titleEn: tables.jobs.titleEn,
           district: tables.jobs.district,
+          categorySlug: tables.jobs.categorySlug,
           salaryMinPaise: tables.jobs.salaryMinPaise,
+          salaryMaxPaise: tables.jobs.salaryMaxPaise,
+          salaryDisclosed: tables.jobs.salaryDisclosed,
+          isWalkIn: tables.jobs.isWalkIn,
           publishedAt: tables.jobs.publishedAt,
           displayNameEn: tables.employers.displayNameEn,
           legalNameEn: tables.employers.legalNameEn,
@@ -97,13 +105,17 @@ export function getLatestJobs(): Promise<LatestJob[]> {
         .innerJoin(tables.employers, eq(tables.jobs.employerId, tables.employers.id))
         .where(and(eq(tables.jobs.status, 'active'), isNull(tables.jobs.deletedAt)))
         .orderBy(desc(tables.jobs.publishedAt))
-        .limit(5);
+        .limit(8);
       return rows.map((r) => ({
         id: r.id,
         slug: r.slug,
         titleEn: r.titleEn,
         district: r.district,
+        categorySlug: r.categorySlug,
         salaryMinPaise: r.salaryMinPaise,
+        salaryMaxPaise: r.salaryMaxPaise,
+        salaryDisclosed: r.salaryDisclosed,
+        isWalkIn: r.isWalkIn,
         publishedAt: r.publishedAt,
         company: r.displayNameEn ?? r.legalNameEn,
       }));

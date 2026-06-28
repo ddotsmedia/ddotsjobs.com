@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { Logo } from '@/components/Logo';
@@ -10,9 +10,17 @@ export function PublicHeader() {
   const role = session?.user?.role;
   const dashboardHref = role === 'employer' ? '/employer/dashboard' : role ? '/seeker/dashboard' : null;
   const [open, setOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   return (
-    <header style={s.header}>
+    <header style={{ ...s.header, boxShadow: scrolled ? '0 2px 12px rgba(0,0,0,0.08)' : 'none' }}>
       <div style={s.inner}>
         <Logo size="md" showText href="/" />
 
@@ -21,6 +29,8 @@ export function PublicHeader() {
           <Link href="/jobs" style={s.link}>Jobs</Link>
           <Link href="/psc" style={s.link}>PSC</Link>
           <Link href="/gulf-return" style={s.link}>Gulf Return</Link>
+          <Link href="/technopark-jobs" style={s.link}>IT Parks</Link>
+          <Link href="/jobs?type=walk_in" style={s.link}>Walk-in</Link>
           {dashboardHref ? (
             <Link href={dashboardHref} style={s.loginBtn}>Dashboard</Link>
           ) : (
@@ -51,6 +61,8 @@ export function PublicHeader() {
           <Link href="/jobs" style={s.dropItem} onClick={() => setOpen(false)}>Browse jobs</Link>
           <Link href="/psc" style={s.dropItem} onClick={() => setOpen(false)}>PSC Tracker</Link>
           <Link href="/gulf-return" style={s.dropItem} onClick={() => setOpen(false)}>Gulf Return</Link>
+          <Link href="/technopark-jobs" style={s.dropItem} onClick={() => setOpen(false)}>IT Parks</Link>
+          <Link href="/jobs?type=walk_in" style={s.dropItem} onClick={() => setOpen(false)}>Walk-in Jobs</Link>
         </div>
       )}
     </header>
