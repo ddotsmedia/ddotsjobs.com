@@ -8,6 +8,7 @@ import { SECTORS } from '@/lib/constants';
 import { sanitizeHtml, stripHtml } from '@/lib/sanitize';
 import { rateLimit } from '../rate-limit.js';
 import { notifyGoogleIndexing } from '@/lib/google-indexing';
+import { assertAiEnabled, isEnabled } from '@/lib/site-settings';
 import { alertsQueue, searchSyncQueue } from '../queue.js';
 import { protectedProcedure, publicProcedure, roleProcedure, router } from '../trpc.js';
 
@@ -138,6 +139,7 @@ export const jobsRouter = router({
   aiSearch: publicProcedure
     .input(z.object({ query: z.string().min(2).max(160) }))
     .mutation(async ({ input }) => {
+      await assertAiEnabled();
       const spec = searchParseNaturalLanguagePrompt({
         query: input.query,
         availableCategories: SECTORS.map((s) => s.slug),
@@ -156,6 +158,7 @@ export const jobsRouter = router({
   suggestTitles: roleProcedure('employer')
     .input(z.object({ partialTitle: z.string().max(120).default(''), category: z.string().max(60) }))
     .mutation(async ({ ctx, input }) => {
+      await assertAiEnabled();
       const key = `ai:titles:${input.category}:${input.partialTitle.slice(0, 24).toLowerCase()}`;
       const cached = await ctx.redis.get(key);
       if (cached) return JSON.parse(cached) as { titles: string[] };
@@ -173,6 +176,7 @@ export const jobsRouter = router({
   suggestSkills: roleProcedure('employer')
     .input(z.object({ title: z.string().max(120), category: z.string().max(60) }))
     .mutation(async ({ ctx, input }) => {
+      await assertAiEnabled();
       const key = `ai:skills:${input.category}:${input.title.slice(0, 32).toLowerCase()}`;
       const cached = await ctx.redis.get(key);
       if (cached) return JSON.parse(cached) as { skills: string[] };
@@ -190,6 +194,7 @@ export const jobsRouter = router({
   salaryBenchmark: roleProcedure('employer')
     .input(z.object({ category: z.string().max(60), district: z.string().max(40), experienceMin: z.number().int().min(0).max(40).default(0) }))
     .mutation(async ({ ctx, input }) => {
+      await assertAiEnabled();
       const key = `ai:salary:${input.category}:${input.district}:${input.experienceMin}`;
       const cached = await ctx.redis.get(key);
       if (cached) return JSON.parse(cached) as { minPaise: number; maxPaise: number; medianPaise: number; confidence: string; sampleSize: number };
@@ -553,7 +558,14 @@ export const jobsRouter = router({
       throw new TRPCError({ code: 'BAD_REQUEST', message: 'Maximum salary is below minimum' });
     }
 
-    const status = emp.verificationStatus === 'verified' ? 'active' : 'pending_review';
+    // Feature-flag gated publish flow (admin site_settings).
+    const verified = emp.verificationStatus === 'verified';
+    const modRequired = await isEnabled('job_moderation_required', true);
+    const autoApprove = await isEnabled('auto_approve_verified', false);
+    let status: 'active' | 'pending_review';
+    if (!modRequired) status = 'active';
+    else if (autoApprove && verified) status = 'active';
+    else status = 'pending_review';
     const slug = jobSlug(input.title, input.district);
     const now = new Date();
 
@@ -742,6 +754,7 @@ export const jobsRouter = router({
       }),
     )
     .mutation(async ({ input }) => {
+      await assertAiEnabled();
       try {
         const spec = jobAutoFillDescriptionPrompt(input);
         const { data } = await callAI({

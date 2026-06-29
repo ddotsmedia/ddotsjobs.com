@@ -3,6 +3,7 @@ import { callAI } from '@ddotsjobs/ai';
 import { interviewGenerateQuestionsPrompt } from '@ddotsjobs/ai/prompts';
 import { protectedProcedure, router } from '../trpc.js';
 import { rateLimit } from '../rate-limit.js';
+import { assertAiEnabled } from '@/lib/site-settings';
 
 export const interviewRouter = router({
   generateQuestions: protectedProcedure
@@ -15,6 +16,7 @@ export const interviewRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      await assertAiEnabled();
       await rateLimit(ctx.redis, `interview:${ctx.user.id}`, 20, 86_400);
       const spec = interviewGenerateQuestionsPrompt(input);
       const { data } = await callAI({ task: spec.task, prompt: spec.prompt, system: spec.system, schema: spec.schema });

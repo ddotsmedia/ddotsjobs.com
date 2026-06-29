@@ -8,6 +8,7 @@ import { computeFitScore, type FitScoreResult } from '@/lib/services/fit-score.s
 import { stripHtml } from '@/lib/sanitize';
 import { roleProcedure, router } from '../trpc.js';
 import { rateLimit } from '../rate-limit.js';
+import { assertAiEnabled } from '@/lib/site-settings';
 
 const VOICE_EXT: Record<string, string> = {
   'audio/webm': 'webm',
@@ -92,6 +93,7 @@ export const applicationsRouter = router({
   generateCoverLetter: roleProcedure('seeker')
     .input(z.object({ jobId: z.string().uuid(), language: z.enum(['ml', 'en']).default('en') }))
     .mutation(async ({ ctx, input }) => {
+      await assertAiEnabled();
       await rateLimit(ctx.redis, `coverletter:${ctx.user.id}`, 20, 86_400);
       const [job] = await ctx.db
         .select({

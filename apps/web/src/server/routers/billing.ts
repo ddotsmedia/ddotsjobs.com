@@ -5,6 +5,7 @@ import { TRPCError } from '@trpc/server';
 import { and, createNotification, desc, eq, isNull, tables, type Database } from '@ddotsjobs/db';
 import { roleProcedure, publicProcedure, router } from '../trpc.js';
 import { PLANS, publicPlans } from '@/lib/plans';
+import { isEnabled } from '@/lib/site-settings';
 
 const employerProc = roleProcedure('employer');
 const paidTierSchema = z.enum(['employer_starter', 'employer_growth', 'hospital_pro', 'agency']);
@@ -25,6 +26,9 @@ export const billingRouter = router({
   createOrder: employerProc
     .input(z.object({ tier: paidTierSchema }))
     .mutation(async ({ ctx, input }) => {
+      if (!(await isEnabled('payment_enabled', false))) {
+        throw new TRPCError({ code: 'PRECONDITION_FAILED', message: 'Payments are not yet configured. Contact admin.' });
+      }
       const employerId = await requireEmployerId(ctx.db, ctx.user.id);
       const keyId = process.env.RAZORPAY_KEY_ID;
       const keySecret = process.env.RAZORPAY_KEY_SECRET;

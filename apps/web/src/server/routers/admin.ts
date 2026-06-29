@@ -3,6 +3,7 @@ import { and, asc, count, createNotification, desc, eq, gte, ilike, isNull, ne, 
 import { TRPCError } from '@trpc/server';
 import { roleProcedure, router } from '../trpc.js';
 import { alertsQueue, searchSyncQueue } from '../queue.js';
+import { clearSettingCache } from '@/lib/site-settings';
 
 // Admin + super_admin only.
 const adminProcedure = roleProcedure('admin', 'super_admin');
@@ -294,6 +295,8 @@ export const adminRouter = router({
         .insert(tables.siteSettings)
         .values({ key: input.key, value: input.value, updatedAt: new Date() })
         .onConflictDoUpdate({ target: tables.siteSettings.key, set: { value: input.value, updatedAt: new Date() } });
+      // Bust the cache so the new value takes effect immediately.
+      await clearSettingCache(input.key);
       await ctx.db.insert(tables.auditLog).values({
         actorUserId: ctx.user.id,
         action: 'admin.setting_updated',

@@ -11,6 +11,7 @@ import {
   storeOtp,
 } from '@/lib/otp';
 import { sendWhatsAppOtp } from '@/lib/greenapi';
+import { isEnabled } from '@/lib/site-settings';
 import { protectedProcedure, publicProcedure, router } from '../trpc.js';
 
 // E.164 international: + then 8–15 digits, leading digit non-zero.
@@ -33,6 +34,15 @@ export const authRouter = router({
       if (n === 1) await ctx.redis.expire(rlKey, 3600);
       if (n > 5) {
         throw new TRPCError({ code: 'TOO_MANY_REQUESTS', message: 'Too many OTP requests. Try again later.' });
+      }
+      // Block NEW sign-ups when registrations are paused (existing users still log in).
+      const [existing] = await ctx.db
+        .select({ id: tables.users.id })
+        .from(tables.users)
+        .where(and(eq(tables.users.phone, input.phone), isNull(tables.users.deletedAt)))
+        .limit(1);
+      if (!existing && !(await isEnabled('new_registrations_open', true))) {
+        throw new TRPCError({ code: 'PRECONDITION_FAILED', message: 'New registrations are temporarily paused.' });
       }
       const code = generateOtp();
       await storeOtp(input.phone, code);

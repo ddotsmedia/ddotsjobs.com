@@ -21,7 +21,25 @@ export async function alertsQueueProcessor(job: Job): Promise<unknown> {
   return { skipped: true };
 }
 
+// Admin kill-switch: skip alert delivery entirely if disabled in site_settings.
+async function whatsappAlertsActive(): Promise<boolean> {
+  try {
+    const [row] = await db
+      .select({ value: tables.siteSettings.value })
+      .from(tables.siteSettings)
+      .where(eq(tables.siteSettings.key, 'whatsapp_alerts_active'))
+      .limit(1);
+    return (row?.value ?? 'true') === 'true';
+  } catch {
+    return true;
+  }
+}
+
 export async function matchJobAlerts(data: MatchJob): Promise<{ recipients: number }> {
+  if (!(await whatsappAlertsActive())) {
+    console.log('[alerts] WhatsApp alerts disabled by admin setting — skipping');
+    return { recipients: 0 };
+  }
   const j = tables.jobs;
   const [jobRow] = await db
     .select({

@@ -5,6 +5,7 @@ import { callAI } from '@ddotsjobs/ai';
 import { walkinGenerateNoticePrompt } from '@ddotsjobs/ai/prompts';
 import { redis } from '@ddotsjobs/redis';
 import { roleProcedure, router } from '../trpc.js';
+import { assertAiEnabled } from '@/lib/site-settings';
 
 function fmtDate(d: Date): string {
   return new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -54,6 +55,7 @@ export const walkinRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      await assertAiEnabled();
       const j = tables.jobs;
       const [job] = await ctx.db
         .select({
