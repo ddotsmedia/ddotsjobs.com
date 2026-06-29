@@ -3,7 +3,7 @@ import Link from 'next/link';
 
 export const metadata: Metadata = {
   title: 'About — ddotsjobs.com',
-  description: "Kerala's most trusted job platform, built by Ddotsmedia IT Solutions, Sharjah UAE — serving 120K+ professionals since 2019.",
+  description: "Kerala's most trusted job platform, built by Ddotsmedia Technologies — serving 120K+ professionals since 2019.",
 };
 
 const STATS = [
@@ -53,8 +53,8 @@ export default function AboutPage() {
 
         <h2 style={s.h2}>Who builds it</h2>
         <p style={s.p}>
-          ddotsjobs is built and operated by <strong>Ddotsmedia IT Solutions LLC</strong>,
-          SHAMS Free Zone, Sharjah, UAE. Questions? WhatsApp{' '}
+          ddotsjobs is built and operated by <strong>Ddotsmedia Technologies</strong>.
+          Questions? WhatsApp{' '}
           <a href="https://wa.me/971509379212" style={s.link}>+971 50 937 9212</a> or email{' '}
           <a href="mailto:info@ddotsmedia.com" style={s.link}>info@ddotsmedia.com</a>.
         </p>

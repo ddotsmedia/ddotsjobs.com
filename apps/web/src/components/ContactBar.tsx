@@ -10,7 +10,7 @@ export function ContactBar() {
         <span className="ddj-desktop-only" style={s.liveFull}>&nbsp;— 12 employers posting today</span>
       </span>
 
-      <span className="ddj-desktop-only" style={s.center}>📍 Managed by Ddotsmedia IT Solutions, Sharjah UAE</span>
+      <span className="ddj-desktop-only" style={s.center}>Managed by Ddotsmedia Technologies</span>
 
       <span style={s.right}>
         <a href="https://wa.me/971509379212" target="_blank" rel="noopener noreferrer" style={s.wa}>

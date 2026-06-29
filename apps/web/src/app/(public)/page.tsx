@@ -202,11 +202,10 @@ export default async function HomePage() {
     {
       '@context': 'https://schema.org',
       '@type': 'Organization',
-      name: 'Ddotsmedia IT Solutions',
+      name: 'Ddotsmedia Technologies',
       url: 'https://ddotsjobs.com',
       logo: 'https://ddotsjobs.com/logo.svg',
       sameAs: ['https://ddotsmedia.com', 'https://ddotsmediajobs.com'],
-      address: { '@type': 'PostalAddress', addressCountry: 'AE', addressRegion: 'Sharjah' },
     },
   ];
 
@@ -333,10 +332,7 @@ export default async function HomePage() {
           <div style={s.fcol}>
             <Logo size="sm" variant="white" showText href="/" />
             <p style={s.ftaglineMl}>കേരളത്തിന്റെ തൊഴിൽ പോർട്ടൽ</p>
-            <p style={s.ftagline}>
-              Ddotsmedia IT Solutions LLC<br />
-              SHAMS Free Zone, Sharjah, UAE
-            </p>
+            <p style={s.ftagline}>Ddotsmedia Technologies</p>
             <p style={s.faddr}>
               <a href="https://wa.me/971509379212" style={s.flink}>WhatsApp: +971 50 937 9212</a>
               <br />

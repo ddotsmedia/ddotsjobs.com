@@ -35,7 +35,7 @@ export function WhatsappCta() {
         <p style={s.cred}>
           Same groups trusted by 120K+ nurses, teachers and IT professionals across Kerala.
         </p>
-        <p style={s.cred}>Managed by Ddotsmedia IT Solutions, Sharjah UAE — since 2019.</p>
+        <p style={s.cred}>Managed by Ddotsmedia Technologies — since 2019.</p>
       </div>
     </section>
   );

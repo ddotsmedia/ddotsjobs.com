@@ -43,7 +43,7 @@ export default function PrivacyPage() {
 
         <h2 style={s.h2}>Contact</h2>
         <p style={s.p}>
-          Ddotsmedia IT Solutions LLC, SHAMS Free Zone, Sharjah, UAE.<br />
+          Ddotsmedia Technologies.<br />
           WhatsApp: +971 50 937 9212 · Email: info@ddotsmedia.com
         </p>
       </div>
