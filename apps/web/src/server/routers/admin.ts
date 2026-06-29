@@ -36,6 +36,20 @@ const adminProcedure = roleProcedure('admin', 'super_admin');
 
 const companyNameSql = sql<string>`coalesce(${tables.employers.displayNameEn}, ${tables.employers.legalNameEn})`;
 
+// WhatsApp group config (Green API). Static for now; member counts are estimates.
+const WHATSAPP_GROUPS = {
+  groups: [
+    { id: 'nursing', name: 'Nursing Jobs', category: 'nursing', memberCount: 15_000, districts: ['all'] },
+    { id: 'it', name: 'IT Jobs Kerala', category: 'it', memberCount: 8_000, districts: ['ernakulam', 'thiruvananthapuram'] },
+    { id: 'teaching', name: 'Teaching Jobs', category: 'teaching', memberCount: 12_000, districts: ['all'] },
+    { id: 'government', name: 'Govt & PSC Jobs', category: 'government', memberCount: 25_000, districts: ['all'] },
+    { id: 'gulf', name: 'Gulf Return Jobs', category: 'gulf_return', memberCount: 18_000, districts: ['all'] },
+    { id: 'general', name: 'General Jobs', category: 'general', memberCount: 42_000, districts: ['all'] },
+  ],
+  totalGroups: 73,
+  totalMembers: 120_000,
+} as const;
+
 export const adminRouter = router({
   metrics: adminProcedure.query(async ({ ctx }) => {
     const { jobs, users, employers, applications } = tables;
@@ -520,6 +534,102 @@ export const adminRouter = router({
       await ctx.db.insert(tables.auditLog).values({
         actorUserId: ctx.user.id, action: 'admin.employer_unverified', entityType: 'employer', entityId: input.employerId, diff: { reason: input.reason },
       });
+      return { success: true as const };
+    }),
+
+  // ── WhatsApp broadcast (Part 7) ──────────────────────────────────────
+  getWhatsAppGroups: adminProcedure.query(() => WHATSAPP_GROUPS),
+
+  getBroadcastHistory: adminProcedure
+    .input(z.object({ limit: z.number().int().min(1).max(100).default(20), offset: z.number().int().min(0).default(0) }))
+    .query(async ({ ctx, input }) => {
+      return ctx.db
+        .select({
+          id: tables.broadcastLog.id,
+          message: tables.broadcastLog.message,
+          targetGroups: tables.broadcastLog.targetGroups,
+          broadcastType: tables.broadcastLog.broadcastType,
+          status: tables.broadcastLog.status,
+          estimatedReach: tables.broadcastLog.estimatedReach,
+          scheduledAt: tables.broadcastLog.scheduledAt,
+          createdAt: tables.broadcastLog.createdAt,
+          adminName: sql<string | null>`coalesce(${tables.users.nameEn}, ${tables.users.phone})`,
+        })
+        .from(tables.broadcastLog)
+        .leftJoin(tables.users, eq(tables.users.id, tables.broadcastLog.sentByUserId))
+        .orderBy(desc(tables.broadcastLog.createdAt))
+        .limit(input.limit)
+        .offset(input.offset);
+    }),
+
+  broadcastStats: adminProcedure.query(async ({ ctx }) => {
+    const [today] = await ctx.db
+      .select({ c: count() })
+      .from(tables.broadcastLog)
+      .where(sql`${tables.broadcastLog.createdAt} >= date_trunc('day', now())`);
+    return { todayCount: today?.c ?? 0, dailyLimit: 5 };
+  }),
+
+  sendBroadcast: adminProcedure
+    .input(
+      z.object({
+        message: z.string().min(10).max(1000),
+        targetGroups: z.array(z.string()).min(1),
+        scheduleAt: z.string().optional(),
+        broadcastType: z.enum(['announcement', 'job_alert', 'walk_in', 'maintenance', 'other']),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      // Max 5 broadcasts per admin per day.
+      const day = new Date().toISOString().slice(0, 10);
+      const rlKey = `admin:broadcast:${ctx.user.id}:${day}`;
+      const n = await ctx.redis.incr(rlKey);
+      if (n === 1) await ctx.redis.expire(rlKey, 86_400);
+      if (n > 5) throw new TRPCError({ code: 'TOO_MANY_REQUESTS', message: 'Daily broadcast limit (5) reached.' });
+
+      const known = new Set<string>(WHATSAPP_GROUPS.groups.map((g) => g.id));
+      const estimatedReach = WHATSAPP_GROUPS.groups
+        .filter((g) => input.targetGroups.includes(g.id))
+        .reduce((sum, g) => sum + g.memberCount, 0);
+      if (input.targetGroups.some((g) => !known.has(g))) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Unknown group' });
+
+      const scheduledAt = input.scheduleAt ? new Date(input.scheduleAt) : null;
+      const isFuture = scheduledAt != null && scheduledAt.getTime() > Date.now() + 60_000;
+      const status = isFuture ? 'scheduled' : 'queued';
+
+      const [row] = await ctx.db
+        .insert(tables.broadcastLog)
+        .values({
+          message: input.message,
+          targetGroups: input.targetGroups,
+          broadcastType: input.broadcastType,
+          status,
+          estimatedReach,
+          sentByUserId: ctx.user.id,
+          scheduledAt: isFuture ? scheduledAt : null,
+        })
+        .returning({ id: tables.broadcastLog.id });
+
+      await ctx.db.insert(tables.auditLog).values({
+        actorUserId: ctx.user.id,
+        action: isFuture ? 'admin.broadcast_scheduled' : 'admin.broadcast_queued',
+        entityType: 'broadcast',
+        entityId: row?.id,
+        diff: { groups: input.targetGroups, estimatedReach },
+      });
+      // NB: actual WhatsApp delivery worker (Green API group send) is a follow-up.
+      return isFuture
+        ? { scheduled: true as const, scheduledAt: scheduledAt!.toISOString(), estimatedReach }
+        : { queued: true as const, estimatedReach };
+    }),
+
+  cancelScheduledBroadcast: adminProcedure
+    .input(z.object({ broadcastId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db
+        .update(tables.broadcastLog)
+        .set({ status: 'cancelled' })
+        .where(and(eq(tables.broadcastLog.id, input.broadcastId), eq(tables.broadcastLog.status, 'scheduled'), eq(tables.broadcastLog.sentByUserId, ctx.user.id)));
       return { success: true as const };
     }),
 

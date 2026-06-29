@@ -139,6 +139,7 @@ export function AdminDashboard() {
         <a href="/admin/analytics" style={{ ...st.navItem, color: t.muted }}>📊 Analytics</a>
         <a href="/admin/employers" style={{ ...st.navItem, color: t.muted }}>🏢 Manage employers</a>
         <a href="/admin/seekers" style={{ ...st.navItem, color: t.muted }}>👤 Manage seekers</a>
+        <a href="/admin/broadcast" style={{ ...st.navItem, color: t.muted }}>📣 Broadcast</a>
         <a href="/admin/site-settings" style={{ ...st.navItem, color: t.muted }}>⚙ Site settings</a>
         <a href="/admin/settings" style={{ ...st.navItem, color: t.muted }}>Change password</a>
         <button type="button" onClick={toggleTheme} style={{ ...st.themeToggle, borderColor: t.border, color: t.fg }}>
