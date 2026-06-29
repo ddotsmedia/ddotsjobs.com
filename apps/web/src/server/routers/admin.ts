@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { and, asc, count, createNotification, desc, eq, gte, isNull, sql, tables } from '@ddotsjobs/db';
+import { and, asc, count, createNotification, desc, eq, gte, ilike, isNull, ne, sql, tables } from '@ddotsjobs/db';
 import { TRPCError } from '@trpc/server';
 import { roleProcedure, router } from '../trpc.js';
 import { alertsQueue, searchSyncQueue } from '../queue.js';
@@ -334,6 +334,162 @@ export const adminRouter = router({
         action: 'admin.employer_unsuspended',
         entityType: 'employer',
         entityId: input.employerId,
+      });
+      return { success: true as const };
+    }),
+
+  // ── Employer management table (Part 5) ───────────────────────────────
+  employerStats: adminProcedure.query(async ({ ctx }) => {
+    const e = tables.employers;
+    const base = isNull(e.deletedAt);
+    const [total, pending, verified, suspended, paid] = await Promise.all([
+      ctx.db.select({ c: count() }).from(e).where(base),
+      ctx.db.select({ c: count() }).from(e).where(and(base, eq(e.verificationStatus, 'unverified'))),
+      ctx.db.select({ c: count() }).from(e).where(and(base, eq(e.verificationStatus, 'verified'))),
+      ctx.db.select({ c: count() }).from(e).where(and(base, sql`${e.suspendedAt} is not null`)),
+      ctx.db.select({ c: count() }).from(e).where(and(base, ne(e.subscriptionTier, 'free'))),
+    ]);
+    return {
+      total: total[0]?.c ?? 0, pending: pending[0]?.c ?? 0, verified: verified[0]?.c ?? 0,
+      suspended: suspended[0]?.c ?? 0, paid: paid[0]?.c ?? 0,
+    };
+  }),
+
+  getEmployers: adminProcedure
+    .input(
+      z.object({
+        search: z.string().max(120).optional(),
+        status: z.enum(['all', 'pending', 'verified', 'suspended']).default('all'),
+        plan: z.enum(['all', 'free', 'paid']).default('all'),
+        limit: z.number().int().min(1).max(100).default(20),
+        offset: z.number().int().min(0).default(0),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const e = tables.employers;
+      const conds = [isNull(e.deletedAt)];
+      if (input.search?.trim()) conds.push(ilike(e.legalNameEn, `%${input.search.trim()}%`));
+      if (input.status === 'pending') conds.push(eq(e.verificationStatus, 'unverified'));
+      else if (input.status === 'verified') conds.push(eq(e.verificationStatus, 'verified'));
+      else if (input.status === 'suspended') conds.push(sql`${e.suspendedAt} is not null`);
+      if (input.plan === 'free') conds.push(eq(e.subscriptionTier, 'free'));
+      else if (input.plan === 'paid') conds.push(ne(e.subscriptionTier, 'free'));
+
+      return ctx.db
+        .select({
+          id: e.id,
+          name: companyNameSql,
+          typeCode: e.employerTypeCode,
+          district: e.district,
+          verificationStatus: e.verificationStatus,
+          tier: e.subscriptionTier,
+          suspendedAt: e.suspendedAt,
+          createdAt: e.createdAt,
+          phone: tables.users.phone,
+          activeJobs: sql<number>`(select count(*)::int from ${tables.jobs} jj where jj.employer_id = ${e.id} and jj.status = 'active' and jj.deleted_at is null)`,
+          totalJobs: sql<number>`(select count(*)::int from ${tables.jobs} jj where jj.employer_id = ${e.id} and jj.deleted_at is null)`,
+          totalApplications: sql<number>`(select count(*)::int from ${tables.applications} aa where aa.employer_id = ${e.id})`,
+        })
+        .from(e)
+        .innerJoin(tables.users, eq(tables.users.id, e.ownerUserId))
+        .where(and(...conds))
+        .orderBy(desc(e.createdAt))
+        .limit(input.limit)
+        .offset(input.offset);
+    }),
+
+  getEmployerDetail: adminProcedure
+    .input(z.object({ employerId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      const e = tables.employers;
+      const [employer] = await ctx.db
+        .select({
+          id: e.id,
+          name: companyNameSql,
+          typeCode: e.employerTypeCode,
+          district: e.district,
+          verificationStatus: e.verificationStatus,
+          tier: e.subscriptionTier,
+          suspendedAt: e.suspendedAt,
+          suspensionReason: e.suspensionReason,
+          gstin: e.gstin,
+          websiteUrl: e.websiteUrl,
+          companySize: e.companySize,
+          yearEstablished: e.yearEstablished,
+          contactName: e.contactName,
+          createdAt: e.createdAt,
+          phone: tables.users.phone,
+          email: e.contactEmail,
+        })
+        .from(e)
+        .innerJoin(tables.users, eq(tables.users.id, e.ownerUserId))
+        .where(and(eq(e.id, input.employerId), isNull(e.deletedAt)))
+        .limit(1);
+      if (!employer) throw new TRPCError({ code: 'NOT_FOUND' });
+
+      const [jobsList, payments, audit] = await Promise.all([
+        ctx.db
+          .select({ id: tables.jobs.id, slug: tables.jobs.slug, title: tables.jobs.titleEn, status: tables.jobs.status, applicationCount: tables.jobs.applicationCount, createdAt: tables.jobs.createdAt })
+          .from(tables.jobs)
+          .where(and(eq(tables.jobs.employerId, input.employerId), isNull(tables.jobs.deletedAt)))
+          .orderBy(desc(tables.jobs.createdAt))
+          .limit(10),
+        ctx.db
+          .select({ id: tables.payments.id, amountPaise: tables.payments.amountPaise, status: tables.payments.status, createdAt: tables.payments.createdAt })
+          .from(tables.payments)
+          .where(eq(tables.payments.employerId, input.employerId))
+          .orderBy(desc(tables.payments.createdAt))
+          .limit(20),
+        ctx.db
+          .select({ action: tables.auditLog.action, createdAt: tables.auditLog.createdAt, actorName: sql<string | null>`coalesce(${tables.users.nameEn}, ${tables.users.phone})` })
+          .from(tables.auditLog)
+          .leftJoin(tables.users, eq(tables.users.id, tables.auditLog.actorUserId))
+          .where(and(eq(tables.auditLog.entityType, 'employer'), eq(tables.auditLog.entityId, input.employerId)))
+          .orderBy(desc(tables.auditLog.createdAt))
+          .limit(30),
+      ]);
+      const totalRevenue = payments.filter((p) => p.status === 'captured').reduce((s, p) => s + p.amountPaise, 0);
+      return { employer, jobs: jobsList, payments, audit, totalRevenue };
+    }),
+
+  verifyEmployer: adminProcedure
+    .input(z.object({ employerId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const { employers } = tables;
+      const [emp] = await ctx.db
+        .select({ id: employers.id, ownerUserId: employers.ownerUserId, name: companyNameSql })
+        .from(employers)
+        .where(and(eq(employers.id, input.employerId), isNull(employers.deletedAt)))
+        .limit(1);
+      if (!emp) throw new TRPCError({ code: 'NOT_FOUND' });
+      await ctx.db
+        .update(employers)
+        .set({ verificationStatus: 'verified', verifiedAt: new Date() })
+        .where(eq(employers.id, input.employerId));
+      await ctx.db.insert(tables.auditLog).values({
+        actorUserId: ctx.user.id, action: 'admin.employer_verified', entityType: 'employer', entityId: input.employerId,
+      });
+      await createNotification({
+        userId: emp.ownerUserId,
+        type: 'employer.verified',
+        title: 'Account verified',
+        titleMl: 'Account verified ആയി',
+        body: `${emp.name} is now a verified employer`,
+        bodyMl: `${emp.name} ഇപ്പോൾ verified employer ആണ്`,
+        actionUrl: '/employer/dashboard',
+      });
+      return { success: true as const };
+    }),
+
+  unverifyEmployer: adminProcedure
+    .input(z.object({ employerId: z.string().uuid(), reason: z.string().min(1).max(500) }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db
+        .update(tables.employers)
+        .set({ verificationStatus: 'unverified', verifiedAt: null })
+        .where(eq(tables.employers.id, input.employerId));
+      await ctx.db.insert(tables.auditLog).values({
+        actorUserId: ctx.user.id, action: 'admin.employer_unverified', entityType: 'employer', entityId: input.employerId, diff: { reason: input.reason },
       });
       return { success: true as const };
     }),
