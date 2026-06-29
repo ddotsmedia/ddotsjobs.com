@@ -497,6 +497,180 @@ export const adminRouter = router({
       return { success: true as const };
     }),
 
+  // ── Seeker management (Part 6) ───────────────────────────────────────
+  seekerStats: adminProcedure.query(async ({ ctx }) => {
+    const u = tables.users;
+    const base = and(eq(u.role, 'seeker'), isNull(u.deletedAt));
+    const week = sql`now() - interval '7 days'`;
+    const [total, verified, newWeek, banned, activeWeek] = await Promise.all([
+      ctx.db.select({ c: count() }).from(u).where(base),
+      ctx.db.select({ c: count() }).from(u).where(and(base, eq(u.isVerifiedProfessional, true))),
+      ctx.db.select({ c: count() }).from(u).where(and(base, gte(u.createdAt, week))),
+      ctx.db.select({ c: count() }).from(u).where(and(base, eq(u.isBanned, true))),
+      ctx.db.select({ c: count() }).from(u).where(and(base, sql`${u.lastLoginAt} >= ${week}`)),
+    ]);
+    return {
+      total: total[0]?.c ?? 0, verified: verified[0]?.c ?? 0, newThisWeek: newWeek[0]?.c ?? 0,
+      banned: banned[0]?.c ?? 0, activeWeek: activeWeek[0]?.c ?? 0,
+    };
+  }),
+
+  getSeekers: adminProcedure
+    .input(
+      z.object({
+        search: z.string().max(120).optional(),
+        status: z.enum(['all', 'verified', 'active', 'new', 'banned']).default('all'),
+        category: z.string().max(60).optional(),
+        district: z.string().max(40).optional(),
+        limit: z.number().int().min(1).max(100).default(20),
+        offset: z.number().int().min(0).default(0),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const u = tables.users;
+      const sp = tables.seekerProfiles;
+      const week = sql`now() - interval '7 days'`;
+      const conds = [eq(u.role, 'seeker'), isNull(u.deletedAt)];
+      if (input.search?.trim()) {
+        const term = `%${input.search.trim()}%`;
+        conds.push(sql`(${u.nameEn} ilike ${term} or ${u.primaryProfession} ilike ${term})`);
+      }
+      if (input.status === 'verified') conds.push(eq(u.isVerifiedProfessional, true));
+      else if (input.status === 'active') conds.push(sql`${u.lastLoginAt} >= ${week}`);
+      else if (input.status === 'new') conds.push(gte(u.createdAt, week));
+      else if (input.status === 'banned') conds.push(eq(u.isBanned, true));
+      if (input.category) conds.push(sql`${sp.preferredCategories} ? ${input.category}`);
+      if (input.district) conds.push(sql`${sp.currentDistrict}::text = ${input.district}`);
+
+      return ctx.db
+        .select({
+          id: u.id,
+          name: sql<string | null>`coalesce(${u.nameEn}, ${u.primaryProfession})`,
+          isVerified: u.isVerifiedProfessional,
+          isBanned: u.isBanned,
+          createdAt: u.createdAt,
+          lastLoginAt: u.lastLoginAt,
+          district: sp.currentDistrict,
+          profession: u.primaryProfession,
+          experienceMonths: sp.totalExperienceMonths,
+          completionPct: sp.completionPct,
+          applicationsCount: sql<number>`(select count(*)::int from ${tables.applications} aa where aa.seeker_user_id = ${u.id} and aa.withdrawn_at is null)`,
+        })
+        .from(u)
+        .leftJoin(sp, eq(sp.userId, u.id))
+        .where(and(...conds))
+        .orderBy(desc(u.createdAt))
+        .limit(input.limit)
+        .offset(input.offset);
+    }),
+
+  getSeekerDetail: adminProcedure
+    .input(z.object({ seekerId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      const u = tables.users;
+      const sp = tables.seekerProfiles;
+      const [seeker] = await ctx.db
+        .select({
+          id: u.id,
+          name: sql<string | null>`coalesce(${u.nameEn}, ${u.primaryProfession})`,
+          isVerified: u.isVerifiedProfessional,
+          isBanned: u.isBanned,
+          banReason: u.banReason,
+          createdAt: u.createdAt,
+          lastLoginAt: u.lastLoginAt,
+          profession: u.primaryProfession,
+          district: sp.currentDistrict,
+          experienceMonths: sp.totalExperienceMonths,
+          completionPct: sp.completionPct,
+          preferredCategories: sp.preferredCategories,
+          openToGulf: sp.openToGulf,
+        })
+        .from(u)
+        .leftJoin(sp, eq(sp.userId, u.id))
+        .where(and(eq(u.id, input.seekerId), eq(u.role, 'seeker'), isNull(u.deletedAt)))
+        .limit(1);
+      if (!seeker) throw new TRPCError({ code: 'NOT_FOUND' });
+
+      const [apps, certs, audit, alertsCount] = await Promise.all([
+        ctx.db
+          .select({ id: tables.applications.id, status: tables.applications.status, createdAt: tables.applications.createdAt, jobTitle: tables.jobs.titleEn, district: tables.jobs.district })
+          .from(tables.applications)
+          .innerJoin(tables.jobs, eq(tables.jobs.id, tables.applications.jobId))
+          .where(and(eq(tables.applications.seekerUserId, input.seekerId), isNull(tables.applications.withdrawnAt)))
+          .orderBy(desc(tables.applications.createdAt))
+          .limit(10),
+        ctx.db
+          .select({ id: tables.professionalRegistrations.id, type: tables.professionalRegistrations.type, number: tables.professionalRegistrations.registrationNumber, status: tables.professionalRegistrations.status, createdAt: tables.professionalRegistrations.createdAt })
+          .from(tables.professionalRegistrations)
+          .where(eq(tables.professionalRegistrations.userId, input.seekerId))
+          .orderBy(desc(tables.professionalRegistrations.createdAt)),
+        ctx.db
+          .select({ action: tables.auditLog.action, createdAt: tables.auditLog.createdAt, actorName: sql<string | null>`coalesce(${tables.users.nameEn}, ${tables.users.phone})` })
+          .from(tables.auditLog)
+          .leftJoin(tables.users, eq(tables.users.id, tables.auditLog.actorUserId))
+          .where(and(eq(tables.auditLog.entityType, 'user'), eq(tables.auditLog.entityId, input.seekerId)))
+          .orderBy(desc(tables.auditLog.createdAt))
+          .limit(10),
+        ctx.db.select({ c: count() }).from(tables.alertSubscriptions).where(eq(tables.alertSubscriptions.seekerUserId, input.seekerId)),
+      ]);
+      return { seeker, applications: apps, certifications: certs, audit, alertsCount: alertsCount[0]?.c ?? 0 };
+    }),
+
+  verifyProfessional: adminProcedure
+    .input(z.object({ seekerId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db.update(tables.users).set({ isVerifiedProfessional: true }).where(eq(tables.users.id, input.seekerId));
+      await ctx.db.insert(tables.auditLog).values({ actorUserId: ctx.user.id, action: 'admin.professional_verified', entityType: 'user', entityId: input.seekerId });
+      await createNotification({
+        userId: input.seekerId, type: 'profile.verified',
+        title: 'Professional status verified', titleMl: 'Professional status verified ആയി ✓',
+        body: 'Your professional status is now verified.', bodyMl: 'നിങ്ങളുടെ professional status verified ആയി.',
+        actionUrl: '/seeker/profile',
+      });
+      return { success: true as const };
+    }),
+
+  unverifyProfessional: adminProcedure
+    .input(z.object({ seekerId: z.string().uuid(), reason: z.string().min(1).max(500) }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db.update(tables.users).set({ isVerifiedProfessional: false }).where(eq(tables.users.id, input.seekerId));
+      await ctx.db.insert(tables.auditLog).values({ actorUserId: ctx.user.id, action: 'admin.professional_unverified', entityType: 'user', entityId: input.seekerId, diff: { reason: input.reason } });
+      return { success: true as const };
+    }),
+
+  banSeeker: adminProcedure
+    .input(z.object({ seekerId: z.string().uuid(), reason: z.string().min(10).max(500) }))
+    .mutation(async ({ ctx, input }) => {
+      if (input.seekerId === ctx.user.id) throw new TRPCError({ code: 'BAD_REQUEST', message: 'You cannot ban yourself' });
+      await ctx.db.update(tables.users).set({ isBanned: true, banReason: input.reason, bannedAt: new Date() }).where(eq(tables.users.id, input.seekerId));
+      // Drop the server-side session so the ban takes effect immediately.
+      try { await ctx.redis.del(`session:${input.seekerId}`); } catch { /* ignore */ }
+      await ctx.db.insert(tables.auditLog).values({ actorUserId: ctx.user.id, action: 'admin.seeker_banned', entityType: 'user', entityId: input.seekerId, diff: { reason: input.reason } });
+      return { success: true as const };
+    }),
+
+  unbanSeeker: adminProcedure
+    .input(z.object({ seekerId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db.update(tables.users).set({ isBanned: false, banReason: null, bannedAt: null }).where(eq(tables.users.id, input.seekerId));
+      await ctx.db.insert(tables.auditLog).values({ actorUserId: ctx.user.id, action: 'admin.seeker_unbanned', entityType: 'user', entityId: input.seekerId });
+      await createNotification({
+        userId: input.seekerId, type: 'account.unbanned',
+        title: 'Account reinstated', titleMl: 'Account പുനഃസ്ഥാപിച്ചു',
+        body: 'Your account has been reinstated.', bodyMl: 'നിങ്ങളുടെ account പുനഃസ്ഥാപിച്ചു.',
+        actionUrl: '/seeker/dashboard',
+      });
+      return { success: true as const };
+    }),
+
+  verifyCert: adminProcedure
+    .input(z.object({ certId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db.update(tables.professionalRegistrations).set({ status: 'verified' }).where(eq(tables.professionalRegistrations.id, input.certId));
+      await ctx.db.insert(tables.auditLog).values({ actorUserId: ctx.user.id, action: 'admin.cert_verified', entityType: 'professional_registration', entityId: input.certId });
+      return { success: true as const };
+    }),
+
   // ── Platform analytics (Part 3) — all charts in one call ─────────────
   analyticsOverview: adminProcedure
     .input(z.object({ days: z.number().int().min(1).max(366).default(30) }))
