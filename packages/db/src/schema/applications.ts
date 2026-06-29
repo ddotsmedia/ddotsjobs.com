@@ -40,6 +40,7 @@ export const applications = pgTable(
     voiceNoteR2Key: text('voice_note_r2_key'),
     voiceNoteDurationS: integer('voice_note_duration_s'),
     appliedVia: varchar('applied_via', { length: 20 }).notNull().default('web'),
+    isQuickApply: boolean('is_quick_apply').notNull().default(false),
     // Snapshot of resume key at apply time (resume may change later).
     resumeR2Key: text('resume_r2_key'),
     // Cached fit score (0..100) at apply time for fast employer sorting.

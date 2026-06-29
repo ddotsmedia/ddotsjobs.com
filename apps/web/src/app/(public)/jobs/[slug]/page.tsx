@@ -11,6 +11,7 @@ import { WhatsAppIcon } from '@/components/WhatsAppIcon';
 import { DescriptionTabs } from '@/components/jobs/DescriptionTabs';
 import { IncrementView } from '@/components/jobs/IncrementView';
 import { SaveJobButton } from '@/components/jobs/SaveJobButton';
+import { QuickApplyButton } from '@/components/jobs/QuickApplyButton';
 import { ShareButton } from '@/components/jobs/ShareButton';
 import { SegmentJobsPage } from '@/components/SegmentJobsPage';
 import { FitScoreRing } from '@/components/FitScoreRing';
@@ -297,7 +298,10 @@ export default async function JobDetailPage({ params }: Props) {
               {isEmployerOrAdmin ? (
                 <button type="button" disabled style={s.applyDisabled}>Employer account</button>
               ) : (
-                <Link href={applyHref} style={s.applyBtn}>Apply Now</Link>
+                <>
+                  <Link href={applyHref} style={s.applyBtn}>Apply Now</Link>
+                  <QuickApplyButton jobId={job.id} slug={slug} jobTitle={job.titleEn} companyName={job.company} salaryDisplay={salary} category={job.categorySlug} authed={authed} isSeeker={isSeeker} />
+                </>
               )}
               <SaveJobButton jobId={job.id} slug={slug} authed={authed} initialSaved={initialSaved} />
               <ShareButton title={`${job.titleEn} at ${job.company}`} />

@@ -219,6 +219,110 @@ export const applicationsRouter = router({
       return { applicationId: row.id, fitScore: fit.overall };
     }),
 
+  // ── Quick Apply: one-click application using saved profile ───────────
+  checkCanQuickApply: roleProcedure('seeker')
+    .input(z.object({ jobId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      const [profile] = await ctx.db
+        .select({ completionPct: tables.seekerProfiles.completionPct })
+        .from(tables.seekerProfiles)
+        .where(eq(tables.seekerProfiles.userId, ctx.user.id))
+        .limit(1);
+      const completionPct = profile?.completionPct ?? 0;
+
+      const [dup] = await ctx.db
+        .select({ id: tables.applications.id })
+        .from(tables.applications)
+        .where(and(eq(tables.applications.jobId, input.jobId), eq(tables.applications.seekerUserId, ctx.user.id), isNull(tables.applications.deletedAt)))
+        .limit(1);
+      const alreadyApplied = !!dup;
+
+      const [job] = await ctx.db
+        .select({ id: tables.jobs.id })
+        .from(tables.jobs)
+        .where(and(eq(tables.jobs.id, input.jobId), eq(tables.jobs.status, 'active'), isNull(tables.jobs.deletedAt)))
+        .limit(1);
+
+      let reason: string | null = null;
+      let canQuickApply = true;
+      if (!job) { canQuickApply = false; reason = 'This job is no longer active.'; }
+      else if (alreadyApplied) { canQuickApply = false; reason = 'You have already applied to this job.'; }
+      else if (completionPct < 60) { canQuickApply = false; reason = `Complete at least 60% of your profile to use Quick Apply. Your profile is ${completionPct}% complete.`; }
+
+      return { canQuickApply, reason, completionPct, alreadyApplied };
+    }),
+
+  quickApply: roleProcedure('seeker')
+    .input(z.object({ jobId: z.string().uuid(), coverNote: z.string().max(300).optional() }))
+    .mutation(async ({ ctx, input }) => {
+      await rateLimit(ctx.redis, `apply:${ctx.user.id}`, 20, 86_400);
+      const [profile] = await ctx.db
+        .select({ completionPct: tables.seekerProfiles.completionPct, name: tables.users.nameEn })
+        .from(tables.seekerProfiles)
+        .innerJoin(tables.users, eq(tables.users.id, tables.seekerProfiles.userId))
+        .where(eq(tables.seekerProfiles.userId, ctx.user.id))
+        .limit(1);
+      const completionPct = profile?.completionPct ?? 0;
+      if (completionPct < 60) {
+        throw new TRPCError({ code: 'PRECONDITION_FAILED', message: `Complete at least 60% of your profile to use Quick Apply. Your profile is ${completionPct}% complete.` });
+      }
+
+      const j = tables.jobs;
+      const [job] = await ctx.db
+        .select({ id: j.id, employerId: j.employerId, title: j.titleEn, ownerUserId: tables.employers.ownerUserId })
+        .from(j)
+        .innerJoin(tables.employers, eq(tables.employers.id, j.employerId))
+        .where(and(eq(j.id, input.jobId), eq(j.status, 'active'), isNull(j.deletedAt), sql`(${j.expiresAt} is null or ${j.expiresAt} > now())`))
+        .limit(1);
+      if (!job) throw new TRPCError({ code: 'NOT_FOUND', message: 'Job not available' });
+
+      const [dup] = await ctx.db
+        .select({ id: tables.applications.id })
+        .from(tables.applications)
+        .where(and(eq(tables.applications.jobId, input.jobId), eq(tables.applications.seekerUserId, ctx.user.id), isNull(tables.applications.deletedAt)))
+        .limit(1);
+      if (dup) throw new TRPCError({ code: 'CONFLICT', message: 'You have already applied to this job.' });
+
+      const fit = await computeFitForApply(ctx.db, ctx.user.id, input.jobId);
+      const [row] = await ctx.db
+        .insert(tables.applications)
+        .values({
+          jobId: input.jobId,
+          seekerUserId: ctx.user.id,
+          employerId: job.employerId,
+          status: 'applied',
+          statusCode: 'applied',
+          isQuickApply: true,
+          fitScore: fit.overall,
+          fitScoreAtApply: fit.overall,
+          fitBreakdownAtApply: { qualification: fit.qualification, experience: fit.experience, location: fit.location, salary: fit.salary, language: fit.language, certBonus: fit.certBonus },
+          questionResponse: input.coverNote ? stripHtml(input.coverNote) : null,
+          appliedVia: 'quick_apply',
+        })
+        .returning({ id: tables.applications.id });
+      if (!row) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+
+      await ctx.db.update(j).set({ applicationCount: sql`${j.applicationCount} + 1` }).where(eq(j.id, input.jobId));
+
+      await createNotification({
+        userId: job.ownerUserId,
+        type: 'application.received',
+        title: 'New quick application',
+        body: `${profile?.name ?? 'A candidate'} applied to ${job.title}`,
+        actionUrl: '/employer/applications',
+      });
+      await createNotification({
+        userId: ctx.user.id,
+        type: 'application.submitted',
+        title: 'Application submitted ✓',
+        titleMl: 'Application submit ചെയ്തു ✓',
+        body: `Applied to ${job.title}`,
+        actionUrl: '/seeker/applications',
+      });
+
+      return { success: true as const, applicationId: row.id, fitScore: fit.overall };
+    }),
+
   myApplications: roleProcedure('seeker')
     .input(
       z.object({
@@ -241,6 +345,7 @@ export const applicationsRouter = router({
         .select({
           id: a.id,
           statusCode: a.statusCode,
+          isQuickApply: a.isQuickApply,
           fitScoreAtApply: a.fitScoreAtApply,
           fitBreakdownAtApply: a.fitBreakdownAtApply,
           createdAt: a.createdAt,

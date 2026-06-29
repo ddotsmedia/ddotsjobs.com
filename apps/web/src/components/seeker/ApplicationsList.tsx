@@ -110,7 +110,7 @@ export function ApplicationsList() {
                       <Link href={`/jobs/${a.slug ?? a.id}`} style={s.title}>{a.title}</Link>
                       <span style={{ ...s.badge, color: ui.color, background: ui.bg }}>{ui.label}</span>
                     </div>
-                    <span style={s.company}>{a.company}{a.district ? ` · ${titleCase(a.district)}` : ''}</span>
+                    <span style={s.company}>{a.company}{a.district ? ` · ${titleCase(a.district)}` : ''}{a.isQuickApply ? <span style={s.quickBadge}>⚡ Quick Apply</span> : null}</span>
                     <div style={s.metaRow}>
                       <span style={s.salary}>{rupeesPerMonth(a.salaryMinPaise, a.salaryDisclosed)}</span>
                       <span style={s.applied}>{relativeTime(a.createdAt)}</span>
@@ -158,6 +158,7 @@ const s: Record<string, React.CSSProperties> = {
   title: { fontSize: 15, fontWeight: 600, color: 'var(--color-dark)' },
   badge: { fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: '9999px', whiteSpace: 'nowrap' },
   company: { fontSize: 13, color: '#55554f' },
+  quickBadge: { fontSize: 10, background: '#F5C842', color: '#0F1A1B', borderRadius: 4, padding: '2px 6px', marginLeft: 8, fontWeight: 700 },
   metaRow: { display: 'flex', gap: 'var(--space-2)', alignItems: 'center' },
   salary: { fontSize: 13, fontWeight: 600, color: 'var(--color-accent)' },
   applied: { fontSize: 12, color: '#9a9a92' },
