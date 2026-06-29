@@ -81,6 +81,7 @@ export function AdminDashboard() {
   const stats7d = trpc.admin.jobStats7d.useQuery();
   const coverage = trpc.admin.districtCoverage.useQuery();
   const audit = trpc.admin.recentAuditLog.useQuery();
+  const activity = trpc.admin.recentActivity.useQuery(undefined, { refetchInterval: 30_000 });
 
   function invalidateModeration() {
     void utils.admin.moderationQueue.invalidate();
@@ -134,6 +135,7 @@ export function AdminDashboard() {
             );
           })}
         </nav>
+        <a href="/admin/site-settings" style={{ ...st.navItem, color: t.muted }}>⚙ Site settings</a>
         <a href="/admin/settings" style={{ ...st.navItem, color: t.muted }}>Change password</a>
         <button type="button" onClick={toggleTheme} style={{ ...st.themeToggle, borderColor: t.border, color: t.fg }}>
           {dark ? '☀ Light mode' : '🌙 Dark mode'}
@@ -169,6 +171,26 @@ export function AdminDashboard() {
                 </div>
               </div>
               <div style={st.colRight}>
+                <h2 style={st.h2}>
+                  <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#2ec27a', marginRight: 8 }} />
+                  Live activity
+                </h2>
+                <div style={{ ...st.card, background: t.panel, borderColor: t.border }}>
+                  {(activity.data ?? []).length === 0 ? (
+                    <p style={{ color: t.muted }}>No recent activity.</p>
+                  ) : (
+                    <ul style={st.auditList}>
+                      {activity.data!.map((a, i) => (
+                        <li key={i} style={{ ...st.auditItem, borderColor: t.border }}>
+                          <span style={st.auditAction}>{a.action}</span>
+                          <span style={{ ...st.sub, color: t.muted }}>
+                            {a.entityType} · {a.actorName ?? 'system'} · {relativeTime(a.createdAt)}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
                 <h2 style={st.h2}>District coverage</h2>
                 <div style={{ ...st.card, background: t.panel, borderColor: t.border }}>
                   <DistrictBars data={coverage.data ?? []} theme={t} />

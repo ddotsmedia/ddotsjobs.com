@@ -44,6 +44,10 @@ export const employers = pgTable(
     verificationStatus: verificationStatus('verification_status').notNull().default('unverified'),
     verifiedAt: timestamp('verified_at', { withTimezone: true }),
     isBlacklisted: boolean('is_blacklisted').notNull().default(false),
+    // Admin suspension (0024).
+    suspendedAt: timestamp('suspended_at', { withTimezone: true }),
+    suspensionReason: text('suspension_reason'),
+    suspensionEndsAt: timestamp('suspension_ends_at', { withTimezone: true }),
     contactName: varchar('contact_name', { length: 255 }),
     contactPhone: varchar('contact_phone', { length: 20 }),
     contactEmail: varchar('contact_email', { length: 255 }),

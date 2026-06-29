@@ -266,4 +266,75 @@ export const adminRouter = router({
       });
       return { success: true as const };
     }),
+
+  // ── Live activity feed (Part 2) — last 20 audit events ───────────────
+  recentActivity: adminProcedure.query(async ({ ctx }) => {
+    return ctx.db
+      .select({
+        action: tables.auditLog.action,
+        entityType: tables.auditLog.entityType,
+        createdAt: tables.auditLog.createdAt,
+        actorName: sql<string | null>`coalesce(${tables.users.nameEn}, ${tables.users.phone})`,
+      })
+      .from(tables.auditLog)
+      .leftJoin(tables.users, eq(tables.users.id, tables.auditLog.actorUserId))
+      .orderBy(desc(tables.auditLog.createdAt))
+      .limit(20);
+  }),
+
+  // ── Site settings / feature flags (Part 9) ───────────────────────────
+  getSiteSettings: adminProcedure.query(async ({ ctx }) => {
+    return ctx.db.select().from(tables.siteSettings).orderBy(asc(tables.siteSettings.key));
+  }),
+
+  updateSiteSetting: adminProcedure
+    .input(z.object({ key: z.string().min(1).max(100), value: z.string().max(2000) }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db
+        .insert(tables.siteSettings)
+        .values({ key: input.key, value: input.value, updatedAt: new Date() })
+        .onConflictDoUpdate({ target: tables.siteSettings.key, set: { value: input.value, updatedAt: new Date() } });
+      await ctx.db.insert(tables.auditLog).values({
+        actorUserId: ctx.user.id,
+        action: 'admin.setting_updated',
+        entityType: 'site_setting',
+        diff: { key: input.key, value: input.value },
+      });
+      return { success: true as const };
+    }),
+
+  // ── Employer suspension (Part 5 / Part 11) ───────────────────────────
+  suspendEmployer: adminProcedure
+    .input(z.object({ employerId: z.string().uuid(), reason: z.string().min(1).max(500), days: z.number().int().min(0).max(365).default(0) }))
+    .mutation(async ({ ctx, input }) => {
+      const endsAt = input.days > 0 ? new Date(Date.now() + input.days * 86_400_000) : null;
+      await ctx.db
+        .update(tables.employers)
+        .set({ suspendedAt: new Date(), suspensionReason: input.reason, suspensionEndsAt: endsAt })
+        .where(eq(tables.employers.id, input.employerId));
+      await ctx.db.insert(tables.auditLog).values({
+        actorUserId: ctx.user.id,
+        action: 'admin.employer_suspended',
+        entityType: 'employer',
+        entityId: input.employerId,
+        diff: { reason: input.reason, days: input.days },
+      });
+      return { success: true as const };
+    }),
+
+  unsuspendEmployer: adminProcedure
+    .input(z.object({ employerId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db
+        .update(tables.employers)
+        .set({ suspendedAt: null, suspensionReason: null, suspensionEndsAt: null })
+        .where(eq(tables.employers.id, input.employerId));
+      await ctx.db.insert(tables.auditLog).values({
+        actorUserId: ctx.user.id,
+        action: 'admin.employer_unsuspended',
+        entityType: 'employer',
+        entityId: input.employerId,
+      });
+      return { success: true as const };
+    }),
 });
