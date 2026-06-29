@@ -31,7 +31,14 @@ function riskColor(score: number | null): { bg: string; fg: string; label: strin
   return { bg: '#c0392b22', fg: '#e74c3c', label: 'High' };
 }
 
-const NAV = ['Overview', 'Moderation', 'Employers', 'Users', 'Audit Log', 'Settings'];
+type TabKey = 'overview' | 'moderation' | 'employers' | 'users' | 'audit';
+const TABS: { key: TabKey; label: string }[] = [
+  { key: 'overview', label: 'Overview' },
+  { key: 'moderation', label: 'Moderation' },
+  { key: 'employers', label: 'Employers' },
+  { key: 'users', label: 'Users' },
+  { key: 'audit', label: 'Audit Log' },
+];
 
 function maskPhone(phone: string | null): string {
   if (!phone) return '—';
@@ -43,6 +50,7 @@ export function AdminDashboard() {
   const [dark, setDark] = useState(true);
   const t = useMemo(() => makeTheme(dark), [dark]);
   const [now, setNow] = useState<string>('');
+  const [tab, setTab] = useState<TabKey>('overview');
 
   // Persisted theme preference.
   useEffect(() => {
@@ -110,15 +118,21 @@ export function AdminDashboard() {
           <span style={st.adminBadge}>Admin</span>
         </div>
         <nav style={st.nav}>
-          {NAV.map((n, i) => (
-            <a
-              key={n}
-              href={`#${n.toLowerCase().replace(/\s+/g, '-')}`}
-              style={{ ...st.navItem, color: i === 0 ? t.fg : t.muted, background: i === 0 ? t.activeNav : 'transparent' }}
-            >
-              {n}
-            </a>
-          ))}
+          {TABS.map((tb) => {
+            const active = tab === tb.key;
+            return (
+              <button
+                key={tb.key}
+                type="button"
+                onClick={() => setTab(tb.key)}
+                style={{ ...st.navItem, textAlign: 'left', border: 'none', cursor: 'pointer', color: active ? t.fg : t.muted, background: active ? t.activeNav : 'transparent' }}
+              >
+                {tb.label}
+                {tb.key === 'moderation' && (queue.data ?? []).length > 0 ? ` (${queue.data!.length})` : ''}
+                {tb.key === 'employers' && (newEmployers.data ?? []).length > 0 ? ` (${newEmployers.data!.length})` : ''}
+              </button>
+            );
+          })}
         </nav>
         <a href="/admin/settings" style={{ ...st.navItem, color: t.muted }}>Change password</a>
         <button type="button" onClick={toggleTheme} style={{ ...st.themeToggle, borderColor: t.border, color: t.fg }}>
@@ -136,23 +150,43 @@ export function AdminDashboard() {
           <button type="button" onClick={() => router.refresh()} style={{ ...st.refreshBtn, borderColor: t.border, color: t.fg }}>↻ Refresh</button>
         </header>
 
-        {/* Metrics */}
-        <section style={st.metricsGrid}>
-          {metricCards.map((c) => (
-            <div key={c.label} style={{ ...st.metricCard, background: t.panel, borderColor: t.border }}>
-              <div style={{ ...st.metricValue, color: t.accent }}>{c.value.toLocaleString('en-IN')}</div>
-              <div style={{ ...st.metricLabel, color: t.muted }}>{c.label}</div>
+        {/* ── OVERVIEW ── */}
+        {tab === 'overview' && (
+          <>
+            <section style={st.metricsGrid}>
+              {metricCards.map((c) => (
+                <div key={c.label} style={{ ...st.metricCard, background: t.panel, borderColor: t.border }}>
+                  <div style={{ ...st.metricValue, color: t.accent }}>{c.value.toLocaleString('en-IN')}</div>
+                  <div style={{ ...st.metricLabel, color: t.muted }}>{c.label}</div>
+                </div>
+              ))}
+            </section>
+            <div style={st.columns}>
+              <div style={st.colLeft}>
+                <h2 style={st.h2}>Job posts · 7 days</h2>
+                <div style={{ ...st.card, background: t.panel, borderColor: t.border }}>
+                  <BarChart7d data={stats7d.data ?? []} theme={t} />
+                </div>
+              </div>
+              <div style={st.colRight}>
+                <h2 style={st.h2}>District coverage</h2>
+                <div style={{ ...st.card, background: t.panel, borderColor: t.border }}>
+                  <DistrictBars data={coverage.data ?? []} theme={t} />
+                </div>
+              </div>
             </div>
-          ))}
-        </section>
+          </>
+        )}
 
-        <div style={st.columns}>
-          {/* Left */}
-          <div style={st.colLeft}>
-            <h2 id="moderation" style={st.h2}>Moderation queue</h2>
+        {/* ── MODERATION ── */}
+        {tab === 'moderation' && (
+          <>
+            <h2 style={st.h2}>Moderation queue</h2>
             <div style={{ ...st.card, background: t.panel, borderColor: t.border }}>
               {queue.isLoading ? (
                 <p style={{ color: t.muted }}>Loading…</p>
+              ) : queue.isError ? (
+                <p style={{ color: '#e8623a' }}>Failed to load queue. Try Refresh.</p>
               ) : (queue.data ?? []).length === 0 ? (
                 <p style={{ color: t.muted }}>Nothing pending review. 🎉</p>
               ) : (
@@ -181,10 +215,17 @@ export function AdminDashboard() {
                 </table>
               )}
             </div>
+          </>
+        )}
 
-            <h2 id="employers" style={st.h2}>New employer registrations</h2>
+        {/* ── EMPLOYERS ── */}
+        {tab === 'employers' && (
+          <>
+            <h2 style={st.h2}>New employer registrations</h2>
             <div style={{ ...st.card, background: t.panel, borderColor: t.border }}>
-              {(newEmployers.data ?? []).length === 0 ? (
+              {newEmployers.isError ? (
+                <p style={{ color: '#e8623a' }}>Failed to load. Try Refresh.</p>
+              ) : (newEmployers.data ?? []).length === 0 ? (
                 <p style={{ color: t.muted }}>No pending employers.</p>
               ) : (
                 <table style={st.table}>
@@ -222,23 +263,35 @@ export function AdminDashboard() {
                 </table>
               )}
             </div>
-          </div>
+          </>
+        )}
 
-          {/* Right */}
-          <div style={st.colRight}>
-            <h2 id="analytics" style={st.h2}>Job posts · 7 days</h2>
-            <div style={{ ...st.card, background: t.panel, borderColor: t.border }}>
-              <BarChart7d data={stats7d.data ?? []} theme={t} />
-            </div>
+        {/* ── USERS ── */}
+        {tab === 'users' && (
+          <>
+            <h2 style={st.h2}>Users</h2>
+            <section style={st.metricsGrid}>
+              {[
+                { label: 'Total seekers', value: m?.totalSeekers ?? 0 },
+                { label: 'Verified employers', value: m?.verifiedEmployers ?? 0 },
+              ].map((c) => (
+                <div key={c.label} style={{ ...st.metricCard, background: t.panel, borderColor: t.border }}>
+                  <div style={{ ...st.metricValue, color: t.accent }}>{c.value.toLocaleString('en-IN')}</div>
+                  <div style={{ ...st.metricLabel, color: t.muted }}>{c.label}</div>
+                </div>
+              ))}
+            </section>
+          </>
+        )}
 
-            <h2 style={st.h2}>District coverage</h2>
+        {/* ── AUDIT ── */}
+        {tab === 'audit' && (
+          <>
+            <h2 style={st.h2}>Audit log</h2>
             <div style={{ ...st.card, background: t.panel, borderColor: t.border }}>
-              <DistrictBars data={coverage.data ?? []} theme={t} />
-            </div>
-
-            <h2 id="audit-log" style={st.h2}>Audit log</h2>
-            <div style={{ ...st.card, background: t.panel, borderColor: t.border }}>
-              {(audit.data ?? []).length === 0 ? (
+              {audit.isError ? (
+                <p style={{ color: '#e8623a' }}>Failed to load. Try Refresh.</p>
+              ) : (audit.data ?? []).length === 0 ? (
                 <p style={{ color: t.muted }}>No activity yet.</p>
               ) : (
                 <ul style={st.auditList}>
@@ -253,8 +306,8 @@ export function AdminDashboard() {
                 </ul>
               )}
             </div>
-          </div>
-        </div>
+          </>
+        )}
       </main>
     </div>
   );
