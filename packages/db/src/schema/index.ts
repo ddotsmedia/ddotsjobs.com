@@ -13,3 +13,4 @@ export * from './subscriptions.js';
 export * from './audit.js';
 export * from './site_settings.js';
 export * from './broadcast.js';
+export * from './resume.js';

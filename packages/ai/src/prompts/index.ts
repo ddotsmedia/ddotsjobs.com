@@ -499,6 +499,31 @@ export function jobDetectFakePrompt(input: {
   };
 }
 
+// ── Resume summary / experience enhancer ─────────────────────────────────
+export const resumeSummarySchema = z.object({ text: z.string().min(1) });
+export type ResumeSummaryOutput = z.infer<typeof resumeSummarySchema>;
+export function resumeSummaryPrompt(input: {
+  mode: 'summary' | 'experience';
+  title?: string;
+  profession?: string;
+  experienceYears?: number;
+  draft: string;
+}): PromptSpec<ResumeSummaryOutput> {
+  const system =
+    input.mode === 'summary'
+      ? 'Write a concise, professional 2-3 sentence resume summary for a Kerala job seeker. ' +
+        'Confident but honest, no clichés, no first person pronouns overuse. Return as { text }.'
+      : 'Rewrite this work-experience description into 2-3 crisp, achievement-focused bullet-style sentences ' +
+        'suitable for a Kerala/Gulf resume. Keep it truthful to the input. Return as { text }.';
+  return {
+    task: 'summarize',
+    version: 1,
+    system,
+    prompt: JSON.stringify(input),
+    schema: resumeSummarySchema,
+  };
+}
+
 // ── Admin revenue insights ───────────────────────────────────────────────
 export const revenueInsightsSchema = z.object({ insights: z.array(z.string()).max(5) });
 export type RevenueInsightsOutput = z.infer<typeof revenueInsightsSchema>;
@@ -542,6 +567,7 @@ export const PROMPTS = {
   salaryBenchmark: salaryBenchmarkPrompt,
   jobDetectFake: jobDetectFakePrompt,
   adminRevenueInsights: adminRevenueInsightsPrompt,
+  resumeSummary: resumeSummaryPrompt,
 } as const;
 
 export type PromptName = keyof typeof PROMPTS;
