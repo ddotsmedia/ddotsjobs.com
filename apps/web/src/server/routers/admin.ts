@@ -493,4 +493,99 @@ export const adminRouter = router({
       });
       return { success: true as const };
     }),
+
+  // ── Platform analytics (Part 3) — all charts in one call ─────────────
+  analyticsOverview: adminProcedure
+    .input(z.object({ days: z.number().int().min(1).max(366).default(30) }))
+    .query(async ({ ctx, input }) => {
+      const { jobs, users, employers, applications } = tables;
+      const since = sql`now() - make_interval(days => ${input.days})`;
+      const jDate = sql<string>`to_char(date(${jobs.createdAt}), 'YYYY-MM-DD')`;
+      const uDate = sql<string>`to_char(date(${users.createdAt}), 'YYYY-MM-DD')`;
+
+      const [
+        platform,
+        jobsTimeline,
+        registrationsTimeline,
+        jobsByCategory,
+        jobsByDistrict,
+        applicationFunnel,
+        seekersByProfession,
+        salaryRow,
+      ] = await Promise.all([
+        // Platform stats (single roundtrip via subquery counts).
+        ctx.db
+          .select({
+            totalJobs: sql<number>`(select count(*)::int from ${jobs} where deleted_at is null)`,
+            activeJobs: sql<number>`(select count(*)::int from ${jobs} where deleted_at is null and status = 'active')`,
+            totalSeekers: sql<number>`(select count(*)::int from ${users} where deleted_at is null and role = 'seeker')`,
+            totalEmployers: sql<number>`(select count(*)::int from ${employers} where deleted_at is null)`,
+            verifiedEmployers: sql<number>`(select count(*)::int from ${employers} where deleted_at is null and verification_status = 'verified')`,
+            totalApplications: sql<number>`(select count(*)::int from ${applications} where withdrawn_at is null)`,
+            placements: sql<number>`(select count(*)::int from ${applications} where status = 'hired')`,
+          })
+          .from(sql`(select 1) as _`),
+        ctx.db
+          .select({ date: jDate, count: count() })
+          .from(jobs)
+          .where(and(gte(jobs.createdAt, since), isNull(jobs.deletedAt)))
+          .groupBy(jDate)
+          .orderBy(jDate),
+        ctx.db
+          .select({
+            date: uDate,
+            seekers: sql<number>`sum(case when ${users.role} = 'seeker' then 1 else 0 end)::int`,
+            employers: sql<number>`sum(case when ${users.role} = 'employer' then 1 else 0 end)::int`,
+          })
+          .from(users)
+          .where(and(gte(users.createdAt, since), isNull(users.deletedAt)))
+          .groupBy(uDate)
+          .orderBy(uDate),
+        ctx.db
+          .select({ category: jobs.categorySlug, count: count() })
+          .from(jobs)
+          .where(and(isNull(jobs.deletedAt), eq(jobs.status, 'active')))
+          .groupBy(jobs.categorySlug)
+          .orderBy(desc(count()))
+          .limit(12),
+        ctx.db
+          .select({ district: jobs.district, count: count() })
+          .from(jobs)
+          .where(and(isNull(jobs.deletedAt), eq(jobs.status, 'active')))
+          .groupBy(jobs.district)
+          .orderBy(desc(count())),
+        ctx.db
+          .select({ status: applications.status, count: count() })
+          .from(applications)
+          .where(isNull(applications.withdrawnAt))
+          .groupBy(applications.status),
+        ctx.db
+          .select({ profession: users.primaryProfession, count: count() })
+          .from(users)
+          .where(and(eq(users.role, 'seeker'), isNull(users.deletedAt), sql`${users.primaryProfession} is not null`))
+          .groupBy(users.primaryProfession)
+          .orderBy(desc(count()))
+          .limit(10),
+        ctx.db
+          .select({
+            disclosed: sql<number>`sum(case when ${jobs.salaryDisclosed} and ${jobs.salaryMinPaise} is not null then 1 else 0 end)::int`,
+            total: count(),
+          })
+          .from(jobs)
+          .where(and(isNull(jobs.deletedAt), eq(jobs.status, 'active'))),
+      ]);
+
+      const sal = salaryRow[0] ?? { disclosed: 0, total: 0 };
+      return {
+        days: input.days,
+        platform: platform[0]!,
+        jobsTimeline,
+        registrationsTimeline,
+        jobsByCategory,
+        jobsByDistrict,
+        applicationFunnel,
+        seekersByProfession,
+        salaryDisclosedPct: sal.total > 0 ? Math.round((sal.disclosed / sal.total) * 100) : 0,
+      };
+    }),
 });

@@ -135,6 +135,7 @@ export function AdminDashboard() {
             );
           })}
         </nav>
+        <a href="/admin/analytics" style={{ ...st.navItem, color: t.muted }}>📊 Analytics</a>
         <a href="/admin/employers" style={{ ...st.navItem, color: t.muted }}>🏢 Manage employers</a>
         <a href="/admin/site-settings" style={{ ...st.navItem, color: t.muted }}>⚙ Site settings</a>
         <a href="/admin/settings" style={{ ...st.navItem, color: t.muted }}>Change password</a>
