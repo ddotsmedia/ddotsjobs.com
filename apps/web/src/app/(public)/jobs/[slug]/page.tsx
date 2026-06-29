@@ -7,6 +7,7 @@ import { notFound } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import type { AppRouter } from '@/server/routers/_app';
 import { getServerTrpc } from '@/lib/trpc/server';
+import { WhatsAppIcon } from '@/components/WhatsAppIcon';
 import { DescriptionTabs } from '@/components/jobs/DescriptionTabs';
 import { IncrementView } from '@/components/jobs/IncrementView';
 import { SaveJobButton } from '@/components/jobs/SaveJobButton';
@@ -332,6 +333,15 @@ export default async function JobDetailPage({ params }: Props) {
                   See reviews →
                 </Link>
               )}
+              <a
+                href={`https://wa.me/971509379212?text=${encodeURIComponent(`Hi, I saw the job "${job.titleEn}" at ${job.company} on ddotsjobs.com. Can you tell me more?`)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={s.askWa}
+              >
+                <WhatsAppIcon size={20} fill="#fff" />
+                Ask about this job
+              </a>
             </div>
           </aside>
         </div>
@@ -410,5 +420,6 @@ const s: Record<string, React.CSSProperties> = {
   companyName: { fontSize: 15, fontWeight: 600 },
   companyMeta: { fontSize: 13, color: '#6b6b66' },
   companyLink: { fontSize: 14, color: 'var(--color-accent)', fontWeight: 500, marginTop: 4 },
+  askWa: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', marginTop: 12, padding: '12px 20px', background: '#25D366', color: '#fff', borderRadius: 12, fontWeight: 600, fontSize: 14 },
   stickySalary: { fontSize: 15, fontWeight: 700, color: 'var(--color-accent)' },
 };

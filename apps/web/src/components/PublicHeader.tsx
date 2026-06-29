@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { Logo } from '@/components/Logo';
+import { WhatsAppIcon } from '@/components/WhatsAppIcon';
 
 export function PublicHeader() {
   const { data: session } = useSession();
@@ -32,6 +33,9 @@ export function PublicHeader() {
           <Link href="/healthcare-jobs" style={s.link}>Healthcare</Link>
           <Link href="/salary-guide" style={s.link}>Salary</Link>
           <Link href="/jobs?type=walk_in" style={s.link}>Walk-in</Link>
+          <a href="https://wa.me/971509379212" target="_blank" rel="noopener noreferrer" title="Chat on WhatsApp" style={s.waIcon}>
+            <WhatsAppIcon size={20} />
+          </a>
           {dashboardHref ? (
             <Link href={dashboardHref} style={s.loginBtn}>Dashboard</Link>
           ) : (
@@ -101,6 +105,7 @@ const s: Record<string, React.CSSProperties> = {
   },
   desktopNav: {},
   link: { fontSize: 14, fontWeight: 600, color: '#3A9EA5', whiteSpace: 'nowrap', marginLeft: 'var(--space-3)' },
+  waIcon: { display: 'inline-flex', alignItems: 'center', padding: 8, marginLeft: 'var(--space-2)' },
   postBtn: {
     fontSize: 14,
     fontWeight: 600,
