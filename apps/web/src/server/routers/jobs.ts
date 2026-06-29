@@ -487,6 +487,48 @@ export const jobsRouter = router({
       return { saved: false as const };
     }),
 
+  // ── Seeker: saved jobs list ──────────────────────────────────────────
+  getSavedJobs: protectedProcedure.query(async ({ ctx }) => {
+    const j = tables.jobs;
+    const s = tables.savedJobs;
+    return ctx.db
+      .select({
+        id: j.id,
+        slug: j.slug,
+        titleEn: j.titleEn,
+        district: j.district,
+        salaryMinPaise: j.salaryMinPaise,
+        salaryDisclosed: j.salaryDisclosed,
+        company: sql<string>`coalesce(${tables.employers.displayNameEn}, ${tables.employers.legalNameEn})`,
+        savedAt: s.createdAt,
+      })
+      .from(s)
+      .innerJoin(j, eq(j.id, s.jobId))
+      .innerJoin(tables.employers, eq(tables.employers.id, j.employerId))
+      .where(and(eq(s.userId, ctx.user.id), isNull(s.deletedAt), isNull(j.deletedAt)))
+      .orderBy(desc(s.createdAt))
+      .limit(50);
+  }),
+
+  // ── Employer: re-blast a job to WhatsApp groups (1 / job / 3 days) ────
+  boostJob: roleProcedure('employer')
+    .input(z.object({ jobId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const [job] = await ctx.db
+        .select({ id: tables.jobs.id, lastBoostedAt: tables.jobs.lastBoostedAt })
+        .from(tables.jobs)
+        .innerJoin(tables.employers, eq(tables.employers.id, tables.jobs.employerId))
+        .where(and(eq(tables.jobs.id, input.jobId), eq(tables.employers.ownerUserId, ctx.user.id), isNull(tables.jobs.deletedAt)))
+        .limit(1);
+      if (!job) throw new TRPCError({ code: 'FORBIDDEN', message: 'Not your job' });
+      if (job.lastBoostedAt && Date.now() - new Date(job.lastBoostedAt).getTime() < 3 * 86_400_000) {
+        throw new TRPCError({ code: 'TOO_MANY_REQUESTS', message: 'Already boosted in the last 3 days.' });
+      }
+      await alertsQueue.add('match_job_alerts', { jobId: input.jobId }, { priority: 10 });
+      await ctx.db.update(tables.jobs).set({ lastBoostedAt: new Date() }).where(eq(tables.jobs.id, input.jobId));
+      return { success: true as const };
+    }),
+
   // ── Employer: post a job ─────────────────────────────────────────────
   create: roleProcedure('employer').input(jobCreateInput).mutation(async ({ ctx, input }) => {
     await rateLimit(ctx.redis, `jobcreate:${ctx.user.id}`, 10, 3600);

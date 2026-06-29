@@ -48,6 +48,12 @@ export const employers = pgTable(
     contactPhone: varchar('contact_phone', { length: 20 }),
     contactEmail: varchar('contact_email', { length: 255 }),
     employeeCountRange: varchar('employee_count_range', { length: 20 }),
+    // Public company profile (Part 7).
+    companyDescription: text('company_description'),
+    yearEstablished: integer('year_established'),
+    companySize: varchar('company_size', { length: 20 }),
+    benefitsOffered: text('benefits_offered').array(),
+    socialLinks: jsonb('social_links').$type<Record<string, string>>().notNull().default({}),
     subscriptionTier: subscriptionTier('subscription_tier').notNull().default('free'),
     jobsPostedThisPeriod: integer('jobs_posted_this_period').notNull().default(0),
     jobsLimitThisPeriod: integer('jobs_limit_this_period').notNull().default(3),
