@@ -46,6 +46,9 @@ export const users = pgTable(
     bannedAt: timestamp('banned_at', { withTimezone: true }),
     // GDPR-style deletion request (processed within 30 days).
     deletionRequestedAt: timestamp('deletion_requested_at', { withTimezone: true }),
+    // Admin username/password login (alternative to OTP).
+    adminUsername: text('admin_username').unique(),
+    adminPasswordHash: text('admin_password_hash'),
     ...timestamps,
   },
   (t) => [

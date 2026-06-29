@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
-import { isNull, tables } from '@ddotsjobs/db';
+import bcrypt from 'bcryptjs';
+import { and, eq, isNull, tables } from '@ddotsjobs/db';
 import {
   clearOtp,
   deleteSession,
@@ -81,6 +82,69 @@ export const authRouter = router({
 
       // Single-use handoff: Credentials provider mints the JWT from this.
       await markVerified(input.phone, user.id);
+      return { success: true as const };
+    }),
+
+  // ── Admin username/password login (alternative to OTP) ─────────────
+  adminLogin: publicProcedure
+    .input(z.object({ username: z.string().min(3).max(50), password: z.string().min(8).max(100) }))
+    .mutation(async ({ ctx, input }) => {
+      const key = `admin:login:${input.username.toLowerCase()}`;
+      const attempts = await ctx.redis.incr(key);
+      if (attempts === 1) await ctx.redis.expire(key, 900);
+      if (attempts > 5) {
+        throw new TRPCError({ code: 'TOO_MANY_REQUESTS', message: 'Too many attempts. Wait 15 minutes.' });
+      }
+
+      const [user] = await ctx.db
+        .select({ id: tables.users.id, role: tables.users.role, phone: tables.users.phone, hash: tables.users.adminPasswordHash })
+        .from(tables.users)
+        .where(and(eq(tables.users.adminUsername, input.username), isNull(tables.users.deletedAt), eq(tables.users.isBanned, false)))
+        .limit(1);
+
+      const ok =
+        user && (user.role === 'admin' || user.role === 'super_admin') && user.hash
+          ? await bcrypt.compare(input.password, user.hash)
+          : false;
+
+      if (!ok || !user) {
+        if (user) {
+          await ctx.db.insert(tables.auditLog).values({ actorUserId: user.id, action: 'admin_login_failed', entityType: 'user', entityId: user.id });
+        }
+        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid username or password' });
+      }
+
+      await ctx.redis.del(key);
+      await ctx.db.insert(tables.auditLog).values({
+        actorUserId: user.id,
+        action: 'admin_login_success',
+        entityType: 'user',
+        entityId: user.id,
+        diff: { username: input.username },
+      });
+      // Reuse the OTP single-use handoff — client completes via signIn('otp', { phone }).
+      await markVerified(user.phone, user.id);
+      return { success: true as const, phone: user.phone, redirectTo: '/admin/dashboard' };
+    }),
+
+  changeAdminPassword: protectedProcedure
+    .input(z.object({ currentPassword: z.string().min(1), newPassword: z.string().min(12).max(100) }))
+    .mutation(async ({ ctx, input }) => {
+      const role = ctx.user.role as string;
+      if (role !== 'admin' && role !== 'super_admin') {
+        throw new TRPCError({ code: 'FORBIDDEN' });
+      }
+      const [u] = await ctx.db
+        .select({ hash: tables.users.adminPasswordHash })
+        .from(tables.users)
+        .where(eq(tables.users.id, ctx.user.id))
+        .limit(1);
+      if (!u?.hash || !(await bcrypt.compare(input.currentPassword, u.hash))) {
+        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Current password is incorrect' });
+      }
+      const hash = await bcrypt.hash(input.newPassword, 12);
+      await ctx.db.update(tables.users).set({ adminPasswordHash: hash }).where(eq(tables.users.id, ctx.user.id));
+      await ctx.db.insert(tables.auditLog).values({ actorUserId: ctx.user.id, action: 'admin_password_changed', entityType: 'user', entityId: ctx.user.id });
       return { success: true as const };
     }),
 

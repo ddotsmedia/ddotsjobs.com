@@ -394,7 +394,11 @@ export default async function HomePage() {
 
         <div style={s.footerBar}>
           <div style={{ ...s.container, ...s.footerBarInner }}>
-            <span>© 2026 ddotsjobs.com · Ddotsmedia Technologies</span>
+            <span>
+              © 2026 ddotsjobs.com · Ddotsmedia Technologies
+              {' · '}
+              <Link href="/admin-login" style={{ color: 'rgba(255,255,255,0.15)', fontSize: 11 }}>Admin</Link>
+            </span>
             <span style={s.footerDots} aria-hidden>
               {['#F5C842', '#E8623A', '#8DC63F', '#F5C842'].map((c, i) => (
                 <span key={i} style={{ width: 8, height: 8, borderRadius: '50%', background: c, display: 'inline-block' }} />

@@ -6,6 +6,7 @@ export const userRole = pgEnum('user_role', [
   'employer',
   'admin',
   'moderator',
+  'super_admin',
 ]);
 
 export const employerType = pgEnum('employer_type', [

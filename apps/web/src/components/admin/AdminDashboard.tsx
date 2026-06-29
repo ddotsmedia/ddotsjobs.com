@@ -120,6 +120,7 @@ export function AdminDashboard() {
             </a>
           ))}
         </nav>
+        <a href="/admin/settings" style={{ ...st.navItem, color: t.muted }}>Change password</a>
         <button type="button" onClick={toggleTheme} style={{ ...st.themeToggle, borderColor: t.border, color: t.fg }}>
           {dark ? '☀ Light mode' : '🌙 Dark mode'}
         </button>

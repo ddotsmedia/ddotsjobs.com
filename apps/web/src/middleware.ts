@@ -22,6 +22,10 @@ export default auth((req) => {
 
   const user = req.auth?.user;
   if (!user) {
+    // Admin areas have their own username/password login page.
+    if (pathname.startsWith('/admin')) {
+      return NextResponse.redirect(new URL('/admin-login', req.nextUrl));
+    }
     const url = new URL('/login', req.nextUrl);
     url.searchParams.set('next', pathname);
     return NextResponse.redirect(url);
