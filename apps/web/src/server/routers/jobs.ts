@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
 import { and, asc, count, createNotification, desc, eq, gte, inArray, isNull, sql, tables, type SQL } from '@ddotsjobs/db';
 import { callAI } from '@ddotsjobs/ai';
-import { jobAutoFillDescriptionPrompt, searchParseNaturalLanguagePrompt } from '@ddotsjobs/ai/prompts';
+import { jobAutoFillDescriptionPrompt, searchParseNaturalLanguagePrompt, jobSuggestTitlesPrompt, jobSuggestSkillsPrompt, salaryBenchmarkPrompt } from '@ddotsjobs/ai/prompts';
 import { SECTORS } from '@/lib/constants';
 import { sanitizeHtml, stripHtml } from '@/lib/sanitize';
 import { rateLimit } from '../rate-limit.js';
@@ -149,6 +149,58 @@ export const jobsRouter = router({
       } catch {
         // AI unavailable → caller falls back to plain text search.
         return { category: null, district: null, salaryMin: null, jobType: null, isWalkIn: null, valuesGulfExperience: null, confidence: 0 };
+      }
+    }),
+
+  // AI: title suggestions (Redis-cached per category+partial).
+  suggestTitles: roleProcedure('employer')
+    .input(z.object({ partialTitle: z.string().max(120).default(''), category: z.string().max(60) }))
+    .mutation(async ({ ctx, input }) => {
+      const key = `ai:titles:${input.category}:${input.partialTitle.slice(0, 24).toLowerCase()}`;
+      const cached = await ctx.redis.get(key);
+      if (cached) return JSON.parse(cached) as { titles: string[] };
+      const spec = jobSuggestTitlesPrompt(input);
+      try {
+        const { data } = await callAI({ task: spec.task, prompt: spec.prompt, system: spec.system, schema: spec.schema });
+        await ctx.redis.set(key, JSON.stringify(data), 'EX', 3600);
+        return data;
+      } catch {
+        return { titles: [] };
+      }
+    }),
+
+  // AI: skill suggestions (Redis-cached per title+category, 24h).
+  suggestSkills: roleProcedure('employer')
+    .input(z.object({ title: z.string().max(120), category: z.string().max(60) }))
+    .mutation(async ({ ctx, input }) => {
+      const key = `ai:skills:${input.category}:${input.title.slice(0, 32).toLowerCase()}`;
+      const cached = await ctx.redis.get(key);
+      if (cached) return JSON.parse(cached) as { skills: string[] };
+      const spec = jobSuggestSkillsPrompt(input);
+      try {
+        const { data } = await callAI({ task: spec.task, prompt: spec.prompt, system: spec.system, schema: spec.schema });
+        await ctx.redis.set(key, JSON.stringify(data), 'EX', 86_400);
+        return data;
+      } catch {
+        return { skills: [] };
+      }
+    }),
+
+  // AI: salary benchmark (rupees), Redis-cached 24h. Returns paise too for the form.
+  salaryBenchmark: roleProcedure('employer')
+    .input(z.object({ category: z.string().max(60), district: z.string().max(40), experienceMin: z.number().int().min(0).max(40).default(0) }))
+    .mutation(async ({ ctx, input }) => {
+      const key = `ai:salary:${input.category}:${input.district}:${input.experienceMin}`;
+      const cached = await ctx.redis.get(key);
+      if (cached) return JSON.parse(cached) as { minPaise: number; maxPaise: number; medianPaise: number; confidence: string; sampleSize: number };
+      const spec = salaryBenchmarkPrompt(input);
+      try {
+        const { data } = await callAI({ task: spec.task, prompt: spec.prompt, system: spec.system, schema: spec.schema });
+        const out = { minPaise: data.min * 100, maxPaise: data.max * 100, medianPaise: data.median * 100, confidence: data.confidence, sampleSize: data.sampleSize };
+        await ctx.redis.set(key, JSON.stringify(out), 'EX', 86_400);
+        return out;
+      } catch {
+        return { minPaise: 0, maxPaise: 0, medianPaise: 0, confidence: 'low', sampleSize: 0 };
       }
     }),
 

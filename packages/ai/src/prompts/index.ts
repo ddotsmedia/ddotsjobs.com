@@ -423,6 +423,54 @@ export function searchParseNaturalLanguagePrompt(input: {
   };
 }
 
+// ── Job-post AI helpers (Flash) ─────────────────────────────────────────
+export const suggestTitlesSchema = z.object({ titles: z.array(z.string()).max(8) });
+export type SuggestTitlesOutput = z.infer<typeof suggestTitlesSchema>;
+export function jobSuggestTitlesPrompt(input: { partialTitle: string; category: string }): PromptSpec<SuggestTitlesOutput> {
+  return {
+    task: 'classify',
+    version: 1,
+    system:
+      'Suggest 5 clear, specific Kerala job titles for the given category and partial text. ' +
+      'Real roles employers use (e.g. "Staff Nurse — ICU", "Civil Site Engineer"). Return as titles[].',
+    prompt: JSON.stringify(input),
+    schema: suggestTitlesSchema,
+  };
+}
+
+export const suggestSkillsSchema = z.object({ skills: z.array(z.string()).max(15) });
+export type SuggestSkillsOutput = z.infer<typeof suggestSkillsSchema>;
+export function jobSuggestSkillsPrompt(input: { title: string; category: string }): PromptSpec<SuggestSkillsOutput> {
+  return {
+    task: 'classify',
+    version: 1,
+    system: 'List up to 10 concrete skills employers expect for this Kerala role. Short noun phrases. Return as skills[].',
+    prompt: JSON.stringify(input),
+    schema: suggestSkillsSchema,
+  };
+}
+
+export const salaryBenchmarkSchema = z.object({
+  min: z.number(),
+  max: z.number(),
+  median: z.number(),
+  confidence: z.enum(['low', 'medium', 'high']),
+  sampleSize: z.number(),
+});
+export type SalaryBenchmarkOutput = z.infer<typeof salaryBenchmarkSchema>;
+export function salaryBenchmarkPrompt(input: { category: string; district: string; experienceMin: number }): PromptSpec<SalaryBenchmarkOutput> {
+  return {
+    task: 'reasoning',
+    version: 1,
+    system:
+      'Estimate the realistic MONTHLY salary band in RUPEES for this Kerala role/district/experience, ' +
+      'using Kerala market knowledge (2026). Return min, max, median (rupees, integers), confidence ' +
+      '(low|medium|high), and a plausible sampleSize. Be realistic — Kerala pay, not metro India.',
+    prompt: JSON.stringify(input),
+    schema: salaryBenchmarkSchema,
+  };
+}
+
 // ── Registry of every prompt for introspection / eval harnesses ─────────
 export const PROMPTS = {
   fitScore: fitScorePrompt,
@@ -439,6 +487,9 @@ export const PROMPTS = {
   applicationCoverLetter: applicationCoverLetterPrompt,
   resumeGenerateKeralaCv: resumeGenerateKeralaCvPrompt,
   searchParseNaturalLanguage: searchParseNaturalLanguagePrompt,
+  jobSuggestTitles: jobSuggestTitlesPrompt,
+  jobSuggestSkills: jobSuggestSkillsPrompt,
+  salaryBenchmark: salaryBenchmarkPrompt,
 } as const;
 
 export type PromptName = keyof typeof PROMPTS;

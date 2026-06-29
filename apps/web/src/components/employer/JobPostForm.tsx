@@ -22,6 +22,9 @@ export function JobPostForm() {
   const parks = trpc.itParks.list.useQuery();
   const create = trpc.jobs.create.useMutation();
   const autoFill = trpc.jobs.autoFillDescription.useMutation();
+  const suggestTitles = trpc.jobs.suggestTitles.useMutation();
+  const benchmark = trpc.jobs.salaryBenchmark.useMutation();
+  const [showTitleSug, setShowTitleSug] = useState(false);
 
   const [title, setTitle] = useState('');
   const [titleMl, setTitleMl] = useState('');
@@ -56,6 +59,20 @@ export function JobPostForm() {
       setDescription(res.description_en);
       if (res.description_ml) setDescriptionMl(res.description_ml);
     }
+  }
+
+  function onTitleBlur() {
+    if (title.trim().length < 2) return;
+    suggestTitles.mutate({ partialTitle: title.trim(), category }, { onSuccess: () => setShowTitleSug(true) });
+  }
+  function loadBenchmark() {
+    benchmark.mutate({ category, district, experienceMin: Math.floor(minExperienceMonths / 12) });
+  }
+  function useMarketRate() {
+    const b = benchmark.data;
+    if (!b || b.minPaise === 0) return;
+    setSalaryMin(String(Math.round(b.minPaise / 100)));
+    setSalaryMax(String(Math.round(b.maxPaise / 100)));
   }
 
   function toggleCert(c: string) {
@@ -123,7 +140,16 @@ export function JobPostForm() {
       {/* Section 1 */}
       <Section title="Job details">
         <Field label="Job title (English)" required>
-          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Staff Nurse — ICU" style={s.input} />
+          <input value={title} onChange={(e) => { setTitle(e.target.value); setShowTitleSug(false); }} onBlur={onTitleBlur} placeholder="e.g. Staff Nurse — ICU" style={s.input} />
+          {suggestTitles.isPending && <p style={s.aiHint}>✨ AI thinking…</p>}
+          {showTitleSug && (suggestTitles.data?.titles.length ?? 0) > 0 && (
+            <div style={s.sugBox}>
+              <span style={s.sugLabel}>Suggested titles</span>
+              {suggestTitles.data!.titles.map((t) => (
+                <button key={t} type="button" onMouseDown={() => { setTitle(t); setShowTitleSug(false); }} style={s.sugItem}>{t}</button>
+              ))}
+            </div>
+          )}
         </Field>
         <Field label="Job title (Malayalam)">
           <input value={titleMl} onChange={(e) => setTitleMl(e.target.value)} placeholder="e.g. സ്റ്റാഫ് നഴ്‌സ് — ICU" style={s.input} />
@@ -188,6 +214,17 @@ export function JobPostForm() {
 
       {/* Section 3 */}
       <Section title="Salary">
+        <div style={s.benchBar}>
+          <button type="button" onClick={loadBenchmark} disabled={benchmark.isPending} style={s.benchBtn}>
+            {benchmark.isPending ? 'Checking market…' : '✨ AI salary benchmark'}
+          </button>
+          {benchmark.data && benchmark.data.minPaise > 0 && (
+            <span style={s.benchHint}>
+              Market rate: ₹{Math.round(benchmark.data.minPaise / 100).toLocaleString('en-IN')}–₹{Math.round(benchmark.data.maxPaise / 100).toLocaleString('en-IN')}/mo ({benchmark.data.confidence}, ~{benchmark.data.sampleSize} jobs) ·{' '}
+              <button type="button" onClick={useMarketRate} style={s.benchUse}>Use this</button>
+            </span>
+          )}
+        </div>
         <Field label="Salary minimum (₹/month)">
           <input type="number" value={salaryMin} onChange={(e) => setSalaryMin(e.target.value)} placeholder="20000" style={s.input} />
         </Field>
@@ -290,6 +327,14 @@ const s: Record<string, React.CSSProperties> = {
   toggleLine: { display: 'flex', gap: 10, alignItems: 'center', fontSize: 14 },
   warn: { fontSize: 13, color: '#9a6b00' },
   err: { color: '#c0392b', fontSize: 13 },
+  aiHint: { fontSize: 12, color: '#3A9EA5', margin: '4px 0 0' },
+  sugBox: { display: 'flex', flexDirection: 'column', gap: 4, marginTop: 6, padding: 8, background: '#F4F3EE', borderRadius: 10 },
+  sugLabel: { fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#6B6860' },
+  sugItem: { textAlign: 'left', fontSize: 14, color: '#1A1916', background: '#fff', border: '1px solid #E2E8E8', borderRadius: 8, padding: '8px 12px', cursor: 'pointer' },
+  benchBar: { display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginBottom: 8 },
+  benchBtn: { fontSize: 13, fontWeight: 600, color: '#fff', background: 'linear-gradient(135deg,#3A9EA5,#2E8A91)', border: 'none', borderRadius: 10, padding: '8px 16px', cursor: 'pointer' },
+  benchHint: { fontSize: 13, color: '#3A6B1A' },
+  benchUse: { fontSize: 13, fontWeight: 700, color: '#3A9EA5', background: 'none', border: 'none', cursor: 'pointer', padding: 0 },
   submit: { minHeight: 52, fontSize: 16, fontWeight: 600, color: '#0f0e0c', background: 'var(--color-brand)', border: 'none', borderRadius: 'var(--radius-pill)', cursor: 'pointer' },
   success: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, padding: 'var(--space-4)', background: '#fff', borderRadius: 'var(--radius-card)', border: '1px solid #efefe9', textAlign: 'center' },
   successIcon: { width: 56, height: 56, borderRadius: '9999px', background: '#e6f5ea', color: '#1d7a3a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, fontWeight: 700 },
