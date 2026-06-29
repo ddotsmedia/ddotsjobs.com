@@ -378,6 +378,14 @@ export default async function HomePage() {
           </div>
 
           <div style={s.fcol}>
+            <p style={s.fhead}>Resources</p>
+            <Link href="/career-paths" style={s.flink}>Career Paths</Link>
+            <Link href="/labour-rights" style={s.flink}>Labour Rights Guide</Link>
+            <Link href="/fresher-jobs" style={s.flink}>Fresher Hub</Link>
+            <Link href="/ayurveda-jobs" style={s.flink}>Ayurveda Jobs</Link>
+          </div>
+
+          <div style={s.fcol}>
             <p style={s.fhead}>Top Districts</p>
             {[
               ['ernakulam', 'Ernakulam'],

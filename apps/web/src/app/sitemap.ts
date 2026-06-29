@@ -1,6 +1,7 @@
 import type { MetadataRoute } from 'next';
 import { and, db, desc, eq, isNull, ne, tables } from '@ddotsjobs/db';
 import { CATEGORY_SEO, DISTRICTS } from '@/lib/constants';
+import { CAREER_PATHS } from '@/lib/career-paths';
 
 // Render on demand (DB-backed) — never statically collect at build time.
 export const dynamic = 'force-dynamic';
@@ -34,6 +35,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE}/women-friendly-jobs`, changeFrequency: 'weekly', priority: 0.7, lastModified: now },
     { url: `${BASE}/salary-guide`, changeFrequency: 'weekly', priority: 0.8, lastModified: now },
     { url: `${BASE}/skill-development`, changeFrequency: 'weekly', priority: 0.6, lastModified: now },
+    { url: `${BASE}/fresher-jobs`, changeFrequency: 'daily', priority: 0.8, lastModified: now },
+    { url: `${BASE}/ayurveda-jobs`, changeFrequency: 'weekly', priority: 0.7, lastModified: now },
+    { url: `${BASE}/career-paths`, changeFrequency: 'weekly', priority: 0.7, lastModified: now },
+    ...CAREER_PATHS.map((p) => ({ url: `${BASE}/career-paths/${p.slug}`, changeFrequency: 'weekly' as const, priority: 0.6, lastModified: now })),
+    { url: `${BASE}/labour-rights`, changeFrequency: 'monthly', priority: 0.7, lastModified: now },
     { url: `${BASE}/about`, changeFrequency: 'monthly', priority: 0.5, lastModified: now },
     { url: `${BASE}/privacy`, changeFrequency: 'yearly', priority: 0.2, lastModified: now },
   ];
