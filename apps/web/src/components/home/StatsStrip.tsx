@@ -31,14 +31,13 @@ function useCountUp(target: number, run: boolean): number {
   return n;
 }
 
-function Cell({ stat, run }: { stat: Stat; run: boolean }) {
+function Cell({ stat, run, accent }: { stat: Stat; run: boolean; accent: string }) {
   const counted = useCountUp(stat.value ?? 0, run);
   const display = stat.value == null ? (stat.text ?? '') : counted.toLocaleString('en-IN');
   return (
     <div style={s.cell}>
-      <span style={s.value}>{display}</span>
-      <span style={s.underline} />
       <span style={s.label}>{stat.label}</span>
+      <span style={{ ...s.value, color: accent }}>{display}</span>
       <span style={s.sub}>{stat.sub}</span>
     </div>
   );
@@ -74,17 +73,16 @@ export function StatsStrip({ stats }: { stats: { activeJobs: number; verifiedEmp
   return (
     <div ref={ref} style={s.strip}>
       {cells.map((c) => (
-        <Cell key={c.label} stat={c} run={run} />
+        <Cell key={c.label} stat={c} run={run} accent={c.value == null ? '#8DC63F' : '#F5C842'} />
       ))}
     </div>
   );
 }
 
 const s: Record<string, React.CSSProperties> = {
-  strip: { display: 'flex', flexWrap: 'wrap', background: '#fff', borderTop: '1px solid #E8E6DF', borderBottom: '1px solid #E8E6DF' },
-  cell: { flex: '1 1 150px', display: 'flex', flexDirection: 'column', gap: 4, padding: '32px var(--space-2)', borderLeft: '1px solid #f4f3ee' },
-  value: { fontFamily: 'var(--font-display)', fontStyle: 'italic', fontSize: 40, lineHeight: 1, color: '#3A9EA5' },
-  underline: { width: 28, height: 3, background: '#F5C842', borderRadius: 2, margin: '2px 0' },
-  label: { fontSize: 12, color: '#6B6860', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 },
-  sub: { fontSize: 12, color: '#B0AD9F' },
+  strip: { display: 'flex', flexWrap: 'wrap', background: '#0F1A1B', borderRadius: 20, overflow: 'hidden', padding: '8px 0' },
+  cell: { flex: '1 1 150px', display: 'flex', flexDirection: 'column', gap: 6, padding: '32px var(--space-3)', borderLeft: '1px solid rgba(255,255,255,0.08)' },
+  label: { fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.5)' },
+  value: { fontFamily: 'var(--font-display)', fontStyle: 'italic', fontSize: 52, fontWeight: 800, lineHeight: 1 },
+  sub: { fontSize: 12, color: 'rgba(255,255,255,0.35)' },
 };

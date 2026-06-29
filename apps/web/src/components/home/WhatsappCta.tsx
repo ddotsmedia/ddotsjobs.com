@@ -42,13 +42,13 @@ export function WhatsappCta() {
 }
 
 const s: Record<string, React.CSSProperties> = {
-  section: { background: 'linear-gradient(135deg, #1F6B70 0%, #3A9EA5 100%)' },
+  section: { background: 'linear-gradient(135deg, #0F6E56 0%, #3A9EA5 100%)' },
   inner: { width: '100%', maxWidth: 1040, margin: '0 auto', padding: 'clamp(40px,7vw,72px) var(--space-2)', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 8 },
-  title: { fontFamily: 'var(--font-display)', fontStyle: 'italic', fontSize: 'clamp(1.6rem,4vw,2.4rem)', color: '#fff', margin: 0 },
+  title: { fontFamily: 'var(--font-display)', fontStyle: 'italic', fontSize: 'clamp(1.8rem,5vw,2.6rem)', letterSpacing: '-0.02em', color: '#fff', margin: 0 },
   sub: { fontSize: 'clamp(0.95rem,2.5vw,1.1rem)', color: 'rgba(255,255,255,0.85)', margin: 0 },
-  form: { display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginTop: 'var(--space-2)', width: '100%', maxWidth: 460 },
-  input: { flex: '1 1 220px', minWidth: 0, height: 52, padding: '0 18px', fontSize: 16, border: 'none', borderRadius: 50, outline: 'none', color: '#1A1916' },
-  btn: { height: 52, padding: '0 28px', fontSize: 16, fontWeight: 700, color: '#1A1916', background: '#F5C842', border: 'none', borderRadius: 50, cursor: 'pointer', whiteSpace: 'nowrap' },
-  note: { fontSize: 13, color: 'rgba(255,255,255,0.8)', marginTop: 8 },
+  form: { display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center', marginTop: 'var(--space-2)', width: '100%', maxWidth: 460 },
+  input: { flex: '1 1 220px', minWidth: 0, height: 52, padding: '0 18px', fontSize: 16, background: 'rgba(255,255,255,0.15)', border: '1.5px solid rgba(255,255,255,0.3)', borderRadius: 12, outline: 'none', color: '#fff' },
+  btn: { height: 52, padding: '0 28px', fontSize: 16, fontWeight: 700, color: '#0F1A1B', background: '#F5C842', border: 'none', borderRadius: 12, cursor: 'pointer', whiteSpace: 'nowrap' },
+  note: { fontSize: 13, color: 'rgba(255,255,255,0.8)', marginTop: 10, background: 'rgba(255,255,255,0.15)', borderRadius: 8, padding: '6px 14px' },
   cred: { fontSize: 12, color: 'rgba(255,255,255,0.7)', margin: '2px 0 0', maxWidth: 520 },
 };

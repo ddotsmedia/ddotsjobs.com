@@ -42,17 +42,36 @@ export function generateMetadata(): Metadata {
   };
 }
 
-// Sector slug → icon (Phase 6 design).
-const SECTOR_ICONS: Record<string, string> = {
-  nursing: '🏥',
-  it: '💻',
-  teaching: '📚',
-  government: '🏛️',
-  gulf_return: '✈️',
-  banking: '🏦',
-  construction: '🏗️',
-  retail: '🛒',
+// Sector slug → tinted icon-container background.
+const SECTOR_ICON_BG: Record<string, string> = {
+  nursing: '#FEF0EC',
+  it: '#EDF7F8',
+  teaching: '#F0FBE8',
+  government: '#EDF7F8',
+  gulf_return: '#FFF9EC',
+  banking: '#FFF9EC',
+  construction: '#FFF0EC',
+  retail: '#F0FBE8',
 };
+
+// Inline line-icon per sector (24px, currentColor = sector accent).
+function SectorIcon({ slug }: { slug: string }) {
+  const p: Record<string, React.ReactNode> = {
+    nursing: <path d="M3 12h3l2-5 4 10 2-5h7" />,
+    it: (<><rect x="3" y="4" width="18" height="12" rx="1.5" /><path d="M8 20h8M12 16v4" /></>),
+    teaching: <path d="M3 5l9 3 9-3v11l-9 3-9-3V5zM12 8v11" />,
+    government: (<><path d="M3 9l9-5 9 5" /><path d="M5 9v8M19 9v8M9 9v8M15 9v8M3 19h18" /></>),
+    gulf_return: <path d="M2 12l20-7-7 20-3-8-8-3z" />,
+    banking: (<><path d="M3 9l9-5 9 5" /><path d="M5 9v8M9 9v8M15 9v8M19 9v8M3 19h18" /></>),
+    construction: (<><path d="M4 14a8 8 0 0 1 16 0" /><path d="M2 14h20M12 6v3" /></>),
+    retail: <path d="M5 7h14l-1 13H6L5 7zM9 7a3 3 0 0 1 6 0" />,
+  };
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      {p[slug] ?? <circle cx="12" cy="12" r="8" />}
+    </svg>
+  );
+}
 
 // Avatar palette — cycled by card index (Phase 6).
 const LOGO_COLORS = ['#3A9EA5', '#F5C842', '#534AB7', '#1A7F4E', '#C4242B', '#378ADD'];
@@ -195,14 +214,17 @@ export default async function HomePage() {
     <main style={s.page}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       {/* ── Hero ── */}
-      <section style={s.hero}>
+      <section style={s.hero} className="hp-dotgrid">
         <div style={s.container}>
-          <p style={s.kicker}>Kerala&rsquo;s career platform</p>
+          <span style={s.kickerPill}>
+            <span style={s.kickerDot} aria-hidden />
+            KERALA&rsquo;S CAREER PLATFORM
+          </span>
           <h1 style={s.headline}>Kerala&rsquo;s jobs, beautifully found</h1>
+          <p style={s.subtextMl}>കേരളത്തിലെ verified jobs — salary upfront, no middlemen</p>
           <p style={s.subtext}>
             Salary shown upfront. No middlemen. No fake jobs. Just real Kerala employers.
           </p>
-          <p style={s.subtextMl}>കേരളത്തിലെ verified jobs — salary upfront, no middlemen</p>
           <SearchHero />
           <p style={s.socialProof}>📱 12 employers posting today · 🔔 4 new jobs in the last hour</p>
         </div>
@@ -222,7 +244,9 @@ export default async function HomePage() {
             const n = sectorCounts[sec.slug] ?? 0;
             return (
               <Link key={sec.slug} href={`/jobs?category=${sec.slug}`} className="hp-sector" style={s.sectorCard}>
-                <span style={{ ...s.sectorIcon, background: `${SECTOR_COLORS[sec.slug] ?? '#3A9EA5'}1A` }} aria-hidden>{SECTOR_ICONS[sec.slug] ?? '📌'}</span>
+                <span style={{ ...s.sectorIcon, background: SECTOR_ICON_BG[sec.slug] ?? '#EDF7F8', color: SECTOR_COLORS[sec.slug] ?? '#3A9EA5' }} aria-hidden>
+                  <SectorIcon slug={sec.slug} />
+                </span>
                 <span style={s.sectorLabel}>{sec.label}</span>
                 {n > 0 ? (
                   <span style={{ ...s.sectorCount, color: SECTOR_COLORS[sec.slug] ?? '#3A9EA5' }}>{n.toLocaleString('en-IN')} jobs</span>
@@ -266,7 +290,7 @@ export default async function HomePage() {
                 const cat = catLabel(j.categorySlug);
                 const catColor = SECTOR_COLORS[j.categorySlug ?? ''] ?? '#3A9EA5';
                 return (
-                  <Link key={j.id} href={`/jobs/${j.slug ?? j.id}`} className="hp-job" style={s.jobCard}>
+                  <Link key={j.id} href={`/jobs/${j.slug ?? j.id}`} className="hp-job" style={{ ...s.jobCard, boxShadow: `inset 3px 0 0 ${catColor}` }}>
                     <div style={{ ...s.logo, background: logoColor(i) }} aria-hidden>
                       {companyInitials(j.company)}
                     </div>
@@ -375,6 +399,11 @@ export default async function HomePage() {
         <div style={s.footerBar}>
           <div style={{ ...s.container, ...s.footerBarInner }}>
             <span>© 2026 ddotsjobs.com</span>
+            <span style={s.footerDots} aria-hidden>
+              {['#F5C842', '#E8623A', '#8DC63F', '#F5C842'].map((c, i) => (
+                <span key={i} style={{ width: 8, height: 8, borderRadius: '50%', background: c, display: 'inline-block' }} />
+              ))}
+            </span>
             <nav style={s.barLinks}>
               <Link href="/about" style={s.barLink}>About</Link>
               <Link href="/privacy" style={s.barLink}>Privacy</Link>
@@ -389,40 +418,43 @@ export default async function HomePage() {
 }
 
 const s: Record<string, React.CSSProperties> = {
-  page: { background: 'var(--color-neutral)', minHeight: '100dvh' },
+  page: { background: '#FDFCFB', minHeight: '100dvh' },
   container: { width: '100%', maxWidth: 1040, margin: '0 auto', padding: '0 var(--space-2)' },
   hero: {
-    padding: 'clamp(48px, 9vw, 80px) 0',
-    background: 'linear-gradient(160deg, #F0F9FA 0%, #FFFFFF 50%, #F8FDF0 100%)',
+    padding: 'clamp(32px, 9vw, 88px) 0',
+    background: 'linear-gradient(135deg, #EDF7F8 0%, #FFFFFF 40%, #F8FDF0 100%)',
   },
-  kicker: {
-    display: 'inline-block',
-    borderLeft: '2px solid #F5C842',
-    paddingLeft: 10,
+  kickerPill: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    background: 'rgba(58,158,165,0.1)',
+    border: '1px solid rgba(58,158,165,0.25)',
+    borderRadius: 999,
+    padding: '4px 14px',
     margin: '0 0 var(--space-2)',
-    fontSize: 12,
-    fontWeight: 600,
+    fontSize: 11,
+    fontWeight: 700,
     letterSpacing: '0.1em',
-    textTransform: 'uppercase',
     color: '#3A9EA5',
   },
+  kickerDot: { width: 6, height: 6, background: '#8DC63F', borderRadius: '50%', display: 'inline-block', marginRight: 6 },
   headline: {
     fontFamily: 'var(--font-display)',
     fontStyle: 'italic',
-    fontSize: 'clamp(40px, 6vw, 72px)',
-    lineHeight: 1.04,
-    letterSpacing: '-0.02em',
-    color: '#1A1916',
+    fontSize: 'clamp(36px, 6vw, 64px)',
+    lineHeight: 1.0,
+    letterSpacing: '-0.03em',
+    color: '#0F1A1B',
     margin: 0,
   },
+  subtextMl: { fontSize: 16, color: '#4A6B6E', margin: '8px 0 0' },
   subtext: {
     fontSize: 'clamp(1rem, 3.5vw, 1.15rem)',
     color: '#6B6860',
     margin: 'var(--space-2) 0 var(--space-3)',
     maxWidth: 480,
   },
-  subtextMl: { fontSize: 14, color: '#6B6860', margin: '0 0 var(--space-3)' },
-  socialProof: { fontSize: 13, color: '#6B6860', margin: 'var(--space-2) 0 0' },
+  socialProof: { display: 'inline-flex', fontSize: 13, color: '#3A6B1A', background: 'rgba(141,198,63,0.1)', border: '1px solid rgba(141,198,63,0.3)', borderRadius: 8, padding: '8px 16px', margin: 'var(--space-2) 0 0' },
   sectorSoon: { fontSize: 13, fontWeight: 600, color: '#B0AD9F' },
   jobEmpType: { color: '#B0AD9F' },
   faddr: { fontSize: 13, color: '#9a9a92', lineHeight: 1.6, margin: 0 },
@@ -452,61 +484,64 @@ const s: Record<string, React.CSSProperties> = {
   },
   statLabel: { fontSize: 12, color: '#6B6860', textTransform: 'uppercase', letterSpacing: '0.05em' },
   eyebrow: {
-    margin: '0 0 8px',
+    borderLeft: '3px solid #F5C842',
+    paddingLeft: 10,
+    margin: '0 0 4px',
     fontSize: 11,
-    fontWeight: 600,
+    fontWeight: 700,
     letterSpacing: '0.1em',
     textTransform: 'uppercase',
-    color: '#B0AD9F',
+    color: '#6B6860',
   },
   h2: {
     fontFamily: 'var(--font-display)',
     fontStyle: 'italic',
-    fontSize: 'clamp(28px, 4vw, 42px)',
+    fontSize: 'clamp(28px, 4vw, 36px)',
     letterSpacing: '-0.02em',
     margin: '0 0 var(--space-2)',
-    color: '#1A1916',
+    color: '#0F1A1B',
   },
   sectorGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
     gap: 'var(--space-2)',
   },
   sectorCard: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 6,
-    padding: 'var(--space-3) var(--space-2)',
+    gap: 10,
+    padding: 20,
     background: '#fff',
-    borderRadius: 'var(--radius-card)',
-    border: '1px solid #efefe9',
+    borderRadius: 16,
+    border: '1.5px solid #F0EEEA',
   },
-  sectorIcon: { fontSize: 24, lineHeight: 1, width: 44, height: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: 12 },
-  sectorLabel: { fontSize: 15, fontWeight: 600, color: 'var(--color-dark)' },
-  sectorCount: { fontSize: 13, fontWeight: 600, color: '#3A9EA5' },
-  tabs: { display: 'flex', flexWrap: 'wrap', gap: 8, margin: '0 0 var(--space-2)' },
-  tab: { fontSize: 13, fontWeight: 600, color: '#6B6860', background: '#fff', border: '1px solid #E8E6DF', padding: '7px 16px', borderRadius: 999, minHeight: 36, display: 'inline-flex', alignItems: 'center' },
-  tabActive: { color: '#1A1916', background: 'rgba(58,158,165,0.12)', borderColor: 'rgba(58,158,165,0.35)' },
-  jobList: { display: 'flex', flexDirection: 'column', background: '#fff', borderRadius: 'var(--radius-card)', border: '1px solid #efefe9', overflow: 'hidden' },
+  sectorIcon: { width: 48, height: 48, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: 12 },
+  sectorLabel: { fontSize: 15, fontWeight: 600, color: '#0F1A1B' },
+  sectorCount: { fontSize: 13, fontWeight: 700, color: '#3A9EA5' },
+  tabs: { display: 'inline-flex', flexWrap: 'wrap', gap: 4, margin: '0 0 var(--space-2)', background: '#F4F3EE', borderRadius: 12, padding: 4 },
+  tab: { fontSize: 13, fontWeight: 500, color: '#6B6860', background: 'transparent', border: 'none', padding: '8px 18px', borderRadius: 8, display: 'inline-flex', alignItems: 'center' },
+  tabActive: { color: '#0F1A1B', background: '#fff', fontWeight: 600, boxShadow: '0 2px 8px rgba(0,0,0,0.08)' },
+  jobList: { display: 'flex', flexDirection: 'column', gap: 8 },
   jobCard: {
     display: 'flex',
     gap: 'var(--space-2)',
     alignItems: 'flex-start',
-    padding: 'var(--space-2)',
+    padding: '16px 20px',
     background: '#fff',
-    borderBottom: '1px solid #f1f1ec',
+    borderRadius: 16,
+    border: '1.5px solid #F0EEEA',
   },
   logo: {
-    flex: '0 0 48px',
-    width: 48,
-    height: 48,
-    borderRadius: '9999px',
+    flex: '0 0 44px',
+    width: 44,
+    height: 44,
+    borderRadius: 10,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     color: '#fff',
-    fontWeight: 600,
-    fontSize: 16,
+    fontWeight: 700,
+    fontSize: 15,
   },
   jobBody: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 6 },
   jobTop: { display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'baseline' },
@@ -541,12 +576,12 @@ const s: Record<string, React.CSSProperties> = {
     background: 'var(--color-brand)',
     borderRadius: 'var(--radius-pill)',
   },
-  newBadge: { fontSize: 11, fontWeight: 700, color: '#fff', background: '#8DC63F', padding: '2px 8px', borderRadius: 'var(--radius-pill)' },
+  newBadge: { fontSize: 10, fontWeight: 700, color: '#fff', background: '#8DC63F', padding: '2px 8px', borderRadius: 4 },
   walkBadge: { fontSize: 11, fontWeight: 700, color: '#1A1916', background: 'rgba(245,200,66,0.25)', padding: '2px 8px', borderRadius: 'var(--radius-pill)' },
   catChip: { fontSize: 12, fontWeight: 600, padding: '2px 10px', borderRadius: 'var(--radius-pill)' },
-  viewAll: { display: 'inline-block', marginTop: 'var(--space-2)', fontSize: 14, fontWeight: 700, color: '#3A9EA5' },
+  viewAll: { alignSelf: 'flex-start', marginTop: 'var(--space-3)', fontSize: 14, fontWeight: 700, color: '#3A9EA5', border: '2px solid #3A9EA5', borderRadius: 10, padding: '12px 32px' },
   // Dark footer.
-  footer: { background: '#0F0E0C', color: '#F0EFE8', marginTop: 0 },
+  footer: { background: '#0F1A1B', color: '#F0EFE8', marginTop: 0 },
   footerGrid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
@@ -559,8 +594,8 @@ const s: Record<string, React.CSSProperties> = {
   ftagline: { fontSize: 13, color: '#9a9a92', lineHeight: 1.5, margin: 0 },
   social: { display: 'flex', gap: 12, marginTop: 4, fontSize: 18 },
   socialLink: { textDecoration: 'none' },
-  fhead: { fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#F5C842', margin: '0 0 2px' },
-  flink: { fontSize: 14, color: '#c7c5bd' },
+  fhead: { fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#3A9EA5', margin: '0 0 2px' },
+  flink: { fontSize: 13, color: 'rgba(255,255,255,0.55)', lineHeight: 2 },
   footerBar: { borderTop: '1px solid rgba(255,255,255,0.1)' },
   footerBarInner: {
     display: 'flex',
@@ -575,4 +610,5 @@ const s: Record<string, React.CSSProperties> = {
   },
   barLinks: { display: 'flex', gap: 'var(--space-2)' },
   barLink: { fontSize: 12, color: '#9a9a92' },
+  footerDots: { display: 'inline-flex', gap: 6 },
 };
