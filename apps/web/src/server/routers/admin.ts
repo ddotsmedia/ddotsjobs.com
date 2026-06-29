@@ -1,9 +1,35 @@
 import { z } from 'zod';
 import { and, asc, count, createNotification, desc, eq, gte, ilike, isNull, ne, sql, tables } from '@ddotsjobs/db';
 import { TRPCError } from '@trpc/server';
+import { callAI } from '@ddotsjobs/ai';
+import { jobDetectFakePrompt } from '@ddotsjobs/ai/prompts';
 import { roleProcedure, router } from '../trpc.js';
 import { alertsQueue, searchSyncQueue } from '../queue.js';
 import { clearSettingCache } from '@/lib/site-settings';
+
+// Cheap deterministic risk heuristics for the moderation queue (no AI call).
+const PHONE_RE = /(\+?\d[\d\s-]{8,})/;
+export function computeRiskFlags(job: {
+  descriptionEn: string | null;
+  salaryDisclosed: boolean;
+  isVerified: boolean;
+  employerRejections: number;
+  riskScore: number | null;
+}): { score: number; recommendation: 'approve' | 'review' | 'reject'; flags: { level: 'ok' | 'warn' | 'bad'; text: string }[] } {
+  const flags: { level: 'ok' | 'warn' | 'bad'; text: string }[] = [];
+  let score = 0;
+  const desc = job.descriptionEn ?? '';
+  if (PHONE_RE.test(desc)) { score += 40; flags.push({ level: 'bad', text: 'Phone number detected in description' }); }
+  if (desc.length < 200) { score += 15; flags.push({ level: 'warn', text: 'Description under 200 chars' }); }
+  if (!job.salaryDisclosed) { score += 15; flags.push({ level: 'warn', text: 'Salary not disclosed' }); }
+  else flags.push({ level: 'ok', text: 'Salary disclosed' });
+  if (job.isVerified) flags.push({ level: 'ok', text: 'Verified employer' });
+  else { score += 20; flags.push({ level: 'warn', text: 'Unverified employer' }); }
+  if (job.employerRejections > 2) { score += 20; flags.push({ level: 'bad', text: `${job.employerRejections} previous rejections` }); }
+  const final = job.riskScore ?? Math.min(100, score);
+  const recommendation = final > 60 ? 'reject' : final > 30 ? 'review' : 'approve';
+  return { score: final, recommendation, flags };
+}
 
 // Admin + super_admin only.
 const adminProcedure = roleProcedure('admin', 'super_admin');
@@ -494,6 +520,215 @@ export const adminRouter = router({
       await ctx.db.insert(tables.auditLog).values({
         actorUserId: ctx.user.id, action: 'admin.employer_unverified', entityType: 'employer', entityId: input.employerId, diff: { reason: input.reason },
       });
+      return { success: true as const };
+    }),
+
+  // ── Enhanced moderation (Part 4) ─────────────────────────────────────
+  getModerationCount: adminProcedure.query(async ({ ctx }) => {
+    const [r] = await ctx.db.select({ c: count() }).from(tables.jobs).where(and(eq(tables.jobs.status, 'pending_review'), isNull(tables.jobs.deletedAt)));
+    return { count: r?.c ?? 0 };
+  }),
+
+  getModerationQueue: adminProcedure
+    .input(
+      z.object({
+        sort: z.enum(['oldest', 'newest', 'highest_risk', 'lowest_risk']).default('oldest'),
+        filter: z.enum(['all', 'high_risk', 'walk_in', 'no_salary', 'new_employer']).default('all'),
+        limit: z.number().int().min(1).max(100).default(20),
+        offset: z.number().int().min(0).default(0),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const { jobs, employers } = tables;
+      const conds = [eq(jobs.status, 'pending_review'), isNull(jobs.deletedAt)];
+      if (input.filter === 'high_risk') conds.push(sql`${jobs.riskScore} > 50`);
+      else if (input.filter === 'walk_in') conds.push(eq(jobs.isWalkIn, true));
+      else if (input.filter === 'no_salary') conds.push(eq(jobs.salaryDisclosed, false));
+      else if (input.filter === 'new_employer') conds.push(sql`${employers.createdAt} >= now() - interval '7 days'`);
+
+      const order =
+        input.sort === 'newest' ? desc(jobs.createdAt)
+        : input.sort === 'highest_risk' ? sql`${jobs.riskScore} desc nulls last`
+        : input.sort === 'lowest_risk' ? sql`${jobs.riskScore} asc nulls last`
+        : asc(jobs.createdAt);
+
+      const rows = await ctx.db
+        .select({
+          id: jobs.id,
+          titleEn: jobs.titleEn,
+          titleMl: jobs.titleMl,
+          descriptionEn: jobs.descriptionEn,
+          descriptionMl: jobs.descriptionMl,
+          category: jobs.categorySlug,
+          district: jobs.district,
+          salaryMinPaise: jobs.salaryMinPaise,
+          salaryMaxPaise: jobs.salaryMaxPaise,
+          salaryDisclosed: jobs.salaryDisclosed,
+          jobType: sql<string>`${jobs.type}::text`,
+          isWalkIn: jobs.isWalkIn,
+          valuesGulf: jobs.valuesGulfExperience,
+          experienceMonths: jobs.minExperienceMonths,
+          benefitsEn: jobs.benefitsEn,
+          skills: jobs.skills,
+          riskScore: jobs.riskScore,
+          moderationNote: jobs.moderationNote,
+          createdAt: jobs.createdAt,
+          employerId: employers.id,
+          companyName: companyNameSql,
+          verificationStatus: employers.verificationStatus,
+          employerTypeCode: sql<string>`coalesce(${employers.employerTypeCode}, ${employers.type}::text)`,
+          employerCreatedAt: employers.createdAt,
+          employerTotalJobs: sql<number>`(select count(*)::int from jobs jx where jx.employer_id = ${employers.id} and jx.deleted_at is null)`,
+          employerRejections: sql<number>`(select count(*)::int from jobs jx where jx.employer_id = ${employers.id} and jx.status = 'rejected')`,
+          employerActiveJobs: sql<number>`(select count(*)::int from jobs jx where jx.employer_id = ${employers.id} and jx.status = 'active' and jx.deleted_at is null)`,
+        })
+        .from(jobs)
+        .innerJoin(employers, eq(jobs.employerId, employers.id))
+        .where(and(...conds))
+        .orderBy(order)
+        .limit(input.limit)
+        .offset(input.offset);
+
+      return rows.map((r) => ({
+        ...r,
+        isVerified: r.verificationStatus === 'verified',
+        risk: computeRiskFlags({
+          descriptionEn: r.descriptionEn,
+          salaryDisclosed: r.salaryDisclosed,
+          isVerified: r.verificationStatus === 'verified',
+          employerRejections: r.employerRejections,
+          riskScore: r.riskScore,
+        }),
+      }));
+    }),
+
+  recentlyModerated: adminProcedure.query(async ({ ctx }) => {
+    return ctx.db
+      .select({
+        id: tables.jobs.id,
+        title: tables.jobs.titleEn,
+        moderationStatus: tables.jobs.moderationStatus,
+        moderatedAt: tables.jobs.moderatedAt,
+        adminName: sql<string | null>`coalesce(${tables.users.nameEn}, ${tables.users.phone})`,
+      })
+      .from(tables.jobs)
+      .leftJoin(tables.users, eq(tables.users.id, tables.jobs.moderatedByUserId))
+      .where(sql`${tables.jobs.moderatedAt} is not null`)
+      .orderBy(desc(tables.jobs.moderatedAt))
+      .limit(10);
+  }),
+
+  analyzeJobRisk: adminProcedure
+    .input(z.object({ jobId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const cacheKey = `ai:jobrisk:${input.jobId}`;
+      const cached = await ctx.redis.get(cacheKey);
+      if (cached) return JSON.parse(cached) as { score: number; recommendation: string; flags: { level: string; text: string }[] };
+      const [job] = await ctx.db
+        .select({ titleEn: tables.jobs.titleEn, descriptionEn: tables.jobs.descriptionEn, salaryMinPaise: tables.jobs.salaryMinPaise, category: tables.jobs.categorySlug, employerType: sql<string>`coalesce(${tables.employers.employerTypeCode}, ${tables.employers.type}::text)` })
+        .from(tables.jobs)
+        .innerJoin(tables.employers, eq(tables.employers.id, tables.jobs.employerId))
+        .where(eq(tables.jobs.id, input.jobId))
+        .limit(1);
+      if (!job) throw new TRPCError({ code: 'NOT_FOUND' });
+      const spec = jobDetectFakePrompt({
+        titleEn: job.titleEn,
+        descriptionEn: job.descriptionEn ?? '',
+        salaryMinPaise: job.salaryMinPaise,
+        category: job.category ?? '',
+        employerType: job.employerType,
+      });
+      try {
+        const { data } = await callAI({ task: spec.task, prompt: spec.prompt, system: spec.system, schema: spec.schema });
+        await ctx.redis.set(cacheKey, JSON.stringify(data), 'EX', 3600);
+        return data;
+      } catch {
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'AI analysis failed' });
+      }
+    }),
+
+  approveJobWithEdit: adminProcedure
+    .input(z.object({ jobId: z.string().uuid(), editedDescriptionEn: z.string().optional(), editedDescriptionMl: z.string().optional(), adminNote: z.string().max(1000).optional() }))
+    .mutation(async ({ ctx, input }) => {
+      const { jobs, employers } = tables;
+      const [job] = await ctx.db
+        .select({ id: jobs.id, slug: jobs.slug, title: jobs.titleEn, ownerUserId: employers.ownerUserId })
+        .from(jobs)
+        .innerJoin(employers, eq(jobs.employerId, employers.id))
+        .where(and(eq(jobs.id, input.jobId), isNull(jobs.deletedAt)))
+        .limit(1);
+      if (!job) throw new TRPCError({ code: 'NOT_FOUND', message: 'Job not found' });
+
+      await ctx.db
+        .update(jobs)
+        .set({
+          status: 'active',
+          moderationStatus: 'approved',
+          descriptionEn: input.editedDescriptionEn ?? sql`${jobs.descriptionEn}`,
+          descriptionMl: input.editedDescriptionMl ?? sql`${jobs.descriptionMl}`,
+          moderationNote: input.adminNote ?? sql`${jobs.moderationNote}`,
+          moderatedByUserId: ctx.user.id,
+          moderatedAt: new Date(),
+          publishedAt: sql`coalesce(${jobs.publishedAt}, now())`,
+        })
+        .where(eq(jobs.id, input.jobId));
+
+      await alertsQueue.add('match_job_alerts', { jobId: input.jobId }, { priority: 10 });
+      await searchSyncQueue.add('index', { jobId: input.jobId, action: 'index' });
+      await ctx.db.insert(tables.auditLog).values({ actorUserId: ctx.user.id, action: 'admin.job_approved_edit', entityType: 'job', entityId: input.jobId, diff: { edited: !!input.editedDescriptionEn || !!input.editedDescriptionMl } });
+      await createNotification({ userId: job.ownerUserId, type: 'job.approved', title: 'Job approved and live', titleMl: 'Job approve ചെയ്തു', body: `${job.title} is now live`, bodyMl: `${job.title} ഇപ്പോൾ live ആണ്`, actionUrl: '/employer/jobs' });
+      return { success: true as const };
+    }),
+
+  bulkApprove: adminProcedure
+    .input(z.object({ jobIds: z.array(z.string().uuid()).max(50) }))
+    .mutation(async ({ ctx, input }) => {
+      const { jobs, employers } = tables;
+      let approved = 0, failed = 0;
+      for (const jobId of input.jobIds) {
+        try {
+          const [job] = await ctx.db
+            .select({ id: jobs.id, title: jobs.titleEn, ownerUserId: employers.ownerUserId })
+            .from(jobs).innerJoin(employers, eq(jobs.employerId, employers.id))
+            .where(and(eq(jobs.id, jobId), eq(jobs.status, 'pending_review'), isNull(jobs.deletedAt))).limit(1);
+          if (!job) { failed++; continue; }
+          await ctx.db.update(jobs).set({ status: 'active', moderationStatus: 'approved', moderatedByUserId: ctx.user.id, moderatedAt: new Date(), publishedAt: sql`coalesce(${jobs.publishedAt}, now())` }).where(eq(jobs.id, jobId));
+          await alertsQueue.add('match_job_alerts', { jobId }, { priority: 10 });
+          await searchSyncQueue.add('index', { jobId, action: 'index' });
+          await createNotification({ userId: job.ownerUserId, type: 'job.approved', title: 'Job approved and live', titleMl: 'Job approve ചെയ്തു', body: `${job.title} is now live`, bodyMl: `${job.title} ഇപ്പോൾ live ആണ്`, actionUrl: '/employer/jobs' });
+          approved++;
+        } catch { failed++; }
+      }
+      await ctx.db.insert(tables.auditLog).values({ actorUserId: ctx.user.id, action: 'admin.bulk_approve', entityType: 'job', diff: { approved, failed } });
+      return { approved, failed };
+    }),
+
+  bulkReject: adminProcedure
+    .input(z.object({ jobIds: z.array(z.string().uuid()).max(50), reason: z.string().min(10).max(500) }))
+    .mutation(async ({ ctx, input }) => {
+      const { jobs, employers } = tables;
+      let rejected = 0;
+      for (const jobId of input.jobIds) {
+        try {
+          const [job] = await ctx.db
+            .select({ id: jobs.id, title: jobs.titleEn, ownerUserId: employers.ownerUserId })
+            .from(jobs).innerJoin(employers, eq(jobs.employerId, employers.id))
+            .where(and(eq(jobs.id, jobId), eq(jobs.status, 'pending_review'), isNull(jobs.deletedAt))).limit(1);
+          if (!job) continue;
+          await ctx.db.update(jobs).set({ status: 'rejected', moderationStatus: 'rejected', moderationNote: input.reason, moderatedByUserId: ctx.user.id, moderatedAt: new Date() }).where(eq(jobs.id, jobId));
+          await createNotification({ userId: job.ownerUserId, type: 'job.rejected', title: 'Job not approved', titleMl: 'Job approve ആയില്ല', body: input.reason, actionUrl: '/employer/jobs' });
+          rejected++;
+        } catch { /* skip */ }
+      }
+      await ctx.db.insert(tables.auditLog).values({ actorUserId: ctx.user.id, action: 'admin.bulk_reject', entityType: 'job', diff: { rejected, reason: input.reason } });
+      return { rejected };
+    }),
+
+  addModerationNote: adminProcedure
+    .input(z.object({ jobId: z.string().uuid(), note: z.string().min(5).max(1000) }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db.update(tables.jobs).set({ moderationNote: input.note }).where(eq(tables.jobs.id, input.jobId));
+      await ctx.db.insert(tables.auditLog).values({ actorUserId: ctx.user.id, action: 'admin.moderation_note', entityType: 'job', entityId: input.jobId, diff: { note: input.note } });
       return { success: true as const };
     }),
 

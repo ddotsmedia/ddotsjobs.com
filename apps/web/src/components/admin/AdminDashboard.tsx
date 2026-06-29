@@ -135,6 +135,7 @@ export function AdminDashboard() {
             );
           })}
         </nav>
+        <a href="/admin/moderation" style={{ ...st.navItem, color: t.muted }}>🛡 Moderation{(queue.data ?? []).length > 0 ? ` (${queue.data!.length})` : ''}</a>
         <a href="/admin/analytics" style={{ ...st.navItem, color: t.muted }}>📊 Analytics</a>
         <a href="/admin/employers" style={{ ...st.navItem, color: t.muted }}>🏢 Manage employers</a>
         <a href="/admin/seekers" style={{ ...st.navItem, color: t.muted }}>👤 Manage seekers</a>

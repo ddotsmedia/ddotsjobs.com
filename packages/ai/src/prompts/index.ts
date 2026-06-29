@@ -471,6 +471,34 @@ export function salaryBenchmarkPrompt(input: { category: string; district: strin
   };
 }
 
+// ── Job fake/risk detector (admin moderation) ───────────────────────────
+export const detectFakeJobSchema = z.object({
+  score: z.number().min(0).max(100),
+  recommendation: z.enum(['approve', 'review', 'reject']),
+  flags: z.array(z.object({ level: z.enum(['ok', 'warn', 'bad']), text: z.string() })).max(10),
+});
+export type DetectFakeJobOutput = z.infer<typeof detectFakeJobSchema>;
+export function jobDetectFakePrompt(input: {
+  titleEn: string;
+  descriptionEn: string;
+  salaryMinPaise: number | null;
+  category: string;
+  employerType: string;
+}): PromptSpec<DetectFakeJobOutput> {
+  return {
+    task: 'reasoning',
+    version: 1,
+    system:
+      'You are a Kerala job-board fraud reviewer. Assess this job posting for fake/scam/low-quality risk. ' +
+      'Consider: phone/contact in description (bad), unrealistic salary for the role/Kerala market, vague or ' +
+      'too-short description, upfront-fee/registration-fee mentions, generic spam. Return a risk score 0-100 ' +
+      '(higher = riskier), a recommendation (approve <30, review 30-60, reject >60), and concrete flags ' +
+      'each tagged ok|warn|bad with short text.',
+    prompt: JSON.stringify(input),
+    schema: detectFakeJobSchema,
+  };
+}
+
 // ── Registry of every prompt for introspection / eval harnesses ─────────
 export const PROMPTS = {
   fitScore: fitScorePrompt,
@@ -490,6 +518,7 @@ export const PROMPTS = {
   jobSuggestTitles: jobSuggestTitlesPrompt,
   jobSuggestSkills: jobSuggestSkillsPrompt,
   salaryBenchmark: salaryBenchmarkPrompt,
+  jobDetectFake: jobDetectFakePrompt,
 } as const;
 
 export type PromptName = keyof typeof PROMPTS;
