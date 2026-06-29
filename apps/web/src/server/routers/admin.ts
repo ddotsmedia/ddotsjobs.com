@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { and, asc, count, createNotification, desc, eq, gte, ilike, isNull, ne, sql, tables } from '@ddotsjobs/db';
 import { TRPCError } from '@trpc/server';
 import { callAI } from '@ddotsjobs/ai';
-import { jobDetectFakePrompt } from '@ddotsjobs/ai/prompts';
+import { jobDetectFakePrompt, adminRevenueInsightsPrompt } from '@ddotsjobs/ai/prompts';
 import { roleProcedure, router } from '../trpc.js';
 import { alertsQueue, searchSyncQueue } from '../queue.js';
 import { clearSettingCache } from '@/lib/site-settings';
@@ -535,6 +535,195 @@ export const adminRouter = router({
         actorUserId: ctx.user.id, action: 'admin.employer_unverified', entityType: 'employer', entityId: input.employerId, diff: { reason: input.reason },
       });
       return { success: true as const };
+    }),
+
+  // ── Revenue & subscriptions (Part 8) ─────────────────────────────────
+  revenueStats: adminProcedure
+    .input(z.object({ days: z.number().int().min(1).max(3650).default(30) }))
+    .query(async ({ ctx, input }) => {
+      const since = sql`now() - make_interval(days => ${input.days})`;
+      const p = tables.payments;
+      const [pay] = await ctx.db
+        .select({
+          revenuePeriod: sql<number>`coalesce(sum(${p.amountPaise}) filter (where ${p.status} = 'captured' and ${p.createdAt} >= ${since}), 0)::bigint`,
+          revenueTotal: sql<number>`coalesce(sum(${p.amountPaise}) filter (where ${p.status} = 'captured'), 0)::bigint`,
+          revenuePrev: sql<number>`coalesce(sum(${p.amountPaise}) filter (where ${p.status} = 'captured' and ${p.createdAt} >= now() - make_interval(days => ${input.days * 2}) and ${p.createdAt} < ${since}), 0)::bigint`,
+          txnPeriod: sql<number>`count(*) filter (where ${p.status} = 'captured' and ${p.createdAt} >= ${since})::int`,
+          txnTotal: sql<number>`count(*) filter (where ${p.status} = 'captured')::int`,
+          gstTotal: sql<number>`coalesce(sum(${p.gstAmountPaise}) filter (where ${p.status} = 'captured'), 0)::bigint`,
+        })
+        .from(p);
+      const s = tables.subscriptions;
+      const [subs] = await ctx.db
+        .select({
+          activeSubs: sql<number>`count(*)::int`,
+          starter: sql<number>`count(*) filter (where ${s.tier} = 'employer_starter')::int`,
+          growth: sql<number>`count(*) filter (where ${s.tier} = 'employer_growth')::int`,
+          pro: sql<number>`count(*) filter (where ${s.tier} = 'hospital_pro')::int`,
+          agency: sql<number>`count(*) filter (where ${s.tier} = 'agency')::int`,
+        })
+        .from(s)
+        .where(and(eq(s.status, 'active'), sql`${s.currentPeriodEnd} > now()`));
+      const pr = Number(pay?.revenuePrev ?? 0);
+      const cur = Number(pay?.revenuePeriod ?? 0);
+      const changePct = pr > 0 ? Math.round(((cur - pr) / pr) * 100) : null;
+      return {
+        revenuePeriodPaise: Number(pay?.revenuePeriod ?? 0),
+        revenueTotalPaise: Number(pay?.revenueTotal ?? 0),
+        transactionsPeriod: pay?.txnPeriod ?? 0,
+        transactionsTotal: pay?.txnTotal ?? 0,
+        gstTotalPaise: Number(pay?.gstTotal ?? 0),
+        changePct,
+        activeSubs: subs?.activeSubs ?? 0,
+        starter: subs?.starter ?? 0,
+        growth: subs?.growth ?? 0,
+        pro: subs?.pro ?? 0,
+        agency: subs?.agency ?? 0,
+        razorpayConfigured: !!process.env.RAZORPAY_KEY_ID,
+      };
+    }),
+
+  revenueTimeline: adminProcedure
+    .input(z.object({ days: z.number().int().min(1).max(3650).default(30) }))
+    .query(async ({ ctx, input }) => {
+      const p = tables.payments;
+      const d = sql<string>`to_char(date(${p.createdAt}), 'YYYY-MM-DD')`;
+      return ctx.db
+        .select({
+          date: d,
+          amountRupees: sql<number>`(coalesce(sum(${p.amountPaise}), 0) / 100)::int`,
+          transactions: count(),
+        })
+        .from(p)
+        .where(and(eq(p.status, 'captured'), gte(p.createdAt, sql`now() - make_interval(days => ${input.days})`)))
+        .groupBy(d)
+        .orderBy(d);
+    }),
+
+  revenueByPlan: adminProcedure.query(async ({ ctx }) => {
+    const s = tables.subscriptions;
+    const p = tables.payments;
+    return ctx.db
+      .select({
+        tier: s.tier,
+        subscriberCount: sql<number>`count(distinct ${s.id})::int`,
+        revenueRupees: sql<number>`(coalesce(sum(${p.amountPaise}) filter (where ${p.status} = 'captured'), 0) / 100)::int`,
+      })
+      .from(s)
+      .leftJoin(p, eq(p.subscriptionId, s.id))
+      .groupBy(s.tier)
+      .orderBy(desc(sql`coalesce(sum(${p.amountPaise}) filter (where ${p.status} = 'captured'), 0)`));
+  }),
+
+  getPayments: adminProcedure
+    .input(z.object({ status: z.enum(['all', 'captured', 'failed', 'refunded']).default('all'), limit: z.number().int().min(1).max(100).default(20), offset: z.number().int().min(0).default(0) }))
+    .query(async ({ ctx, input }) => {
+      const p = tables.payments;
+      const conds = input.status === 'all' ? [] : [eq(p.status, input.status)];
+      return ctx.db
+        .select({
+          id: p.id,
+          razorpayPaymentId: p.razorpayPaymentId,
+          amountPaise: p.amountPaise,
+          gstAmountPaise: p.gstAmountPaise,
+          tier: tables.subscriptions.tier,
+          status: p.status,
+          createdAt: p.createdAt,
+          companyName: companyNameSql,
+          employerTypeCode: tables.employers.employerTypeCode,
+        })
+        .from(p)
+        .leftJoin(tables.employers, eq(tables.employers.id, p.employerId))
+        .leftJoin(tables.subscriptions, eq(tables.subscriptions.id, p.subscriptionId))
+        .where(conds.length ? and(...conds) : undefined)
+        .orderBy(desc(p.createdAt))
+        .limit(input.limit)
+        .offset(input.offset);
+    }),
+
+  getSubscriptions: adminProcedure
+    .input(z.object({ status: z.enum(['all', 'active', 'expired', 'cancelled']).default('active'), limit: z.number().int().min(1).max(100).default(20), offset: z.number().int().min(0).default(0) }))
+    .query(async ({ ctx, input }) => {
+      const s = tables.subscriptions;
+      const conds = input.status === 'all' ? [] : [eq(s.status, input.status)];
+      return ctx.db
+        .select({
+          id: s.id,
+          tier: s.tier,
+          status: s.status,
+          currentPeriodStart: s.currentPeriodStart,
+          currentPeriodEnd: s.currentPeriodEnd,
+          createdAt: s.createdAt,
+          companyName: companyNameSql,
+          district: tables.employers.district,
+          lastAmountPaise: sql<number | null>`(select amount_paise from payments pp where pp.employer_id = ${s.employerId} and pp.status = 'captured' order by pp.created_at desc limit 1)`,
+        })
+        .from(s)
+        .innerJoin(tables.employers, eq(tables.employers.id, s.employerId))
+        .where(conds.length ? and(...conds) : undefined)
+        .orderBy(desc(s.createdAt))
+        .limit(input.limit)
+        .offset(input.offset);
+    }),
+
+  exportPaymentsCSV: adminProcedure.query(async ({ ctx }) => {
+    const p = tables.payments;
+    const rows = await ctx.db
+      .select({
+        createdAt: p.createdAt,
+        companyName: companyNameSql,
+        tier: tables.subscriptions.tier,
+        amountPaise: p.amountPaise,
+        gstAmountPaise: p.gstAmountPaise,
+        paymentId: p.razorpayPaymentId,
+      })
+      .from(p)
+      .leftJoin(tables.employers, eq(tables.employers.id, p.employerId))
+      .leftJoin(tables.subscriptions, eq(tables.subscriptions.id, p.subscriptionId))
+      .where(eq(p.status, 'captured'))
+      .orderBy(desc(p.createdAt))
+      .limit(5000);
+    const head = ['Date', 'Company', 'Plan', 'Amount (₹)', 'GST (₹)', 'Payment ID'];
+    const body = rows.map((r) => [
+      new Date(r.createdAt).toISOString().slice(0, 10),
+      r.companyName ?? '',
+      r.tier ?? '',
+      (r.amountPaise / 100).toString(),
+      (r.gstAmountPaise / 100).toString(),
+      r.paymentId ?? '',
+    ]);
+    const csv = [head, ...body].map((row) => row.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+    return { csv };
+  }),
+
+  revenueInsights: adminProcedure
+    .input(z.object({ days: z.number().int().min(1).max(3650).default(30) }))
+    .mutation(async ({ ctx, input }) => {
+      const s = tables.subscriptions;
+      const p = tables.payments;
+      const [tot] = await ctx.db
+        .select({
+          total: sql<number>`(coalesce(sum(${p.amountPaise}) filter (where ${p.status} = 'captured'), 0) / 100)::int`,
+          period: sql<number>`(coalesce(sum(${p.amountPaise}) filter (where ${p.status} = 'captured' and ${p.createdAt} >= now() - make_interval(days => ${input.days})), 0) / 100)::int`,
+        })
+        .from(p);
+      const [active] = await ctx.db.select({ c: count() }).from(s).where(and(eq(s.status, 'active'), sql`${s.currentPeriodEnd} > now()`));
+      const byPlan = await ctx.db
+        .select({ tier: s.tier, subscriberCount: sql<number>`count(distinct ${s.id})::int`, revenueRupees: sql<number>`(coalesce(sum(${p.amountPaise}) filter (where ${p.status} = 'captured'), 0) / 100)::int` })
+        .from(s).leftJoin(p, eq(p.subscriptionId, s.id)).groupBy(s.tier);
+      const spec = adminRevenueInsightsPrompt({
+        totalRevenueRupees: tot?.total ?? 0,
+        periodRevenueRupees: tot?.period ?? 0,
+        activeSubs: active?.c ?? 0,
+        revenueByPlan: byPlan.map((b) => ({ tier: b.tier, subscriberCount: b.subscriberCount, revenueRupees: b.revenueRupees })),
+        days: input.days,
+      });
+      try {
+        const { data } = await callAI({ task: spec.task, prompt: spec.prompt, system: spec.system, schema: spec.schema });
+        return data;
+      } catch {
+        return { insights: [] };
+      }
     }),
 
   // ── WhatsApp broadcast (Part 7) ──────────────────────────────────────

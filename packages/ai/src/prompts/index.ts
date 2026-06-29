@@ -499,6 +499,28 @@ export function jobDetectFakePrompt(input: {
   };
 }
 
+// ── Admin revenue insights ───────────────────────────────────────────────
+export const revenueInsightsSchema = z.object({ insights: z.array(z.string()).max(5) });
+export type RevenueInsightsOutput = z.infer<typeof revenueInsightsSchema>;
+export function adminRevenueInsightsPrompt(input: {
+  totalRevenueRupees: number;
+  periodRevenueRupees: number;
+  activeSubs: number;
+  revenueByPlan: { tier: string; subscriberCount: number; revenueRupees: number }[];
+  days: number;
+}): PromptSpec<RevenueInsightsOutput> {
+  return {
+    task: 'reasoning',
+    version: 1,
+    system:
+      'You are a SaaS revenue analyst for a Kerala job portal. Given the revenue/subscription figures, ' +
+      'return 3 short, concrete, actionable insights (each one sentence, start with an emoji). Mention ' +
+      'plan revenue share, expiring/at-risk subs, and gaps (e.g. a plan with no subscribers). Return as insights[].',
+    prompt: JSON.stringify(input),
+    schema: revenueInsightsSchema,
+  };
+}
+
 // ── Registry of every prompt for introspection / eval harnesses ─────────
 export const PROMPTS = {
   fitScore: fitScorePrompt,
@@ -519,6 +541,7 @@ export const PROMPTS = {
   jobSuggestSkills: jobSuggestSkillsPrompt,
   salaryBenchmark: salaryBenchmarkPrompt,
   jobDetectFake: jobDetectFakePrompt,
+  adminRevenueInsights: adminRevenueInsightsPrompt,
 } as const;
 
 export type PromptName = keyof typeof PROMPTS;
