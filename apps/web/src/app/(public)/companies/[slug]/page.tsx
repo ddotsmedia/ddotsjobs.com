@@ -35,6 +35,8 @@ export default async function CompanyPage({ params }: { params: Promise<{ slug: 
   if (!data) notFound();
 
   const { employer, reviews, stats, womenFriendlyBadge, jobs } = data;
+  const trpcClient = await getServerTrpc();
+  const breakdown = await trpcClient.reviews.breakdown({ employerId: employer.id });
   const isAuthed = Boolean(session?.user);
   const avg = stats.avgOverall ?? 0;
 
@@ -75,6 +77,23 @@ export default async function CompanyPage({ params }: { params: Promise<{ slug: 
           <div style={s.statMini}><span style={s.miniLabel}>Work-life</span><span style={s.miniVal}>{stats.avgWlb != null ? stats.avgWlb.toFixed(1) : '—'}</span></div>
           <div style={s.statMini}><span style={s.miniLabel}>Pay</span><span style={s.miniVal}>{stats.avgPay != null ? stats.avgPay.toFixed(1) : '—'}</span></div>
         </section>
+
+        {/* Rating distribution */}
+        {breakdown.total > 0 && (
+          <section style={s.dist}>
+            {([5, 4, 3, 2, 1] as const).map((star) => {
+              const n = breakdown.dist[star];
+              const pct = breakdown.total > 0 ? (n / breakdown.total) * 100 : 0;
+              return (
+                <div key={star} style={s.distRow}>
+                  <span style={s.distStar}>{star}★</span>
+                  <span style={s.distTrack}><span style={{ ...s.distBar, width: `${pct}%` }} /></span>
+                  <span style={s.distN}>{n}</span>
+                </div>
+              );
+            })}
+          </section>
+        )}
 
         <Link href={`/seeker/companies/${employer.slug}/review`} style={s.writeBtn}>Write a review</Link>
 
@@ -140,6 +159,12 @@ const s: Record<string, React.CSSProperties> = {
   miniLabel: { fontSize: 12, color: '#6b6b66' },
   miniVal: { fontSize: 20, fontWeight: 700, color: 'var(--color-dark)' },
   writeBtn: { alignSelf: 'flex-start', padding: '12px 24px', fontWeight: 700, color: '#0f0e0c', background: 'var(--color-brand)', borderRadius: 'var(--radius-pill)' },
+  dist: { display: 'flex', flexDirection: 'column', gap: 6, background: '#fff', borderRadius: 'var(--radius-card)', border: '1px solid #efefe9', padding: 'var(--space-2)' },
+  distRow: { display: 'flex', alignItems: 'center', gap: 10 },
+  distStar: { fontSize: 13, color: '#6b6860', width: 28, flexShrink: 0 },
+  distTrack: { flex: 1, height: 10, background: '#f1f1ec', borderRadius: 5, overflow: 'hidden' },
+  distBar: { display: 'block', height: '100%', background: '#3A9EA5', borderRadius: 5 },
+  distN: { fontSize: 13, color: '#6b6860', width: 28, textAlign: 'right', flexShrink: 0 },
   h2: { fontFamily: 'var(--font-display)', fontStyle: 'italic', fontSize: '1.5rem', margin: 'var(--space-2) 0 0' },
   empty: { padding: 'var(--space-3)', background: '#fff', borderRadius: 'var(--radius-card)', border: '1px dashed #d8d8d0', textAlign: 'center' },
   reviewList: { display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' },

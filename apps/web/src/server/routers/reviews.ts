@@ -133,7 +133,11 @@ export const reviewsRouter = router({
           isVerifiedEmployee: cr.isVerifiedEmployee,
           isAnonymous: cr.isAnonymous,
           createdAt: cr.createdAt,
+          helpfulCount: cr.helpfulCount,
           reviewerName: sql<string>`case when ${cr.isAnonymous} then 'Anonymous' else coalesce(${tables.users.nameEn}, 'User') end`,
+          isMine: ctx.session?.user?.id
+            ? sql<boolean>`(${cr.authorUserId} = ${ctx.session.user.id})`
+            : sql<boolean>`false`,
         })
         .from(cr)
         .innerJoin(tables.users, eq(tables.users.id, cr.authorUserId))
@@ -197,5 +201,64 @@ export const reviewsRouter = router({
         diff: { reason: input.reason },
       });
       return { flagged: true as const };
+    }),
+
+  // ── Culture scores (extends the existing company_reviews system) ──────
+  breakdown: publicProcedure
+    .input(z.object({ employerId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      const cr = tables.companyReviews;
+      const rows = await ctx.db
+        .select({ rating: cr.rating, n: sql<number>`count(*)::int` })
+        .from(cr)
+        .where(and(eq(cr.employerId, input.employerId), isNull(cr.deletedAt)))
+        .groupBy(cr.rating);
+      const dist: Record<1 | 2 | 3 | 4 | 5, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+      for (const r of rows) {
+        const k = r.rating as 1 | 2 | 3 | 4 | 5;
+        if (k >= 1 && k <= 5) dist[k] = r.n;
+      }
+      const total = Object.values(dist).reduce((a, b) => a + b, 0);
+      return { dist, total };
+    }),
+
+  getMyReview: protectedProcedure
+    .input(z.object({ employerId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      const cr = tables.companyReviews;
+      const [row] = await ctx.db
+        .select({ id: cr.id, rating: cr.rating, bodyEn: cr.bodyEn })
+        .from(cr)
+        .where(and(eq(cr.employerId, input.employerId), eq(cr.authorUserId, ctx.user.id), isNull(cr.deletedAt)))
+        .limit(1);
+      return row ?? null;
+    }),
+
+  markHelpful: protectedProcedure
+    .input(z.object({ reviewId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const cr = tables.companyReviews;
+      const [row] = await ctx.db
+        .update(cr)
+        .set({ helpfulCount: sql`${cr.helpfulCount} + 1` })
+        .where(and(eq(cr.id, input.reviewId), isNull(cr.deletedAt)))
+        .returning({ helpfulCount: cr.helpfulCount });
+      if (!row) throw new TRPCError({ code: 'NOT_FOUND' });
+      return { helpfulCount: row.helpfulCount };
+    }),
+
+  deleteReview: protectedProcedure
+    .input(z.object({ reviewId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const cr = tables.companyReviews;
+      const role = ctx.user.role as string;
+      const isAdmin = role === 'admin' || role === 'super_admin';
+      const res = await ctx.db
+        .update(cr)
+        .set({ deletedAt: new Date() })
+        .where(and(eq(cr.id, input.reviewId), isAdmin ? undefined : eq(cr.authorUserId, ctx.user.id), isNull(cr.deletedAt)))
+        .returning({ id: cr.id });
+      if (res.length === 0) throw new TRPCError({ code: 'FORBIDDEN', message: 'Not allowed' });
+      return { success: true as const };
     }),
 });

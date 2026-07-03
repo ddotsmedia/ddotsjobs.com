@@ -37,6 +37,9 @@ export function JobCard({
                 ✓ Verified
               </span>
             )}
+            {job.cultureAvg != null && (job.cultureCount ?? 0) >= 3 && (
+              <span style={s.culture} title={`${job.cultureCount} reviews`}>★ {job.cultureAvg.toFixed(1)}</span>
+            )}
           </div>
 
           <div style={s.badges}>
@@ -94,6 +97,7 @@ const s: Record<string, React.CSSProperties> = {
   companyRow: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   company: { fontSize: 14, color: '#55554f' },
   verified: { fontSize: 12, fontWeight: 600, color: 'var(--color-accent)' },
+  culture: { fontSize: 12, fontWeight: 700, color: '#3A9EA5', background: 'rgba(58,158,165,0.12)', borderRadius: 999, padding: '1px 8px' },
   badges: { display: 'flex', gap: 6, flexWrap: 'wrap' },
   badge: {
     fontSize: 12,

@@ -17,6 +17,8 @@ export interface ReviewView {
   reviewerName: string;
   createdAt: string | Date;
   isAuthed: boolean;
+  helpfulCount?: number;
+  isMine?: boolean;
 }
 
 function relativeTime(d: string | Date): string {
@@ -42,6 +44,10 @@ export function ReviewCard({ review }: { review: ReviewView }) {
   const [flagOpen, setFlagOpen] = useState(false);
   const [reason, setReason] = useState('');
   const flag = trpc.reviews.flag.useMutation();
+  const [helpful, setHelpful] = useState(review.helpfulCount ?? 0);
+  const [voted, setVoted] = useState(false);
+  const markHelpful = trpc.reviews.markHelpful.useMutation({ onSuccess: (r) => { setHelpful(r.helpfulCount); setVoted(true); } });
+  const del = trpc.reviews.deleteReview.useMutation({ onSuccess: () => window.location.reload() });
 
   const body = lang === 'en' ? review.reviewText : review.reviewTextMl;
 
@@ -80,6 +86,16 @@ export function ReviewCard({ review }: { review: ReviewView }) {
       </div>
 
       <div style={s.flagRow}>
+        {review.isAuthed ? (
+          <button type="button" disabled={voted || markHelpful.isPending} onClick={() => markHelpful.mutate({ reviewId: review.id })} style={{ ...s.flagLink, color: voted ? '#3A9EA5' : undefined, fontWeight: voted ? 700 : 400 }}>
+            {voted ? '👍 Helpful' : '👍 Helpful'} {helpful > 0 ? `(${helpful})` : ''}
+          </button>
+        ) : (
+          <span style={s.flagLink}>👍 {helpful}</span>
+        )}
+        {review.isMine && (
+          <button type="button" onClick={() => { if (confirm('Delete your review?')) del.mutate({ reviewId: review.id }); }} style={s.deleteLink}>Delete</button>
+        )}
         {flag.data?.flagged ? (
           <span style={s.flagged}>Reported — thank you</span>
         ) : review.isAuthed ? (
@@ -118,6 +134,7 @@ const s: Record<string, React.CSSProperties> = {
   subVal: { fontSize: 12, color: '#55554f', width: 14, flex: '0 0 14px', textAlign: 'right' },
   flagRow: { display: 'flex', justifyContent: 'flex-end' },
   flagLink: { fontSize: 12, color: '#9a9a92', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' },
+  deleteLink: { fontSize: 12, color: '#c0392b', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', marginLeft: 12 },
   flagForm: { display: 'flex', gap: 6 },
   flagInput: { fontSize: 12, padding: '4px 8px', border: '1px solid #e2e2dc', borderRadius: 8 },
   flagSend: { fontSize: 12, fontWeight: 600, padding: '4px 10px', background: '#c0392b', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer' },

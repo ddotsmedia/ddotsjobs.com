@@ -60,6 +60,8 @@ export interface JobListItem {
   company: string;
   isVerified: boolean;
   walkInStartsAt: Date | null;
+  cultureAvg?: number | null;
+  cultureCount?: number;
 }
 
 // Shared WHERE conditions for both list + count (excludes cursor).
@@ -297,6 +299,8 @@ export const jobsRouter = router({
         legalNameEn: e.legalNameEn,
         verificationStatus: e.verificationStatus,
         walkInStartsAt: sql<Date | null>`(SELECT min(w.starts_at) FROM walk_in_events w WHERE w.job_id = jobs.id AND w.deleted_at IS NULL)`,
+        cultureAvg: sql<number | null>`(SELECT round(avg(cr.rating)::numeric, 1) FROM company_reviews cr WHERE cr.employer_id = ${e.id} AND cr.deleted_at IS NULL)`,
+        cultureCount: sql<number>`(SELECT count(*)::int FROM company_reviews cr WHERE cr.employer_id = ${e.id} AND cr.deleted_at IS NULL)`,
       })
       .from(j)
       .innerJoin(e, eq(j.employerId, e.id))
@@ -319,6 +323,8 @@ export const jobsRouter = router({
       company: r.displayNameEn ?? r.legalNameEn,
       isVerified: r.verificationStatus === 'verified',
       walkInStartsAt: r.walkInStartsAt,
+      cultureAvg: r.cultureAvg != null ? Number(r.cultureAvg) : null,
+      cultureCount: r.cultureCount,
     }));
 
     const nextCursor =
