@@ -12,6 +12,7 @@ import { DescriptionTabs } from '@/components/jobs/DescriptionTabs';
 import { IncrementView } from '@/components/jobs/IncrementView';
 import { SaveJobButton } from '@/components/jobs/SaveJobButton';
 import { QuickApplyButton } from '@/components/jobs/QuickApplyButton';
+import { CompareToggle } from '@/components/jobs/CompareToggle';
 import { ShareButton } from '@/components/jobs/ShareButton';
 import { SegmentJobsPage } from '@/components/SegmentJobsPage';
 import { FitScoreRing } from '@/components/FitScoreRing';
@@ -304,6 +305,7 @@ export default async function JobDetailPage({ params }: Props) {
                 </>
               )}
               <SaveJobButton jobId={job.id} slug={slug} authed={authed} initialSaved={initialSaved} />
+              <CompareToggle jobId={job.id} variant="detail" />
               <ShareButton title={`${job.titleEn} at ${job.company}`} />
             </div>
 

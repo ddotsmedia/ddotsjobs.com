@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { trpc } from '@/lib/trpc/client';
 import type { JobListItem, JobsListInput } from '@/server/routers/jobs';
 import { JobCard } from './JobCard';
+import { CompareToggle } from './CompareToggle';
 
 interface Props {
   initialItems: JobListItem[];
@@ -46,7 +47,10 @@ export function JobResults({ initialItems, initialCursor, input }: Props) {
     <div style={s.wrap}>
       <div style={s.list}>
         {items.map((j) => (
-          <JobCard key={j.id} job={j} />
+          <div key={j.id} style={{ position: 'relative' }}>
+            <JobCard job={j} />
+            <CompareToggle jobId={j.id} />
+          </div>
         ))}
       </div>
       {cursor && (

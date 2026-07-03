@@ -209,6 +209,43 @@ export const jobsRouter = router({
       }
     }),
 
+  // Compare 2-3 jobs side by side (public). Missing/deleted ids are just omitted.
+  compareJobs: publicProcedure
+    .input(z.object({ ids: z.array(z.string().uuid()).min(2).max(3) }))
+    .query(async ({ ctx, input }) => {
+      const j = tables.jobs;
+      const e = tables.employers;
+      const rows = await ctx.db
+        .select({
+          id: j.id,
+          slug: j.slug,
+          titleEn: j.titleEn,
+          type: j.type,
+          district: j.district,
+          locationText: j.locationText,
+          isRemote: j.isRemote,
+          salaryMinPaise: j.salaryMinPaise,
+          salaryMaxPaise: j.salaryMaxPaise,
+          salaryDisclosed: j.salaryDisclosed,
+          minExperienceMonths: j.minExperienceMonths,
+          skills: j.skills,
+          benefitsEn: j.benefitsEn,
+          requiredCertifications: j.requiredCertifications,
+          isWalkIn: j.isWalkIn,
+          publishedAt: j.publishedAt,
+          categorySlug: j.categorySlug,
+          company: sql<string>`coalesce(${e.displayNameEn}, ${e.legalNameEn})`,
+          isVerified: sql<boolean>`(${e.verificationStatus} = 'verified')`,
+        })
+        .from(j)
+        .innerJoin(e, eq(j.employerId, e.id))
+        .where(and(inArray(j.id, input.ids), isNull(j.deletedAt)))
+        .limit(3);
+      // Preserve the requested order.
+      const byId = new Map(rows.map((r) => [r.id, r]));
+      return { jobs: input.ids.map((id) => byId.get(id)).filter((x): x is NonNullable<typeof x> => Boolean(x)) };
+    }),
+
   count: publicProcedure.input(countInput).query(async ({ ctx, input }) => {
     const rows = await ctx.db
       .select({ c: count() })
