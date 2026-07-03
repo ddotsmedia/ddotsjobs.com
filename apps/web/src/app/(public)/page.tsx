@@ -380,6 +380,7 @@ export default async function HomePage() {
           <div style={s.fcol}>
             <p style={s.fhead}>Resources</p>
             <Link href="/community" style={s.flink}>Community</Link>
+            <Link href="/skills" style={s.flink}>Skill Assessments</Link>
             <Link href="/career-paths" style={s.flink}>Career Paths</Link>
             <Link href="/labour-rights" style={s.flink}>Labour Rights Guide</Link>
             <Link href="/fresher-jobs" style={s.flink}>Fresher Hub</Link>

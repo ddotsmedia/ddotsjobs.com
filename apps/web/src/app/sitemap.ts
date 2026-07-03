@@ -41,6 +41,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...CAREER_PATHS.map((p) => ({ url: `${BASE}/career-paths/${p.slug}`, changeFrequency: 'weekly' as const, priority: 0.6, lastModified: now })),
     { url: `${BASE}/labour-rights`, changeFrequency: 'monthly', priority: 0.7, lastModified: now },
     { url: `${BASE}/community`, changeFrequency: 'hourly', priority: 0.6, lastModified: now },
+    { url: `${BASE}/skills`, changeFrequency: 'weekly', priority: 0.6, lastModified: now },
     { url: `${BASE}/about`, changeFrequency: 'monthly', priority: 0.5, lastModified: now },
     { url: `${BASE}/privacy`, changeFrequency: 'yearly', priority: 0.2, lastModified: now },
   ];

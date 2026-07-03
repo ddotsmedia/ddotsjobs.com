@@ -79,6 +79,7 @@ export function PublicHeader() {
           <Link href="/fresher-jobs" style={s.dropItem} onClick={() => setOpen(false)}>Fresher Jobs</Link>
           <Link href="/ayurveda-jobs" style={s.dropItem} onClick={() => setOpen(false)}>Ayurveda Jobs</Link>
           <Link href="/community" style={s.dropItem} onClick={() => setOpen(false)}>Community</Link>
+          <Link href="/skills" style={s.dropItem} onClick={() => setOpen(false)}>Skill Assessments</Link>
           <Link href="/career-paths" style={s.dropItem} onClick={() => setOpen(false)}>Career Paths</Link>
           <Link href="/labour-rights" style={s.dropItem} onClick={() => setOpen(false)}>Labour Rights</Link>
         </div>
