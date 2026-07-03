@@ -537,6 +537,70 @@ export const adminRouter = router({
       return { success: true as const };
     }),
 
+  // ── Full audit log page ──────────────────────────────────────────────
+  auditStats: adminProcedure.query(async ({ ctx }) => {
+    const al = tables.auditLog;
+    const day = sql`now() - interval '24 hours'`;
+    const [r] = await ctx.db
+      .select({
+        logins: sql<number>`count(*) filter (where ${al.action} = 'auth.login' and ${al.createdAt} >= ${day})::int`,
+        applies: sql<number>`count(*) filter (where ${al.action} = 'job.applied' and ${al.createdAt} >= ${day})::int`,
+        posts: sql<number>`count(*) filter (where ${al.action} = 'post.created' and ${al.createdAt} >= ${day})::int`,
+        reviews: sql<number>`count(*) filter (where ${al.action} = 'review.submitted' and ${al.createdAt} >= ${day})::int`,
+      })
+      .from(al);
+    return { logins: r?.logins ?? 0, applies: r?.applies ?? 0, posts: r?.posts ?? 0, reviews: r?.reviews ?? 0 };
+  }),
+
+  getAuditLogs: adminProcedure
+    .input(
+      z.object({
+        limit: z.number().int().min(1).max(100).default(50),
+        cursor: z.string().uuid().optional(),
+        action: z.string().max(100).optional(),
+        entityType: z.string().max(80).optional(),
+        actorSearch: z.string().max(120).optional(),
+        from: z.string().optional(),
+        to: z.string().optional(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const al = tables.auditLog;
+      const conds = [];
+      if (input.action) conds.push(eq(al.action, input.action));
+      if (input.entityType) conds.push(eq(al.entityType, input.entityType));
+      if (input.actorSearch?.trim()) {
+        const term = `%${input.actorSearch.trim()}%`;
+        conds.push(sql`(${tables.users.nameEn} ilike ${term} or ${tables.users.phone} ilike ${term})`);
+      }
+      if (input.from) conds.push(sql`${al.createdAt} >= ${new Date(input.from)}`);
+      if (input.to) conds.push(sql`${al.createdAt} <= ${new Date(input.to)}`);
+      if (input.cursor) {
+        conds.push(sql`(${al.createdAt}, ${al.id}) < ((select created_at from audit_log where id = ${input.cursor}), ${input.cursor}::uuid)`);
+      }
+      const rows = await ctx.db
+        .select({
+          id: al.id,
+          action: al.action,
+          entityType: al.entityType,
+          entityId: al.entityId,
+          diff: al.diff,
+          ipAddress: al.ipAddress,
+          userAgent: al.userAgent,
+          createdAt: al.createdAt,
+          actorName: sql<string | null>`coalesce(${tables.users.nameEn}, ${tables.users.phone})`,
+          actorId: al.actorUserId,
+        })
+        .from(al)
+        .leftJoin(tables.users, eq(tables.users.id, al.actorUserId))
+        .where(conds.length ? and(...conds) : undefined)
+        .orderBy(desc(al.createdAt), desc(al.id))
+        .limit(input.limit + 1);
+      let nextCursor: string | undefined;
+      if (rows.length > input.limit) nextCursor = rows.pop()!.id;
+      return { logs: rows, nextCursor };
+    }),
+
   // ── Revenue & subscriptions (Part 8) ─────────────────────────────────
   revenueStats: adminProcedure
     .input(z.object({ days: z.number().int().min(1).max(3650).default(30) }))

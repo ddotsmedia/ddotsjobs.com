@@ -9,6 +9,7 @@ import { stripHtml } from '@/lib/sanitize';
 import { roleProcedure, router } from '../trpc.js';
 import { rateLimit } from '../rate-limit.js';
 import { assertAiEnabled } from '@/lib/site-settings';
+import { logAction } from '@/lib/audit';
 
 const VOICE_EXT: Record<string, string> = {
   'audio/webm': 'webm',
@@ -216,6 +217,7 @@ export const applicationsRouter = router({
         .set({ applicationCount: sql`${j.applicationCount} + 1` })
         .where(eq(j.id, input.jobId));
 
+      await logAction(ctx, 'job.applied', 'job', input.jobId, { applicationId: row.id });
       return { applicationId: row.id, fitScore: fit.overall };
     }),
 
@@ -320,6 +322,7 @@ export const applicationsRouter = router({
         actionUrl: '/seeker/applications',
       });
 
+      await logAction(ctx, 'job.applied', 'job', input.jobId, { applicationId: row.id, quick: true });
       return { success: true as const, applicationId: row.id, fitScore: fit.overall };
     }),
 

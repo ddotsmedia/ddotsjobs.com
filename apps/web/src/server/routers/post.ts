@@ -4,6 +4,7 @@ import { and, desc, eq, isNull, sql, tables } from '@ddotsjobs/db';
 import { publicProcedure, protectedProcedure, router } from '../trpc.js';
 import { rateLimit } from '../rate-limit.js';
 import { stripHtml } from '@/lib/sanitize';
+import { logAction } from '@/lib/audit';
 
 const authorName = sql<string>`coalesce(${tables.users.nameEn}, 'Member')`;
 
@@ -50,6 +51,7 @@ export const postRouter = router({
         .values({ userId: ctx.user.id, content: stripHtml(input.content).trim() })
         .returning({ id: tables.posts.id, content: tables.posts.content, createdAt: tables.posts.createdAt });
       if (!row) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+      await logAction(ctx, 'post.created', 'post', row.id);
       return { ...row, userId: ctx.user.id, likeCount: 0, commentCount: 0, likedByMe: false };
     }),
 
@@ -82,6 +84,7 @@ export const postRouter = router({
         .where(and(eq(tables.posts.id, input.postId), isAdmin ? undefined : eq(tables.posts.userId, ctx.user.id), isNull(tables.posts.deletedAt)))
         .returning({ id: tables.posts.id });
       if (res.length === 0) throw new TRPCError({ code: 'FORBIDDEN', message: 'Not allowed' });
+      await logAction(ctx, 'post.deleted', 'post', input.postId);
       return { success: true as const };
     }),
 
@@ -115,6 +118,7 @@ export const postRouter = router({
         .returning({ id: tables.postComments.id, content: tables.postComments.content, createdAt: tables.postComments.createdAt });
       if (!row) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
       const [u] = await ctx.db.select({ name: authorName }).from(tables.users).where(eq(tables.users.id, ctx.user.id)).limit(1);
+      await logAction(ctx, 'comment.added', 'comment', row.id, { postId: input.postId });
       return { ...row, userId: ctx.user.id, authorName: u?.name ?? 'Member' };
     }),
 
@@ -129,6 +133,7 @@ export const postRouter = router({
         .where(and(eq(tables.postComments.id, input.commentId), isAdmin ? undefined : eq(tables.postComments.userId, ctx.user.id), isNull(tables.postComments.deletedAt)))
         .returning({ id: tables.postComments.id });
       if (res.length === 0) throw new TRPCError({ code: 'FORBIDDEN', message: 'Not allowed' });
+      await logAction(ctx, 'comment.deleted', 'comment', input.commentId);
       return { success: true as const };
     }),
 });

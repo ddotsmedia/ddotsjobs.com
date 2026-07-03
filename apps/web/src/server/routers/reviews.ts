@@ -4,6 +4,7 @@ import { and, desc, eq, isNull, sql, tables } from '@ddotsjobs/db';
 import { protectedProcedure, publicProcedure, roleProcedure, router } from '../trpc.js';
 import { sanitizeHtml } from '@/lib/sanitize';
 import { rateLimit } from '../rate-limit.js';
+import { logAction } from '@/lib/audit';
 
 const seekerProc = roleProcedure('seeker');
 
@@ -82,6 +83,7 @@ export const reviewsRouter = router({
         })
         .returning({ id: cr.id });
 
+      await logAction(ctx, 'review.submitted', 'company', input.employerId, { reviewId: row!.id, rating: input.ratingOverall });
       return { reviewId: row!.id };
     }),
 
@@ -259,6 +261,7 @@ export const reviewsRouter = router({
         .where(and(eq(cr.id, input.reviewId), isAdmin ? undefined : eq(cr.authorUserId, ctx.user.id), isNull(cr.deletedAt)))
         .returning({ id: cr.id });
       if (res.length === 0) throw new TRPCError({ code: 'FORBIDDEN', message: 'Not allowed' });
+      await logAction(ctx, 'review.deleted', 'company', undefined, { reviewId: input.reviewId });
       return { success: true as const };
     }),
 });

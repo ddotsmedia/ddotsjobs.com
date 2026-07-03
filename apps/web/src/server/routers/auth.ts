@@ -12,6 +12,7 @@ import {
 } from '@/lib/otp';
 import { sendWhatsAppOtp } from '@/lib/greenapi';
 import { isEnabled } from '@/lib/site-settings';
+import { logAction } from '@/lib/audit';
 import { protectedProcedure, publicProcedure, router } from '../trpc.js';
 
 // E.164 international: + then 8–15 digits, leading digit non-zero.
@@ -92,6 +93,7 @@ export const authRouter = router({
 
       // Single-use handoff: Credentials provider mints the JWT from this.
       await markVerified(input.phone, user.id);
+      await logAction(ctx, 'auth.login', 'user', user.id, undefined, user.id);
       return { success: true as const };
     }),
 
@@ -161,6 +163,7 @@ export const authRouter = router({
   // ── Sign out: drop the server-side session record ──────────────────
   signOut: protectedProcedure.mutation(async ({ ctx }) => {
     await deleteSession(ctx.user.id);
+    await logAction(ctx, 'auth.logout', 'user', ctx.user.id);
     return { success: true as const };
   }),
 });
