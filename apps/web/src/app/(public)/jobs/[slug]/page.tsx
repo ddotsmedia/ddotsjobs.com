@@ -63,6 +63,13 @@ const EMPLOYMENT_TYPE: Record<string, string> = {
   internship: 'INTERN',
 };
 
+const SITE = 'https://ddotsjobs.com';
+
+function absLogoUrl(job: Job): string {
+  if (job.logoR2Key) return `${process.env.NEXT_PUBLIC_R2_PUBLIC_URL ?? ''}/${job.logoR2Key}`;
+  return `${SITE}/logo.svg`;
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const district = districtForSlug(slug);
@@ -75,7 +82,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!job) return { title: 'Job not found — ddotsjobs.com' };
   const title = `${job.titleEn} at ${job.company} — ddotsjobs.com`;
   const description = job.descriptionEn.replace(/\s+/g, ' ').trim().slice(0, 155);
-  return { title, description, openGraph: { title, description } };
+  const image = absLogoUrl(job);
+  return {
+    title,
+    description,
+    openGraph: { title, description, images: [image] },
+  };
 }
 
 function buildJsonLd(job: Job): string | null {
@@ -93,6 +105,8 @@ function buildJsonLd(job: Job): string | null {
     hiringOrganization: {
       '@type': 'Organization',
       name: job.company,
+      logo: absLogoUrl(job),
+      url: SITE,
       ...(job.websiteUrl ? { sameAs: job.websiteUrl } : {}),
     },
     jobLocation: {
@@ -108,6 +122,9 @@ function buildJsonLd(job: Job): string | null {
 
   if (EMPLOYMENT_TYPE[job.type]) data.employmentType = EMPLOYMENT_TYPE[job.type];
 
+  const quals = [...(job.skills ?? []), ...(job.requiredCertifications ?? [])].filter(Boolean);
+  if (quals.length) data.qualifications = quals;
+
   if (job.salaryDisclosed && job.salaryMinPaise != null) {
     data.baseSalary = {
       '@type': 'MonetaryAmount',
@@ -122,6 +139,32 @@ function buildJsonLd(job: Job): string | null {
   }
 
   return JSON.stringify(data);
+}
+
+function buildBreadcrumbJsonLd(job: Job, slug: string): string {
+  const items: Array<Record<string, unknown>> = [
+    { '@type': 'ListItem', position: 1, name: 'Home', item: SITE },
+    { '@type': 'ListItem', position: 2, name: 'Jobs', item: `${SITE}/jobs` },
+  ];
+  if (job.categorySlug) {
+    items.push({
+      '@type': 'ListItem',
+      position: items.length + 1,
+      name: titleCase(job.categorySlug),
+      item: `${SITE}/jobs?category=${job.categorySlug}`,
+    });
+  }
+  items.push({
+    '@type': 'ListItem',
+    position: items.length + 1,
+    name: job.titleEn,
+    item: `${SITE}/jobs/${slug}`,
+  });
+  return JSON.stringify({
+    '@context': 'https://schema.org/',
+    '@type': 'BreadcrumbList',
+    itemListElement: items,
+  });
 }
 
 export default async function JobDetailPage({ params }: Props) {
@@ -177,6 +220,7 @@ export default async function JobDetailPage({ params }: Props) {
     : `/login?redirect=${encodeURIComponent(`/jobs/${slug}/apply`)}`;
   const salary = salaryLabel(job);
   const jsonLd = buildJsonLd(job);
+  const breadcrumbLd = buildBreadcrumbJsonLd(job, slug);
   const logoUrl = job.logoR2Key
     ? `${process.env.NEXT_PUBLIC_R2_PUBLIC_URL ?? ''}/${job.logoR2Key}`
     : null;
@@ -187,6 +231,7 @@ export default async function JobDetailPage({ params }: Props) {
       {jsonLd && (
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd }} />
       )}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: breadcrumbLd }} />
       <IncrementView jobId={job.id} />
 
       <div style={s.container}>
