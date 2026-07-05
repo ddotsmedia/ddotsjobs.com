@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
-import { and, asc, count, createNotification, desc, eq, gte, inArray, isNull, sql, tables, type SQL } from '@ddotsjobs/db';
+import { and, asc, count, createNotification, desc, eq, gte, inArray, isNull, or, sql, tables, type SQL } from '@ddotsjobs/db';
 import { callAI } from '@ddotsjobs/ai';
 import { jobAutoFillDescriptionPrompt, searchParseNaturalLanguagePrompt, jobSuggestTitlesPrompt, jobSuggestSkillsPrompt, salaryBenchmarkPrompt } from '@ddotsjobs/ai/prompts';
 import { SECTORS } from '@/lib/constants';
@@ -397,6 +397,13 @@ export const jobsRouter = router({
     .query(async ({ ctx, input }) => {
       const j = tables.jobs;
       const e = tables.employers;
+      // Jobs without a published slug are linked by UUID id; accept either.
+      // Guard the id-branch to UUID-shaped input — a real slug would crash the
+      // uuid column cast ("invalid input syntax for type uuid").
+      const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const slugOrId = UUID_RE.test(input.slug)
+        ? or(eq(j.slug, input.slug), eq(j.id, input.slug))
+        : eq(j.slug, input.slug);
       const [row] = await ctx.db
         .select({
           id: j.id,
@@ -442,7 +449,7 @@ export const jobsRouter = router({
         })
         .from(j)
         .innerJoin(e, eq(j.employerId, e.id))
-        .where(and(eq(j.slug, input.slug), isNull(j.deletedAt)))
+        .where(and(slugOrId, isNull(j.deletedAt)))
         .limit(1);
 
       if (!row) throw new TRPCError({ code: 'NOT_FOUND', message: 'Job not found' });
