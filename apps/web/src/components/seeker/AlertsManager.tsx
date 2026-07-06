@@ -35,6 +35,7 @@ export function AlertsManager() {
   const [isWalkIn, setIsWalkIn] = useState(false);
   const [valuesGulf, setValuesGulf] = useState(false);
   const [done, setDone] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
   const subscribe = trpc.alerts.subscribe.useMutation({
     onSuccess: () => {
@@ -69,6 +70,11 @@ export function AlertsManager() {
   const valid = categories.size >= 1 && districts.size >= 1;
   const active = (mySubs.data ?? []).find((s) => s.channel === 'whatsapp' && s.isActive);
 
+  const matchPreview = trpc.alerts.getAlertMatchingJobs.useQuery(
+    { subscriptionId: active?.id ?? '' },
+    { enabled: showPreview && Boolean(active?.id) },
+  );
+
   function submit() {
     setDone(false);
     subscribe.mutate({
@@ -102,6 +108,38 @@ export function AlertsManager() {
               Pause alerts
             </button>
           </div>
+        )}
+
+        {active && (
+          <section style={s.card}>
+            <button
+              type="button"
+              onClick={() => setShowPreview((v) => !v)}
+              style={{ background: 'none', border: 'none', color: 'var(--color-accent)', fontWeight: 600, cursor: 'pointer', padding: 0 }}
+            >
+              {showPreview ? 'Hide preview' : 'Preview matching jobs →'}
+            </button>
+            {showPreview && (
+              <div style={{ marginTop: 12 }}>
+                {matchPreview.isLoading && <p style={{ color: '#6b6b66', fontSize: 14 }}>Loading…</p>}
+                {matchPreview.data && (
+                  <>
+                    <p style={{ color: '#6b6b66', fontSize: 14, margin: '0 0 8px' }}>
+                      {matchPreview.data.count} live job{matchPreview.data.count === 1 ? '' : 's'} match your alert right now
+                    </p>
+                    <ul style={{ paddingLeft: 18, margin: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {matchPreview.data.jobs.slice(0, 5).map((j) => (
+                        <li key={j.id} style={{ fontSize: 14 }}>
+                          <a href={`/jobs/${j.slug ?? j.id}`} style={{ color: 'var(--color-accent)' }}>{j.title}</a>
+                          {' — '}{j.company}
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+              </div>
+            )}
+          </section>
         )}
 
         {done && !subscribe.isPending && (
