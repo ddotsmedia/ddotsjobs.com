@@ -12,6 +12,7 @@ interface MatchRow {
   channel: string;
   language: string;
   phone: string;
+  email: string | null;
 }
 
 /** ddotsjobs:alerts processor — match a freshly active job to subscriptions. */
@@ -67,7 +68,7 @@ export async function matchJobAlerts(data: MatchJob): Promise<{ recipients: numb
   // Find subscriptions whose category + district filters both match.
   const matched = await db.execute(sql`
     SELECT DISTINCT sub.id AS sub_id, sub.seeker_user_id AS user_id,
-           sub.channel::text AS channel, sub.language AS language, u.phone AS phone
+           sub.channel::text AS channel, sub.language AS language, u.phone AS phone, u.email AS email
     FROM alert_subscriptions sub
     JOIN users u ON u.id = sub.seeker_user_id
     JOIN alert_filters f_cat ON f_cat.subscription_id = sub.id
@@ -130,12 +131,13 @@ export async function matchJobAlerts(data: MatchJob): Promise<{ recipients: numb
     if (!logRow) continue; // already dispatched
 
     await queues.dispatch.add(
-      'whatsapp_job',
+      r.channel === 'email' ? 'email_job' : 'whatsapp_job',
       {
         dispatchLogId: logRow.id,
         subscriptionId: r.sub_id,
         userId: r.user_id,
         phone: r.phone,
+        email: r.email,
         channel: r.channel,
         language: r.language,
         jobId: data.jobId,
