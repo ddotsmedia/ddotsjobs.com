@@ -63,21 +63,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const jobRows = await safe(
     () =>
       db
-        .select({ slug: tables.jobs.slug, updatedAt: tables.jobs.updatedAt })
+        .select({ id: tables.jobs.id, slug: tables.jobs.slug, updatedAt: tables.jobs.updatedAt })
         .from(tables.jobs)
         .where(and(eq(tables.jobs.status, 'active'), isNull(tables.jobs.deletedAt)))
         .orderBy(desc(tables.jobs.updatedAt))
         .limit(1000),
-    [] as { slug: string | null; updatedAt: Date }[],
+    [] as { id: string; slug: string | null; updatedAt: Date }[],
   );
-  const jobRoutes: MetadataRoute.Sitemap = jobRows
-    .filter((j) => j.slug)
-    .map((j) => ({
-      url: `${BASE}/jobs/${j.slug}`,
-      changeFrequency: 'daily',
-      priority: 0.8,
-      lastModified: j.updatedAt,
-    }));
+  // Jobs published without a slug are reachable by UUID id (getBySlug id-fallback),
+  // so emit slug ?? id rather than dropping slug-less rows.
+  const jobRoutes: MetadataRoute.Sitemap = jobRows.map((j) => ({
+    url: `${BASE}/jobs/${j.slug ?? j.id}`,
+    changeFrequency: 'daily',
+    priority: 0.8,
+    lastModified: j.updatedAt,
+  }));
 
   const pscRows = await safe(
     () =>
