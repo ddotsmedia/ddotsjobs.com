@@ -45,8 +45,10 @@ export async function matchJobAlerts(data: MatchJob): Promise<{ recipients: numb
     .select({
       category: j.categorySlug,
       district: j.district,
+      type: j.type,
       salaryMinPaise: j.salaryMinPaise,
       isWalkIn: j.isWalkIn,
+      valuesGulfExperience: j.valuesGulfExperience,
       titleEn: j.titleEn,
       employerId: j.employerId,
     })
@@ -73,6 +75,23 @@ export async function matchJobAlerts(data: MatchJob): Promise<{ recipients: numb
     JOIN alert_filters f_dist ON f_dist.subscription_id = sub.id
       AND f_dist.filter_type = 'district' AND f_dist.filter_value = ${jobRow.district}
     WHERE sub.is_active = true AND sub.deleted_at IS NULL AND u.deleted_at IS NULL
+      -- Optional refinements: apply a filter only if the sub declares that type.
+      AND (
+        NOT EXISTS (SELECT 1 FROM alert_filters f WHERE f.subscription_id = sub.id AND f.filter_type = 'job_type')
+        OR EXISTS (SELECT 1 FROM alert_filters f WHERE f.subscription_id = sub.id AND f.filter_type = 'job_type' AND f.filter_value = ${jobRow.type})
+      )
+      AND (
+        NOT EXISTS (SELECT 1 FROM alert_filters f WHERE f.subscription_id = sub.id AND f.filter_type = 'salary_min_paise')
+        OR EXISTS (SELECT 1 FROM alert_filters f WHERE f.subscription_id = sub.id AND f.filter_type = 'salary_min_paise' AND CAST(f.filter_value AS BIGINT) <= ${jobRow.salaryMinPaise})
+      )
+      AND (
+        NOT EXISTS (SELECT 1 FROM alert_filters f WHERE f.subscription_id = sub.id AND f.filter_type = 'is_walk_in')
+        OR ${jobRow.isWalkIn}
+      )
+      AND (
+        NOT EXISTS (SELECT 1 FROM alert_filters f WHERE f.subscription_id = sub.id AND f.filter_type = 'values_gulf_experience')
+        OR ${jobRow.valuesGulfExperience}
+      )
       AND NOT EXISTS (
         SELECT 1 FROM alert_dispatch_log dl
         WHERE dl.job_id = ${data.jobId} AND dl.user_id = sub.seeker_user_id
