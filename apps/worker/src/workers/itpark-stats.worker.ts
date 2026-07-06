@@ -3,6 +3,7 @@ import { and, db, eq, isNull, sql, tables } from '@ddotsjobs/db';
 import { redis } from '@ddotsjobs/redis';
 import { queues } from '../queues.js';
 import { logger } from '../lib/logger.js';
+import { runAlertDigest } from './alert-digest.worker.js';
 
 const CRON_JOB_ID = 'itpark-stats-cron';
 const JOB_NAME = 'itpark.stats';
@@ -31,6 +32,8 @@ export async function registerBudgetCron(): Promise<void> {
 export async function maintenanceQueueProcessor(job: Job): Promise<unknown> {
   if (job.name === JOB_NAME) return runItParkStats();
   if (job.name === BUDGET_JOB_NAME) return runBudgetCheck();
+  if (job.name === 'alert_digest_daily') return runAlertDigest('daily_digest');
+  if (job.name === 'alert_digest_weekly') return runAlertDigest('weekly');
   logger.warn({ job: job.name }, '[maintenance] unhandled job');
   return { skipped: true };
 }

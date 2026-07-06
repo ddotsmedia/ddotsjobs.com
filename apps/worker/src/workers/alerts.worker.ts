@@ -76,6 +76,8 @@ export async function matchJobAlerts(data: MatchJob): Promise<{ recipients: numb
     JOIN alert_filters f_dist ON f_dist.subscription_id = sub.id
       AND f_dist.filter_type = 'district' AND f_dist.filter_value = ${jobRow.district}
     WHERE sub.is_active = true AND sub.deleted_at IS NULL AND u.deleted_at IS NULL
+      -- Instant alerts only; daily_digest/weekly subs are handled by the digest cron.
+      AND sub.frequency_code = 'immediate'
       -- Optional refinements: apply a filter only if the sub declares that type.
       AND (
         NOT EXISTS (SELECT 1 FROM alert_filters f WHERE f.subscription_id = sub.id AND f.filter_type = 'job_type')

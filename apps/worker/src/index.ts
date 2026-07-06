@@ -4,6 +4,7 @@ import { baseQueueOptions, connection, QUEUE_NAMES, type QueueName } from './que
 import { logger } from './lib/logger.js';
 import { aiQueueProcessor, registerPscCron } from './workers/psc.worker.js';
 import { maintenanceQueueProcessor, registerBudgetCron, registerItParkStatsCron } from './workers/itpark-stats.worker.js';
+import { registerAlertDigestCrons } from './workers/alert-digest.worker.js';
 import { alertsQueueProcessor } from './workers/alerts.worker.js';
 import { dispatchQueueProcessor } from './workers/dispatch.worker.js';
 import { jobEmbeddingProcessor } from './workers/job-embedding.worker.js';
@@ -128,6 +129,9 @@ registerItParkStatsCron()
 registerBudgetCron()
   .then(() => logger.info('[maintenance] AI budget cron registered (0 9 * * *)'))
   .catch((err: unknown) => logger.error({ err }, '[maintenance] budget cron registration failed'));
+registerAlertDigestCrons()
+  .then(() => logger.info('[maintenance] alert digest crons registered (daily 0 5 * * *, weekly 0 5 * * 1)'))
+  .catch((err: unknown) => logger.error({ err }, '[maintenance] alert digest cron registration failed'));
 
 logger.info({ queues: workers.length, concurrency: CONCURRENCY }, 'ddotsjobs-worker up');
 
