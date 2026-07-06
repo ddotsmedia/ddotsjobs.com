@@ -91,8 +91,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 function buildJsonLd(job: Job): string | null {
-  // Spec: skip the schema entirely if validThrough is null.
-  if (!job.validThrough) return null;
+  // Spec: validThrough = expiry date, or 30 days from posting when unset.
+  const validThrough = job.validThrough
+    ? new Date(job.validThrough)
+    : new Date((job.publishedAt ?? new Date()).getTime() + 30 * 864e5);
   const description = job.descriptionEn.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
 
   const data: Record<string, unknown> = {
@@ -101,7 +103,7 @@ function buildJsonLd(job: Job): string | null {
     title: job.titleEn,
     description: description.length >= 100 ? description : description.padEnd(100, ' '),
     datePosted: (job.publishedAt ?? new Date()).toISOString(),
-    validThrough: new Date(job.validThrough).toISOString(),
+    validThrough: validThrough.toISOString(),
     hiringOrganization: {
       '@type': 'Organization',
       name: job.company,
