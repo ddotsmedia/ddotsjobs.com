@@ -2,10 +2,17 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { trpc } from '@/lib/trpc/client';
 import { relativeTime, titleCase } from '@/lib/format';
 
 const TEAL = '#3A9EA5';
+
+const DEFAULT_QUESTIONS = [
+  { text: 'Tell us about yourself and why you are interested in this role.', timeLimit: 120 },
+  { text: 'Describe your most relevant experience for this position.', timeLimit: 120 },
+  { text: 'Why should we hire you?', timeLimit: 90 },
+];
 
 function scoreColor(n: number): { bg: string; fg: string } {
   if (n >= 70) return { bg: '#e6f5ea', fg: '#1d7a3a' };
@@ -14,9 +21,13 @@ function scoreColor(n: number): { bg: string; fg: string } {
 }
 
 export function ApplicantScreening({ jobId }: { jobId: string }) {
+  const router = useRouter();
   const utils = trpc.useUtils();
   const q = trpc.screening.getApplicantScores.useQuery({ jobId });
   const score = trpc.screening.scoreApplication.useMutation();
+  const invite = trpc.interview.createInterview.useMutation({
+    onSuccess: (r) => router.push(`/employer/interviews/${r.interviewId}`),
+  });
 
   const [onlyHigh, setOnlyHigh] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -115,6 +126,9 @@ export function ApplicantScreening({ jobId }: { jobId: string }) {
                     <button type="button" onClick={() => scoreOne(r.applicationId)} disabled={score.isPending || Boolean(bulk)} style={s.scoreBtn}>
                       {scored ? 'Re-score' : 'Score'}
                     </button>
+                    <button type="button" onClick={() => invite.mutate({ jobId, candidateUserId: r.userId, questions: DEFAULT_QUESTIONS })} disabled={invite.isPending} style={s.interviewBtn}>
+                      🎥 Interview
+                    </button>
                   </div>
                 </div>
                 {isOpen && scored && (
@@ -162,8 +176,9 @@ const s: Record<string, React.CSSProperties> = {
   metaRow: { display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', fontSize: 13, color: '#6b6b66' },
   dot: { color: '#c9c7bd' },
   reasonToggle: { alignSelf: 'flex-start', background: 'none', border: 'none', color: TEAL, fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: '2px 0' },
-  actions: { flex: '0 0 auto' },
-  scoreBtn: { background: '#fff', color: TEAL, border: `1px solid ${TEAL}`, borderRadius: 'var(--radius-pill)', padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', minHeight: 40 },
+  actions: { flex: '0 0 auto', display: 'flex', flexDirection: 'column', gap: 6 },
+  scoreBtn: { background: '#fff', color: TEAL, border: `1px solid ${TEAL}`, borderRadius: 'var(--radius-pill)', padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', minHeight: 40, whiteSpace: 'nowrap' },
+  interviewBtn: { background: '#fff', color: '#55554f', border: '1px solid #e2e2da', borderRadius: 'var(--radius-pill)', padding: '8px 12px', fontSize: 13, fontWeight: 600, cursor: 'pointer', minHeight: 40, whiteSpace: 'nowrap' },
   reasons: { marginTop: 12, paddingTop: 12, borderTop: '1px solid #f1f1ec', display: 'flex', flexDirection: 'column', gap: 8 },
   reasoning: { fontSize: 14, color: '#3a3a34', margin: 0, lineHeight: 1.5 },
   tagRow: { display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' },

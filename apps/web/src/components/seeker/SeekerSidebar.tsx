@@ -14,6 +14,7 @@ const NAV = [
   { label: 'Find Jobs', href: '/jobs' },
   { label: 'My Applications', href: '/seeker/applications' },
   { label: 'Messages', href: '/chat' },
+  { label: 'Interviews', href: '/seeker/interviews' },
   { label: 'Saved Jobs', href: '/seeker/saved-jobs' },
   { label: 'Referrals', href: '/seeker/referrals' },
   { label: 'Job Alerts', href: '/seeker/alerts' },

@@ -10,6 +10,8 @@ const TYPES: Record<string, string> = {
   jpg: 'image/jpeg',
   jpeg: 'image/jpeg',
   png: 'image/png',
+  webm: 'video/webm',
+  mp4: 'video/mp4',
 };
 
 export async function GET(_req: Request, ctx: { params: Promise<{ key: string[] }> }) {
