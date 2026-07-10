@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { getServerTrpc } from '@/lib/trpc/server';
 import { CompletionRing } from '@/components/seeker/CompletionRing';
 import { BadgeDisplay } from '@/components/skills/BadgeDisplay';
+import { ReceivedEndorsements } from '@/components/seeker/ReceivedEndorsements';
 import { EXPERIENCE_OPTIONS, SEEKER_CATEGORIES, VISIBILITY_OPTIONS } from '@/lib/constants';
 import { titleCase } from '@/lib/format';
 
@@ -73,6 +74,8 @@ export default async function ProfilePage() {
         )}
 
         <BadgeDisplay />
+
+        <ReceivedEndorsements userId={profile.userId} />
 
         <Section title="Basic info" editHref="/seeker/profile/setup">
           <Row label="Full name" value={profile.fullName ?? '—'} />

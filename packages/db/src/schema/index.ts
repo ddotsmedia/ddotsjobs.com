@@ -17,3 +17,4 @@ export * from './resume.js';
 export * from './community.js';
 export * from './assessments.js';
 export * from './analytics.js';
+export * from './endorsements.js';

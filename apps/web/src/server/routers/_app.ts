@@ -7,6 +7,7 @@ import { applicationsRouter } from './applications.js';
 import { authRouter } from './auth.js';
 import { employerRouter } from './employer.js';
 import { employerDashboardRouter } from './employer-dashboard.js';
+import { endorsementRouter } from './endorsement.js';
 import { fitScoreRouter } from './fit-score.js';
 import { itParksRouter } from './it-parks.js';
 import { jobsRouter } from './jobs.js';
@@ -35,6 +36,7 @@ export const appRouter = router({
   auth: authRouter,
   employer: employerRouter,
   employerDashboard: employerDashboardRouter,
+  endorsement: endorsementRouter,
   fitScore: fitScoreRouter,
   itParks: itParksRouter,
   jobs: jobsRouter,

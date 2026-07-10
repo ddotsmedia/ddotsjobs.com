@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { and, eq, isNull, tables } from '@ddotsjobs/db';
-import { protectedProcedure, roleProcedure, router } from '../trpc.js';
+import { protectedProcedure, publicProcedure, roleProcedure, router } from '../trpc.js';
 
 const DISTRICTS = [
   'thiruvananthapuram', 'kollam', 'pathanamthitta', 'alappuzha', 'kottayam',
@@ -143,6 +143,35 @@ export const seekerRouter = router({
       .limit(1);
     return row ?? null;
   }),
+
+  // Public peer profile (for skill endorsements). Only non-private profiles are
+  // visible; returns null otherwise so the page 404s.
+  getPublicProfile: publicProcedure
+    .input(z.object({ userId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      const [row] = await ctx.db
+        .select({
+          userId: tables.seekerProfiles.userId,
+          fullName: tables.users.nameEn,
+          headlineEn: tables.seekerProfiles.headlineEn,
+          homeDistrict: tables.seekerProfiles.homeDistrict,
+          skills: tables.seekerProfiles.skills,
+          visibility: tables.seekerProfiles.visibility,
+          isVerifiedProfessional: tables.users.isVerifiedProfessional,
+        })
+        .from(tables.seekerProfiles)
+        .innerJoin(tables.users, eq(tables.users.id, tables.seekerProfiles.userId))
+        .where(
+          and(
+            eq(tables.seekerProfiles.userId, input.userId),
+            isNull(tables.seekerProfiles.deletedAt),
+            isNull(tables.users.deletedAt),
+          ),
+        )
+        .limit(1);
+      if (!row || row.visibility === 'private') return null;
+      return row;
+    }),
 
   getCompletionChecklist: protectedProcedure.query(async ({ ctx }) => {
     const [row] = await ctx.db
