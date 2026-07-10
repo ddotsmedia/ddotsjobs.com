@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
-import { and, asc, count, createNotification, desc, eq, gte, inArray, isNull, or, sql, tables, type SQL } from '@ddotsjobs/db';
+import { and, asc, count, createNotification, desc, eq, gte, inArray, isNull, ne, or, sql, tables, type SQL } from '@ddotsjobs/db';
 import { callAI } from '@ddotsjobs/ai';
 import { jobAutoFillDescriptionPrompt, searchParseNaturalLanguagePrompt, jobSuggestTitlesPrompt, jobSuggestSkillsPrompt, salaryBenchmarkPrompt } from '@ddotsjobs/ai/prompts';
 import { SECTORS } from '@/lib/constants';
@@ -854,6 +854,32 @@ export const jobsRouter = router({
         .set({ status: 'closed', closedAt: new Date() })
         .where(eq(tables.jobs.id, input.jobId));
       return { success: true as const };
+    }),
+
+  // Bulk close — scoped to the caller's own, non-deleted, not-already-closed
+  // jobs. Returns the count actually closed (ignores ids that aren't theirs).
+  closeMany: roleProcedure('employer')
+    .input(z.object({ jobIds: z.array(z.string().uuid()).min(1).max(100) }))
+    .mutation(async ({ ctx, input }) => {
+      const owned = await ctx.db
+        .select({ id: tables.jobs.id })
+        .from(tables.jobs)
+        .innerJoin(tables.employers, eq(tables.employers.id, tables.jobs.employerId))
+        .where(
+          and(
+            inArray(tables.jobs.id, input.jobIds),
+            eq(tables.employers.ownerUserId, ctx.user.id),
+            isNull(tables.jobs.deletedAt),
+            ne(tables.jobs.status, 'closed'),
+          ),
+        );
+      const ids = owned.map((r) => r.id);
+      if (ids.length === 0) return { closed: 0 };
+      await ctx.db
+        .update(tables.jobs)
+        .set({ status: 'closed', closedAt: new Date() })
+        .where(inArray(tables.jobs.id, ids));
+      return { closed: ids.length };
     }),
 
   autoFillDescription: roleProcedure('employer')

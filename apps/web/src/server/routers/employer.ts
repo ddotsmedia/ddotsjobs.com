@@ -231,20 +231,67 @@ export const employerRouter = router({
   // the applications table (authoritative). Per-job columns use the lifetime
   // jobs.view_count / jobs.application_count counters.
   getAnalyticsDashboard: protectedProcedure
-    .input(z.object({ range: z.enum(['7d', '30d', 'all']).default('7d') }).optional())
+    .input(
+      z
+        .object({
+          range: z.enum(['7d', '30d', 'all', 'custom']).default('7d'),
+          from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+          to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+        })
+        .optional(),
+    )
     .query(async ({ ctx, input }) => {
       const emp = await ownEmployer(ctx.db, ctx.user.id);
       if (!emp) throw new TRPCError({ code: 'NOT_FOUND', message: 'No employer account' });
 
-      const range = input?.range ?? '7d';
-      const days = range === '7d' ? 7 : range === '30d' ? 30 : null;
-      const chartDays = days ?? 30; // "all" still charts a bounded 30d window
-      const since = days ? sql`now() - make_interval(days => ${days})` : null;
-      const chartSince = sql`now() - make_interval(days => ${chartDays})`;
-
       const j = tables.jobs;
       const ae = tables.analyticsEvents;
       const app = tables.applications;
+
+      const range = input?.range ?? '7d';
+      const DAY = 86_400_000;
+      const now = new Date();
+      // Current window [curStart, curEnd) and the immediately-preceding window
+      // of equal length [prevStart, prevEnd) for trend comparison. "all" (or a
+      // custom range missing from/to) has no bounds and no trend.
+      let curStart: Date | null = null;
+      let curEnd: Date | null = null;
+      let prevStart: Date | null = null;
+      let prevEnd: Date | null = null;
+      if (range === '7d' || range === '30d') {
+        const len = (range === '7d' ? 7 : 30) * DAY;
+        curEnd = now;
+        curStart = new Date(now.getTime() - len);
+        prevEnd = curStart;
+        prevStart = new Date(curStart.getTime() - len);
+      } else if (range === 'custom' && input?.from && input?.to) {
+        curStart = new Date(`${input.from}T00:00:00.000Z`);
+        curEnd = new Date(`${input.to}T23:59:59.999Z`);
+        const len = Math.max(DAY, curEnd.getTime() - curStart.getTime());
+        prevEnd = curStart;
+        prevStart = new Date(curStart.getTime() - len);
+      }
+
+      const windowConds = (col: typeof ae.createdAt | typeof app.createdAt, start: Date | null, end: Date | null) => {
+        const c = [];
+        if (start) c.push(sql`${col} >= ${start}`);
+        if (end) c.push(sql`${col} < ${end}`);
+        return c;
+      };
+      const countViews = async (start: Date | null, end: Date | null): Promise<number> => {
+        const [r] = await ctx.db
+          .select({ total: sql<number>`count(*)::int` })
+          .from(ae)
+          .where(and(eq(ae.employerId, emp.id), sql`${ae.eventType} in ('job_view','profile_view')`, ...windowConds(ae.createdAt, start, end)));
+        return r?.total ?? 0;
+      };
+      const countApps = async (start: Date | null, end: Date | null): Promise<number> => {
+        const [r] = await ctx.db
+          .select({ total: sql<number>`count(*)::int` })
+          .from(app)
+          .where(and(eq(app.employerId, emp.id), isNull(app.withdrawnAt), ...windowConds(app.createdAt, start, end)));
+        return r?.total ?? 0;
+      };
 
       // Job status counts (lifetime, non-deleted).
       const [counts] = await ctx.db
@@ -256,21 +303,13 @@ export const employerRouter = router({
         .from(j)
         .where(and(eq(j.employerId, emp.id), isNull(j.deletedAt)));
 
-      // Total views (job + profile) within range.
-      const viewWhere = [eq(ae.employerId, emp.id), sql`${ae.eventType} in ('job_view','profile_view')`];
-      if (since) viewWhere.push(sql`${ae.createdAt} >= ${since}`);
-      const [views] = await ctx.db
-        .select({ total: sql<number>`count(*)::int` })
-        .from(ae)
-        .where(and(...viewWhere));
-
-      // Total applications within range.
-      const appWhere = [eq(app.employerId, emp.id), isNull(app.withdrawnAt)];
-      if (since) appWhere.push(sql`${app.createdAt} >= ${since}`);
-      const [applies] = await ctx.db
-        .select({ total: sql<number>`count(*)::int` })
-        .from(app)
-        .where(and(...appWhere));
+      const hasPrev = prevStart != null;
+      const [totalViews, totalApplications, prevViews, prevApplications] = await Promise.all([
+        countViews(curStart, curEnd),
+        countApps(curStart, curEnd),
+        hasPrev ? countViews(prevStart, prevEnd) : Promise.resolve(0),
+        hasPrev ? countApps(prevStart, prevEnd) : Promise.resolve(0),
+      ]);
 
       // Per-job breakdown (lifetime counters).
       const jobRows = await ctx.db
@@ -281,36 +320,40 @@ export const employerRouter = router({
           status: j.status,
           views: j.viewCount,
           applies: j.applicationCount,
+          updatedAt: j.updatedAt,
         })
         .from(j)
         .where(and(eq(j.employerId, emp.id), isNull(j.deletedAt)))
         .orderBy(desc(j.viewCount));
 
-      // Applications by date (chart window).
+      // Chart window: current window, or last 30d for "all".
+      const chartStart = curStart ?? new Date(now.getTime() - 30 * DAY);
       const applicationsByDate = await ctx.db
         .select({
           date: sql<string>`to_char(date(${app.createdAt}), 'YYYY-MM-DD')`,
           count: sql<number>`count(*)::int`,
         })
         .from(app)
-        .where(and(eq(app.employerId, emp.id), isNull(app.withdrawnAt), sql`${app.createdAt} >= ${chartSince}`))
+        .where(and(eq(app.employerId, emp.id), isNull(app.withdrawnAt), ...windowConds(app.createdAt, chartStart, curEnd)))
         .groupBy(sql`date(${app.createdAt})`)
         .orderBy(asc(sql`date(${app.createdAt})`));
 
-      // Job-page views by date (chart window).
       const viewsByDate = await ctx.db
         .select({
           date: sql<string>`to_char(date(${ae.createdAt}), 'YYYY-MM-DD')`,
           count: sql<number>`count(*)::int`,
         })
         .from(ae)
-        .where(and(eq(ae.employerId, emp.id), sql`${ae.eventType} = 'job_view'`, sql`${ae.createdAt} >= ${chartSince}`))
+        .where(and(eq(ae.employerId, emp.id), sql`${ae.eventType} = 'job_view'`, ...windowConds(ae.createdAt, chartStart, curEnd)))
         .groupBy(sql`date(${ae.createdAt})`)
         .orderBy(asc(sql`date(${ae.createdAt})`));
 
-      const totalViews = views?.total ?? 0;
-      const totalApplications = applies?.total ?? 0;
       const pct = (num: number, den: number) => (den > 0 ? Math.round((num / den) * 1000) / 10 : 0);
+      // % change vs previous period; null when no comparable prior data.
+      const changePct = (cur: number, prev: number): number | null =>
+        !hasPrev || prev === 0 ? null : Math.round(((cur - prev) / prev) * 100);
+      const conversionRate = pct(totalApplications, totalViews);
+      const prevConversion = pct(prevApplications, prevViews);
 
       const viewsPerJob = jobRows.map((r) => ({
         jobId: r.jobId,
@@ -320,6 +363,7 @@ export const employerRouter = router({
         views: r.views,
         applies: r.applies,
         conversion: pct(r.applies, r.views),
+        updatedAt: r.updatedAt,
       }));
       const topPerformingJobs = [...viewsPerJob]
         .filter((r) => r.views >= 5)
@@ -328,13 +372,22 @@ export const employerRouter = router({
 
       return {
         range,
+        from: input?.from ?? null,
+        to: input?.to ?? null,
         kpis: {
           totalJobsPosted: counts?.totalJobsPosted ?? 0,
           activeJobs: counts?.activeJobs ?? 0,
           expiredJobs: counts?.expiredJobs ?? 0,
           totalViews,
           totalApplications,
-          conversionRate: pct(totalApplications, totalViews),
+          conversionRate,
+        },
+        // Trends vs previous same-length period. views/applications = % change;
+        // conversion = percentage-point delta. null = no prior data to compare.
+        trends: {
+          views: changePct(totalViews, prevViews),
+          applications: changePct(totalApplications, prevApplications),
+          conversion: hasPrev && prevViews > 0 ? Math.round((conversionRate - prevConversion) * 10) / 10 : null,
         },
         viewsPerJob,
         topPerformingJobs,

@@ -23,6 +23,33 @@ export function JobAnalytics({ jobId }: { jobId: string }) {
   }
 
   const { job, timeline, applicants } = d;
+
+  const exportCsv = () => {
+    const esc = (v: unknown) => {
+      const str = String(v ?? '');
+      return /[",\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
+    };
+    const lines = [
+      ['metric', 'value'].join(','),
+      ['job', esc(job.title)].join(','),
+      ['status', job.status].join(','),
+      ['views', job.views].join(','),
+      ['applyClicks', job.ctaClicks].join(','),
+      ['applications', job.applies].join(','),
+      ['conversionRate', `${job.conversion}%`].join(','),
+      '',
+      ['applicantName', 'appliedAt', 'status'].join(','),
+      ...applicants.map((a) => [esc(a.name ?? 'Applicant'), new Date(a.appliedAt as unknown as string).toISOString().slice(0, 10), a.status].map(esc).join(',')),
+    ];
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const el = document.createElement('a');
+    el.href = url;
+    el.download = `ddotsjobs-job-${job.id}.csv`;
+    el.click();
+    URL.revokeObjectURL(url);
+  };
+
   const cards = [
     { label: 'Views', value: job.views, color: TEAL },
     { label: 'Apply clicks', value: job.ctaClicks, color: YELLOW },
@@ -39,6 +66,8 @@ export function JobAnalytics({ jobId }: { jobId: string }) {
           <span style={s.status}>{titleCase(job.status)}</span>
         </div>
         <div style={s.actions}>
+          <button type="button" onClick={exportCsv} style={s.actionBtn}>⬇ CSV</button>
+          <button type="button" onClick={() => window.print()} style={s.actionBtn}>🖨 PDF</button>
           {job.slug && <Link href={`/jobs/${job.slug}`} style={s.actionBtn}>View posting ↗</Link>}
           <Link href={`/employer/jobs`} style={s.actionBtn}>Edit job</Link>
         </div>
@@ -121,7 +150,7 @@ const s: Record<string, React.CSSProperties> = {
   h1: { fontFamily: 'var(--font-display)', fontStyle: 'italic', fontSize: '1.7rem', margin: '6px 0 4px', color: 'var(--color-dark)' },
   status: { fontSize: 12, fontWeight: 700, color: '#6b6b66', background: '#f1f1ec', padding: '2px 10px', borderRadius: 'var(--radius-pill)' },
   actions: { display: 'flex', gap: 8, flexWrap: 'wrap' },
-  actionBtn: { fontSize: 13, fontWeight: 600, color: '#55554f', background: '#fff', border: '1px solid #e2e2da', borderRadius: 'var(--radius-pill)', padding: '7px 14px' },
+  actionBtn: { fontSize: 13, fontWeight: 600, color: '#55554f', background: '#fff', border: '1px solid #e2e2da', borderRadius: 'var(--radius-pill)', padding: '7px 14px', cursor: 'pointer' },
   kpiGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(140px,1fr))', gap: 'var(--space-1)' },
   kpiCard: { display: 'flex', flexDirection: 'column', gap: 4, padding: 'var(--space-2)', background: '#fff', borderRadius: 'var(--radius-card)', border: '1px solid #efefe9' },
   kpiValue: { fontSize: '1.9rem', fontWeight: 700, lineHeight: 1 },
