@@ -3,6 +3,7 @@ import { TRPCError } from '@trpc/server';
 import { and, count, createNotification, desc, eq, inArray, isNull, ne, or, sql, tables, type Database } from '@ddotsjobs/db';
 import { protectedProcedure, router } from '../trpc.js';
 import { rateLimit } from '../rate-limit.js';
+import { enqueueEmail } from '../queue.js';
 
 // Canonical participant ordering so a pair maps to exactly one conversation.
 function orderPair(a: string, b: string): [string, string] {
@@ -192,6 +193,12 @@ export const chatRouter = router({
         actionUrl: `/chat/${input.conversationId}`,
       }).catch(() => {
         /* best-effort */
+      });
+      // Email notification (gated by kill-switch + recipient prefs in the worker).
+      await enqueueEmail({
+        eventType: 'chat_message',
+        userId: peerId,
+        context: { senderName: me?.name ?? 'Someone', preview, conversationId: input.conversationId },
       });
 
       return { id: msg!.id, mine: true as const, content: msg!.content, deleted: false as const, readAt: null, createdAt: msg!.createdAt };

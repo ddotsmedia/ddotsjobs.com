@@ -12,6 +12,7 @@ import { alertDispatchProcessor } from './workers/alert-dispatch.worker.js';
 import { pscScrapeProcessor } from './workers/psc-scrape.worker.js';
 import { fitScoreProcessor } from './workers/fit-score.worker.js';
 import { notificationProcessor } from './workers/notification.worker.js';
+import { emailProcessor, registerJobExpiryCron } from './workers/email.worker.js';
 
 // Single fork process hosting every BullMQ worker (PM2 ddotsjobs-worker).
 const CONCURRENCY = Number(process.env.WORKER_CONCURRENCY ?? 5);
@@ -117,6 +118,7 @@ const workers: Worker[] = [
   makeWorker(QUEUE_NAMES.pscScrape, pscScrapeProcessor as Processor),
   makeWorker(QUEUE_NAMES.fitScore, fitScoreProcessor as Processor),
   makeWorker(QUEUE_NAMES.notification, notificationProcessor as Processor),
+  makeWorker(QUEUE_NAMES.email, emailProcessor as Processor),
 ];
 
 // Register repeatable crons (idempotent — keyed by jobId).
@@ -132,6 +134,9 @@ registerBudgetCron()
 registerAlertDigestCrons()
   .then(() => logger.info('[maintenance] alert digest crons registered (daily 0 5 * * *, weekly 0 5 * * 1)'))
   .catch((err: unknown) => logger.error({ err }, '[maintenance] alert digest cron registration failed'));
+registerJobExpiryCron()
+  .then(() => logger.info('[maintenance] job expiry cron registered (0 4 * * *)'))
+  .catch((err: unknown) => logger.error({ err }, '[maintenance] job expiry cron registration failed'));
 
 logger.info({ queues: workers.length, concurrency: CONCURRENCY }, 'ddotsjobs-worker up');
 

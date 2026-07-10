@@ -30,6 +30,7 @@ export const QUEUE_NAMES = {
   pscScrape: 'psc-scrape',
   fitScore: 'fit-score',
   notification: 'notification',
+  email: 'email', // transactional email notifications (Phase 3.7)
 } as const;
 
 export type QueueName = (typeof QUEUE_NAMES)[keyof typeof QUEUE_NAMES];
@@ -55,6 +56,11 @@ export interface JobPayloads {
     templateMl: string;
     templateEn: string;
   };
+  [QUEUE_NAMES.email]: {
+    eventType: 'chat_message' | 'endorsement' | 'job_expiry' | 'application';
+    userId: string; // recipient
+    context: Record<string, unknown>;
+  };
 }
 
 export const queues = {
@@ -67,6 +73,7 @@ export const queues = {
   pscScrape: new Queue<JobPayloads['psc-scrape']>(QUEUE_NAMES.pscScrape, baseQueueOptions),
   fitScore: new Queue<JobPayloads['fit-score']>(QUEUE_NAMES.fitScore, baseQueueOptions),
   notification: new Queue<JobPayloads['notification']>(QUEUE_NAMES.notification, baseQueueOptions),
+  email: new Queue<JobPayloads['email']>(QUEUE_NAMES.email, baseQueueOptions),
 } as const;
 
 export { baseQueueOptions, bullPrefix };

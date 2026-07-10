@@ -3,6 +3,7 @@ import { TRPCError } from '@trpc/server';
 import { and, count, createNotification, desc, eq, sql, tables, type Database } from '@ddotsjobs/db';
 import { protectedProcedure, publicProcedure, roleProcedure, router } from '../trpc.js';
 import { rateLimit } from '../rate-limit.js';
+import { enqueueEmail } from '../queue.js';
 
 const seekerProc = roleProcedure('seeker');
 
@@ -75,6 +76,11 @@ export const endorsementRouter = router({
           actionUrl: '/seeker/profile',
         }).catch(() => {
           /* notification is best-effort */
+        });
+        await enqueueEmail({
+          eventType: 'endorsement',
+          userId: input.userId,
+          context: { endorserName: who, skillName: input.skillName, count: currentCount },
         });
       }
       return { endorsed: true as const, count: currentCount };

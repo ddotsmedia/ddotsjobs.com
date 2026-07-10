@@ -11,3 +11,22 @@ const connection = createRawConnection();
 export const aiQueue = new Queue('ai', { connection, prefix });
 export const alertsQueue = new Queue('alerts', { connection, prefix });
 export const searchSyncQueue = new Queue('search-sync', { connection, prefix });
+
+// Transactional email notifications (Phase 3.7). Consumed by apps/worker's
+// email.worker. Payload: { eventType, userId (recipient), context }.
+export const emailQueue = new Queue('email', { connection, prefix });
+
+export interface EmailJob {
+  eventType: 'chat_message' | 'endorsement' | 'job_expiry' | 'application';
+  userId: string;
+  context: Record<string, unknown>;
+}
+
+// Best-effort enqueue — never let email failures break the triggering action.
+export async function enqueueEmail(job: EmailJob): Promise<void> {
+  try {
+    await emailQueue.add(job.eventType, job, { removeOnComplete: true, attempts: 2 });
+  } catch {
+    /* email is non-critical */
+  }
+}

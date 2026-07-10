@@ -20,6 +20,7 @@ const NAV = [
   { label: 'Gulf Return', href: '/seeker/gulf-return/setup' },
   { label: 'My Profile', href: '/seeker/profile' },
   { label: 'Verify Credentials', href: '/seeker/profile/verify' },
+  { label: 'Email Settings', href: '/seeker/preferences' },
   { label: 'Privacy', href: '/seeker/profile/privacy' },
 ] as const;
 
