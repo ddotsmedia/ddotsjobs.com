@@ -624,6 +624,8 @@ export const jobsRouter = router({
     }),
 
   // ── Seeker: saved jobs list ──────────────────────────────────────────
+  // Returns the user's whole saved set (bounded); the page sorts/filters/
+  // searches client-side. Sort/filter server-side isn't needed at this size.
   getSavedJobs: protectedProcedure.query(async ({ ctx }) => {
     const j = tables.jobs;
     const s = tables.savedJobs;
@@ -633,8 +635,14 @@ export const jobsRouter = router({
         slug: j.slug,
         titleEn: j.titleEn,
         district: j.district,
+        categorySlug: j.categorySlug,
+        jobType: j.type,
+        status: j.status,
         salaryMinPaise: j.salaryMinPaise,
+        salaryMaxPaise: j.salaryMaxPaise,
         salaryDisclosed: j.salaryDisclosed,
+        isWalkIn: j.isWalkIn,
+        validThrough: j.validThrough,
         company: sql<string>`coalesce(${tables.employers.displayNameEn}, ${tables.employers.legalNameEn})`,
         savedAt: s.createdAt,
       })
@@ -643,8 +651,41 @@ export const jobsRouter = router({
       .innerJoin(tables.employers, eq(tables.employers.id, j.employerId))
       .where(and(eq(s.userId, ctx.user.id), isNull(s.deletedAt), isNull(j.deletedAt)))
       .orderBy(desc(s.createdAt))
-      .limit(50);
+      .limit(200);
   }),
+
+  // Count of active saved jobs — for the seeker nav badge.
+  getSavedJobCount: protectedProcedure.query(async ({ ctx }) => {
+    const s = tables.savedJobs;
+    const [row] = await ctx.db
+      .select({ n: count() })
+      .from(s)
+      .innerJoin(tables.jobs, eq(tables.jobs.id, s.jobId))
+      .where(and(eq(s.userId, ctx.user.id), isNull(s.deletedAt), isNull(tables.jobs.deletedAt)));
+    return { count: row?.n ?? 0 };
+  }),
+
+  // Just the saved jobIds — lets listing cards render heart state in one query.
+  getSavedJobIds: protectedProcedure.query(async ({ ctx }) => {
+    const s = tables.savedJobs;
+    const rows = await ctx.db
+      .select({ jobId: s.jobId })
+      .from(s)
+      .where(and(eq(s.userId, ctx.user.id), isNull(s.deletedAt)));
+    return rows.map((r) => r.jobId);
+  }),
+
+  // Bulk unsave (soft-delete) — scoped to the caller's own saved rows.
+  unsaveMany: protectedProcedure
+    .input(z.object({ jobIds: z.array(z.string().uuid()).min(1).max(200) }))
+    .mutation(async ({ ctx, input }) => {
+      const s = tables.savedJobs;
+      await ctx.db
+        .update(s)
+        .set({ deletedAt: new Date() })
+        .where(and(eq(s.userId, ctx.user.id), inArray(s.jobId, input.jobIds), isNull(s.deletedAt)));
+      return { unsaved: input.jobIds.length };
+    }),
 
   // ── Employer: re-blast a job to WhatsApp groups (1 / job / 3 days) ────
   boostJob: roleProcedure('employer')

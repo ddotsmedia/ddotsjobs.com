@@ -1,10 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSession } from 'next-auth/react';
 import { trpc } from '@/lib/trpc/client';
 import type { JobListItem, JobsListInput } from '@/server/routers/jobs';
 import { JobCard } from './JobCard';
 import { CompareToggle } from './CompareToggle';
+import { ListingSaveHeart } from './ListingSaveHeart';
 
 interface Props {
   initialItems: JobListItem[];
@@ -18,6 +20,26 @@ export function JobResults({ initialItems, initialCursor, input }: Props) {
   const [cursor, setCursor] = useState<string | null>(initialCursor);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
+
+  // Save hearts — only for authenticated users, so ISR anonymous HTML is
+  // untouched. One query resolves the whole saved-id set for the page.
+  const { status } = useSession();
+  const authed = status === 'authenticated';
+  const savedQ = trpc.jobs.getSavedJobIds.useQuery(undefined, { enabled: authed, staleTime: 60_000 });
+  const [savedSet, setSavedSet] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    if (savedQ.data) setSavedSet(new Set(savedQ.data));
+  }, [savedQ.data]);
+  const toggleSave = trpc.jobs.toggleSave.useMutation();
+  function onToggleSave(jobId: string) {
+    setSavedSet((prev) => {
+      const next = new Set(prev);
+      if (next.has(jobId)) next.delete(jobId);
+      else next.add(jobId);
+      return next;
+    });
+    toggleSave.mutate({ jobId });
+  }
 
   async function loadMore() {
     if (!cursor || loading) return;
@@ -49,7 +71,8 @@ export function JobResults({ initialItems, initialCursor, input }: Props) {
         {items.map((j) => (
           <div key={j.id} style={{ position: 'relative' }}>
             <JobCard job={j} />
-            <CompareToggle jobId={j.id} />
+            {authed && <ListingSaveHeart saved={savedSet.has(j.id)} onClick={() => onToggleSave(j.id)} />}
+            <CompareToggle jobId={j.id} stacked={authed} />
           </div>
         ))}
       </div>

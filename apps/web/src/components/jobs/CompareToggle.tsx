@@ -3,11 +3,12 @@
 import { useCompare } from '@/lib/useCompare';
 
 // Small "Compare" toggle button. Placed as a sibling of the job-card Link.
-export function CompareToggle({ jobId, variant = 'card' }: { jobId: string; variant?: 'card' | 'detail' }) {
+export function CompareToggle({ jobId, variant = 'card', stacked = false }: { jobId: string; variant?: 'card' | 'detail'; stacked?: boolean }) {
   const { has, toggle, full } = useCompare();
   const on = has(jobId);
   const disabled = !on && full;
-  const base = variant === 'detail' ? s.detail : s.card;
+  // When a save-heart occupies the top-right corner, drop the card toggle below it.
+  const base = variant === 'detail' ? s.detail : stacked ? { ...s.card, top: 52 } : s.card;
   return (
     <button
       type="button"

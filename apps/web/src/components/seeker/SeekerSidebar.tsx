@@ -13,6 +13,7 @@ const NAV = [
   { label: 'Dashboard', href: '/seeker/dashboard' },
   { label: 'Find Jobs', href: '/jobs' },
   { label: 'My Applications', href: '/seeker/applications' },
+  { label: 'Saved Jobs', href: '/seeker/saved-jobs' },
   { label: 'Job Alerts', href: '/seeker/alerts' },
   { label: 'PSC Tracker', href: '/seeker/psc/tracker' },
   { label: 'Gulf Return', href: '/seeker/gulf-return/setup' },
@@ -25,6 +26,7 @@ export function SeekerSidebar({ name }: { name: string }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const signOutMut = trpc.auth.signOut.useMutation();
+  const savedCount = trpc.jobs.getSavedJobCount.useQuery(undefined, { staleTime: 60_000 }).data?.count ?? 0;
 
   async function doSignOut() {
     try {
@@ -51,9 +53,11 @@ export function SeekerSidebar({ name }: { name: string }) {
       <nav style={s.nav}>
         {NAV.map((n) => {
           const active = pathname === n.href;
+          const showBadge = n.href === '/seeker/saved-jobs' && savedCount > 0;
           return (
-            <Link key={n.href} href={n.href} onClick={() => setOpen(false)} style={{ ...s.navItem, ...(active ? s.navActive : {}) }}>
-              {n.label}
+            <Link key={n.href} href={n.href} onClick={() => setOpen(false)} style={{ ...s.navItem, ...(active ? s.navActive : {}), ...(showBadge ? s.navItemBadged : {}) }}>
+              <span>{n.label}</span>
+              {showBadge && <span style={s.badge}>{savedCount}</span>}
             </Link>
           );
         })}
@@ -93,7 +97,9 @@ const s: Record<string, React.CSSProperties> = {
   role: { fontSize: 12, color: '#9a9a92' },
   nav: { display: 'flex', flexDirection: 'column', gap: 2 },
   navItem: { padding: '10px 12px', fontSize: 14, color: '#55554f', borderRadius: 'var(--radius-input)' },
+  navItemBadged: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
   navActive: { background: '#fdf3da', color: '#0f0e0c', fontWeight: 600 },
+  badge: { minWidth: 20, height: 20, padding: '0 6px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#fff', background: 'var(--color-accent)', borderRadius: 999 },
   signout: { marginTop: 'auto', padding: '10px 12px', fontSize: 14, fontWeight: 600, color: '#c0392b', background: 'none', border: '1px solid #f0d3cf', borderRadius: 'var(--radius-input)', cursor: 'pointer' },
   mobileBar: { alignItems: 'center', gap: 12, padding: 'var(--space-2)', background: '#fff', borderBottom: '1px solid #efefe9', position: 'sticky', top: 0, zIndex: 20 },
   hamburger: { fontSize: 22, background: 'none', border: 'none', cursor: 'pointer', minWidth: 44, minHeight: 44 },
