@@ -13,6 +13,7 @@ const NAV = [
   { label: 'Dashboard', href: '/seeker/dashboard' },
   { label: 'Find Jobs', href: '/jobs' },
   { label: 'My Applications', href: '/seeker/applications' },
+  { label: 'Messages', href: '/chat' },
   { label: 'Saved Jobs', href: '/seeker/saved-jobs' },
   { label: 'Job Alerts', href: '/seeker/alerts' },
   { label: 'PSC Tracker', href: '/seeker/psc/tracker' },
@@ -27,6 +28,7 @@ export function SeekerSidebar({ name }: { name: string }) {
   const [open, setOpen] = useState(false);
   const signOutMut = trpc.auth.signOut.useMutation();
   const savedCount = trpc.jobs.getSavedJobCount.useQuery(undefined, { staleTime: 60_000 }).data?.count ?? 0;
+  const chatUnread = trpc.chat.unreadCount.useQuery(undefined, { refetchInterval: 20_000 }).data?.count ?? 0;
 
   async function doSignOut() {
     try {
@@ -53,11 +55,12 @@ export function SeekerSidebar({ name }: { name: string }) {
       <nav style={s.nav}>
         {NAV.map((n) => {
           const active = pathname === n.href;
-          const showBadge = n.href === '/seeker/saved-jobs' && savedCount > 0;
+          const badgeCount = n.href === '/seeker/saved-jobs' ? savedCount : n.href === '/chat' ? chatUnread : 0;
+          const showBadge = badgeCount > 0;
           return (
             <Link key={n.href} href={n.href} onClick={() => setOpen(false)} style={{ ...s.navItem, ...(active ? s.navActive : {}), ...(showBadge ? s.navItemBadged : {}) }}>
               <span>{n.label}</span>
-              {showBadge && <span style={s.badge}>{savedCount}</span>}
+              {showBadge && <span style={s.badge}>{badgeCount}</span>}
             </Link>
           );
         })}

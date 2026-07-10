@@ -12,6 +12,7 @@ import { DescriptionTabs } from '@/components/jobs/DescriptionTabs';
 import { IncrementView } from '@/components/jobs/IncrementView';
 import { SaveJobButton } from '@/components/jobs/SaveJobButton';
 import { QuickApplyButton } from '@/components/jobs/QuickApplyButton';
+import { MessageEmployerButton } from '@/components/chat/MessageEmployerButton';
 import { CompareToggle } from '@/components/jobs/CompareToggle';
 import { ShareButton } from '@/components/jobs/ShareButton';
 import { SegmentJobsPage } from '@/components/SegmentJobsPage';
@@ -349,6 +350,7 @@ export default async function JobDetailPage({ params }: Props) {
                 <>
                   <Link href={applyHref} style={s.applyBtn}>Apply Now</Link>
                   <QuickApplyButton jobId={job.id} slug={slug} jobTitle={job.titleEn} companyName={job.company} salaryDisplay={salary} category={job.categorySlug} authed={authed} isSeeker={isSeeker} />
+                  <MessageEmployerButton employerId={job.employerId} slug={slug} authed={authed} />
                 </>
               )}
               <SaveJobButton jobId={job.id} slug={slug} authed={authed} initialSaved={initialSaved} />

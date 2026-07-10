@@ -15,6 +15,7 @@ const NAV = [
   { label: 'Post a Job', href: '/employer/jobs/new' },
   { label: 'My Jobs', href: '/employer/jobs' },
   { label: 'Applicants', href: '/employer/applicants' },
+  { label: 'Messages', href: '/chat' },
   { label: 'Walk-in Drives', href: '/employer/walkin' },
   { label: 'Talent Pool', href: '/employer/talent', locked: true },
   { label: 'Company Profile', href: '/employer/profile' },
@@ -25,6 +26,7 @@ export function EmployerSidebar({ company, verified }: { company: string; verifi
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const signOutMut = trpc.auth.signOut.useMutation();
+  const chatUnread = trpc.chat.unreadCount.useQuery(undefined, { refetchInterval: 20_000 }).data?.count ?? 0;
 
   async function doSignOut() {
     try {
@@ -55,6 +57,7 @@ export function EmployerSidebar({ company, verified }: { company: string; verifi
             <Link key={n.href} href={n.href} onClick={() => setOpen(false)} style={{ ...s.navItem, ...(active ? s.navActive : {}) }}>
               <span>{n.label}</span>
               {'locked' in n && n.locked && <span style={s.lock} aria-label="Locked">🔒</span>}
+              {n.href === '/chat' && chatUnread > 0 && <span style={s.countBadge}>{chatUnread}</span>}
             </Link>
           );
         })}
@@ -93,6 +96,7 @@ const s: Record<string, React.CSSProperties> = {
   navItem: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', fontSize: 14, color: '#55554f', borderRadius: 'var(--radius-input)' },
   navActive: { background: '#fdf3da', color: '#0f0e0c', fontWeight: 600 },
   lock: { fontSize: 12 },
+  countBadge: { minWidth: 20, height: 20, padding: '0 6px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#fff', background: 'var(--color-accent)', borderRadius: 999 },
   signout: { marginTop: 'auto', padding: '10px 12px', fontSize: 14, fontWeight: 600, color: '#c0392b', background: 'none', border: '1px solid #f0d3cf', borderRadius: 'var(--radius-input)', cursor: 'pointer' },
   mobileBar: { alignItems: 'center', gap: 12, padding: 'var(--space-2)', background: '#fff', borderBottom: '1px solid #efefe9', position: 'sticky', top: 0, zIndex: 20 },
   hamburger: { fontSize: 22, background: 'none', border: 'none', cursor: 'pointer', minWidth: 44, minHeight: 44 },
