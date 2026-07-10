@@ -44,6 +44,37 @@ export function fitScorePrompt(input: {
   };
 }
 
+// ── Applicant resume screening (Haiku tier — fast, cheap) ───────────────
+export const applicantScreeningSchema = z.object({
+  score: z.number().int().min(0).max(100),
+  matchReasons: z.object({
+    skills: z.array(z.string()),
+    experience: z.string(),
+    education: z.string(),
+    gaps: z.array(z.string()),
+  }),
+  reasoning: z.string(),
+});
+export type ApplicantScreeningOutput = z.infer<typeof applicantScreeningSchema>;
+
+export function applicantScreeningPrompt(input: {
+  job: { titleEn: string; descriptionEn: string; skills: string[]; requirementsEn: string | null; district: string | null };
+  applicant: { name: string; profession: string; headlineEn: string | null; skills: string[]; experienceMonths: number; certifications: string[] };
+}): PromptSpec<ApplicantScreeningOutput> {
+  return {
+    task: 'extract',
+    version: 1,
+    system:
+      'You are a hiring screener. Given a job and an applicant, score the applicant fit 0-100 ' +
+      '(be strict, evidence-based). List matchReasons.skills (skills the applicant has that the job needs), ' +
+      'a one-line experience summary, a one-line education/qualification note, and gaps (missing skills, ' +
+      'certifications, or experience). reasoning: 1-2 sentences an employer can read. Do not invent facts ' +
+      'not present in the applicant data.',
+    prompt: JSON.stringify(input),
+    schema: applicantScreeningSchema,
+  };
+}
+
 // ── Gulf/local job title normalization (Haiku) ──────────────────────────
 export const titleTranslationSchema = z.object({
   canonical: bilingual,

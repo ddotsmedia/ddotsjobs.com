@@ -121,7 +121,7 @@ export function JobAnalytics({ jobId }: { jobId: string }) {
             </table>
           </div>
         )}
-        <Link href="/employer/applicants" style={s.viewAll}>Manage applicants →</Link>
+        <Link href={`/employer/jobs/${jobId}/applicants`} style={s.viewAll}>AI-ranked applicants →</Link>
       </section>
     </>
   );

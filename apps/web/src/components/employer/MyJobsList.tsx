@@ -76,6 +76,7 @@ export function MyJobsList() {
                     )}
                   </div>
                   <div style={s.actions}>
+                    <Link href={`/employer/jobs/${j.id}/applicants`} style={s.action}>Applicants</Link>
                     <Link href={`/employer/jobs/${j.id}/edit`} style={s.action}>Edit</Link>
                     {j.status !== 'closed' && (
                       <button type="button" onClick={() => onClose(j.id)} style={s.closeBtn}>Close</button>

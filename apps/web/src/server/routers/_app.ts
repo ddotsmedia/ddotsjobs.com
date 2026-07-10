@@ -21,6 +21,7 @@ import { assessmentRouter } from './assessment.js';
 import { interviewRouter } from './interview.js';
 import { resumeRouter } from './resume.js';
 import { reviewsRouter } from './reviews.js';
+import { screeningRouter } from './screening.js';
 import { seekerRouter } from './seeker.js';
 import { seekerDashboardRouter } from './seeker-dashboard.js';
 import { talentPoolRouter } from './talent-pool.js';
@@ -52,6 +53,7 @@ export const appRouter = router({
   assessment: assessmentRouter,
   resume: resumeRouter,
   reviews: reviewsRouter,
+  screening: screeningRouter,
   seeker: seekerRouter,
   seekerDashboard: seekerDashboardRouter,
   talentPool: talentPoolRouter,
