@@ -38,11 +38,20 @@ export const viewport: Viewport = {
   themeColor: '#3A9EA5', // Ddotsmedia brand teal
 };
 
+// Remote images (company logos) are served from the R2 assets origin. A
+// dns-prefetch hint warms DNS for pages that render them; harmless if unused.
+const ASSETS_ORIGIN = new URL(process.env.NEXT_PUBLIC_R2_PUBLIC_URL ?? 'https://assets.ddotsjobs.com').origin;
+
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="ml" className={`${geistSans.variable} ${geistMono.variable} ${instrumentSerif.variable}`}>
+      <head>
+        <link rel="dns-prefetch" href={ASSETS_ORIGIN} />
+      </head>
       <body>
-        <SessionProvider>
+        {/* refetchOnWindowFocus off — public pages don't need a session refetch
+            every time the tab regains focus; cuts background network + INP work. */}
+        <SessionProvider refetchOnWindowFocus={false}>
           <TRPCProvider>{children}</TRPCProvider>
         </SessionProvider>
         <Analytics />

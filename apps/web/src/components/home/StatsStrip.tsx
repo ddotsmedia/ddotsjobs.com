@@ -83,6 +83,6 @@ const s: Record<string, React.CSSProperties> = {
   strip: { display: 'flex', flexWrap: 'wrap', background: '#0F1A1B', borderRadius: 20, overflow: 'hidden', padding: '8px 0' },
   cell: { flex: '1 1 150px', display: 'flex', flexDirection: 'column', gap: 6, padding: '32px var(--space-3)', borderLeft: '1px solid rgba(255,255,255,0.08)' },
   label: { fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.5)' },
-  value: { fontFamily: 'var(--font-display)', fontStyle: 'italic', fontSize: 52, fontWeight: 800, lineHeight: 1 },
+  value: { fontFamily: 'var(--font-display)', fontStyle: 'italic', fontSize: 52, fontWeight: 800, lineHeight: 1, fontVariantNumeric: 'tabular-nums' },
   sub: { fontSize: 12, color: 'rgba(255,255,255,0.35)' },
 };
