@@ -11,6 +11,7 @@ import { initials } from '@/lib/format';
 
 const NAV = [
   { label: 'Dashboard', href: '/employer/dashboard' },
+  { label: 'Analytics', href: '/employer/analytics' },
   { label: 'Post a Job', href: '/employer/jobs/new' },
   { label: 'My Jobs', href: '/employer/jobs' },
   { label: 'Applicants', href: '/employer/applicants' },

@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
 import { Resend } from 'resend';
-import { and, eq, isNull, tables, type Database } from '@ddotsjobs/db';
+import { and, asc, desc, eq, isNull, sql, tables, type Database } from '@ddotsjobs/db';
 import { uploadFile } from '@ddotsjobs/storage';
 import { protectedProcedure, router } from '../trpc.js';
 import { stripHtml } from '@/lib/sanitize';
@@ -223,5 +223,218 @@ export const employerRouter = router({
       const url = await uploadFile(key, buf, input.mimeType);
       await ctx.db.update(tables.employers).set({ logoR2Key: key }).where(eq(tables.employers.id, emp.id));
       return { logoUrl: url };
+    }),
+
+  // ── Analytics (Phase 2.4) ────────────────────────────────────────────
+  // Aggregated dashboard metrics for the logged-in employer. Views/profile
+  // views come from analytics_events (time-series, added 0030); applies from
+  // the applications table (authoritative). Per-job columns use the lifetime
+  // jobs.view_count / jobs.application_count counters.
+  getAnalyticsDashboard: protectedProcedure
+    .input(z.object({ range: z.enum(['7d', '30d', 'all']).default('7d') }).optional())
+    .query(async ({ ctx, input }) => {
+      const emp = await ownEmployer(ctx.db, ctx.user.id);
+      if (!emp) throw new TRPCError({ code: 'NOT_FOUND', message: 'No employer account' });
+
+      const range = input?.range ?? '7d';
+      const days = range === '7d' ? 7 : range === '30d' ? 30 : null;
+      const chartDays = days ?? 30; // "all" still charts a bounded 30d window
+      const since = days ? sql`now() - make_interval(days => ${days})` : null;
+      const chartSince = sql`now() - make_interval(days => ${chartDays})`;
+
+      const j = tables.jobs;
+      const ae = tables.analyticsEvents;
+      const app = tables.applications;
+
+      // Job status counts (lifetime, non-deleted).
+      const [counts] = await ctx.db
+        .select({
+          totalJobsPosted: sql<number>`count(*)::int`,
+          activeJobs: sql<number>`count(*) filter (where ${j.status} = 'active')::int`,
+          expiredJobs: sql<number>`count(*) filter (where ${j.status} in ('expired','closed','filled'))::int`,
+        })
+        .from(j)
+        .where(and(eq(j.employerId, emp.id), isNull(j.deletedAt)));
+
+      // Total views (job + profile) within range.
+      const viewWhere = [eq(ae.employerId, emp.id), sql`${ae.eventType} in ('job_view','profile_view')`];
+      if (since) viewWhere.push(sql`${ae.createdAt} >= ${since}`);
+      const [views] = await ctx.db
+        .select({ total: sql<number>`count(*)::int` })
+        .from(ae)
+        .where(and(...viewWhere));
+
+      // Total applications within range.
+      const appWhere = [eq(app.employerId, emp.id), isNull(app.withdrawnAt)];
+      if (since) appWhere.push(sql`${app.createdAt} >= ${since}`);
+      const [applies] = await ctx.db
+        .select({ total: sql<number>`count(*)::int` })
+        .from(app)
+        .where(and(...appWhere));
+
+      // Per-job breakdown (lifetime counters).
+      const jobRows = await ctx.db
+        .select({
+          jobId: j.id,
+          title: j.titleEn,
+          slug: j.slug,
+          status: j.status,
+          views: j.viewCount,
+          applies: j.applicationCount,
+        })
+        .from(j)
+        .where(and(eq(j.employerId, emp.id), isNull(j.deletedAt)))
+        .orderBy(desc(j.viewCount));
+
+      // Applications by date (chart window).
+      const applicationsByDate = await ctx.db
+        .select({
+          date: sql<string>`to_char(date(${app.createdAt}), 'YYYY-MM-DD')`,
+          count: sql<number>`count(*)::int`,
+        })
+        .from(app)
+        .where(and(eq(app.employerId, emp.id), isNull(app.withdrawnAt), sql`${app.createdAt} >= ${chartSince}`))
+        .groupBy(sql`date(${app.createdAt})`)
+        .orderBy(asc(sql`date(${app.createdAt})`));
+
+      // Job-page views by date (chart window).
+      const viewsByDate = await ctx.db
+        .select({
+          date: sql<string>`to_char(date(${ae.createdAt}), 'YYYY-MM-DD')`,
+          count: sql<number>`count(*)::int`,
+        })
+        .from(ae)
+        .where(and(eq(ae.employerId, emp.id), sql`${ae.eventType} = 'job_view'`, sql`${ae.createdAt} >= ${chartSince}`))
+        .groupBy(sql`date(${ae.createdAt})`)
+        .orderBy(asc(sql`date(${ae.createdAt})`));
+
+      const totalViews = views?.total ?? 0;
+      const totalApplications = applies?.total ?? 0;
+      const pct = (num: number, den: number) => (den > 0 ? Math.round((num / den) * 1000) / 10 : 0);
+
+      const viewsPerJob = jobRows.map((r) => ({
+        jobId: r.jobId,
+        title: r.title,
+        slug: r.slug,
+        status: r.status,
+        views: r.views,
+        applies: r.applies,
+        conversion: pct(r.applies, r.views),
+      }));
+      const topPerformingJobs = [...viewsPerJob]
+        .filter((r) => r.views >= 5)
+        .sort((a, b) => b.conversion - a.conversion)
+        .slice(0, 3);
+
+      return {
+        range,
+        kpis: {
+          totalJobsPosted: counts?.totalJobsPosted ?? 0,
+          activeJobs: counts?.activeJobs ?? 0,
+          expiredJobs: counts?.expiredJobs ?? 0,
+          totalViews,
+          totalApplications,
+          conversionRate: pct(totalApplications, totalViews),
+        },
+        viewsPerJob,
+        topPerformingJobs,
+        applicationsByDate,
+        viewsByDate,
+      };
+    }),
+
+  // Single-job analytics: metrics, 30-day timeline, applicant list.
+  getJobAnalytics: protectedProcedure
+    .input(z.object({ jobId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      const emp = await ownEmployer(ctx.db, ctx.user.id);
+      if (!emp) throw new TRPCError({ code: 'NOT_FOUND', message: 'No employer account' });
+
+      const j = tables.jobs;
+      const [job] = await ctx.db
+        .select({
+          id: j.id,
+          title: j.titleEn,
+          slug: j.slug,
+          status: j.status,
+          employerId: j.employerId,
+          views: j.viewCount,
+          applies: j.applicationCount,
+        })
+        .from(j)
+        .where(and(eq(j.id, input.jobId), isNull(j.deletedAt)))
+        .limit(1);
+      // Ownership check — never leak another employer's job.
+      if (!job || job.employerId !== emp.id) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Job not found' });
+      }
+
+      const ae = tables.analyticsEvents;
+      const app = tables.applications;
+      const chartSince = sql`now() - make_interval(days => 30)`;
+
+      const [cta] = await ctx.db
+        .select({ clicks: sql<number>`count(*)::int` })
+        .from(ae)
+        .where(and(eq(ae.jobId, job.id), sql`${ae.eventType} = 'apply_cta_click'`));
+
+      const viewsByDate = await ctx.db
+        .select({
+          date: sql<string>`to_char(date(${ae.createdAt}), 'YYYY-MM-DD')`,
+          count: sql<number>`count(*)::int`,
+        })
+        .from(ae)
+        .where(and(eq(ae.jobId, job.id), sql`${ae.eventType} = 'job_view'`, sql`${ae.createdAt} >= ${chartSince}`))
+        .groupBy(sql`date(${ae.createdAt})`)
+        .orderBy(asc(sql`date(${ae.createdAt})`));
+
+      const appsByDate = await ctx.db
+        .select({
+          date: sql<string>`to_char(date(${app.createdAt}), 'YYYY-MM-DD')`,
+          count: sql<number>`count(*)::int`,
+        })
+        .from(app)
+        .where(and(eq(app.jobId, job.id), isNull(app.withdrawnAt), sql`${app.createdAt} >= ${chartSince}`))
+        .groupBy(sql`date(${app.createdAt})`)
+        .orderBy(asc(sql`date(${app.createdAt})`));
+
+      // Merge views + applies into one daily timeline.
+      const map = new Map<string, { date: string; views: number; applies: number }>();
+      for (const r of viewsByDate) map.set(r.date, { date: r.date, views: r.count, applies: 0 });
+      for (const r of appsByDate) {
+        const e = map.get(r.date) ?? { date: r.date, views: 0, applies: 0 };
+        e.applies = r.count;
+        map.set(r.date, e);
+      }
+      const timeline = [...map.values()].sort((a, b) => a.date.localeCompare(b.date));
+
+      const applicants = await ctx.db
+        .select({
+          id: app.id,
+          name: tables.users.nameEn,
+          appliedAt: app.createdAt,
+          status: app.statusCode,
+        })
+        .from(app)
+        .innerJoin(tables.users, eq(tables.users.id, app.seekerUserId))
+        .where(and(eq(app.jobId, job.id), isNull(app.withdrawnAt)))
+        .orderBy(desc(app.createdAt))
+        .limit(50);
+
+      const conversion = job.views > 0 ? Math.round((job.applies / job.views) * 1000) / 10 : 0;
+      return {
+        job: {
+          id: job.id,
+          title: job.title,
+          slug: job.slug,
+          status: job.status,
+          views: job.views,
+          applies: job.applies,
+          ctaClicks: cta?.clicks ?? 0,
+          conversion,
+        },
+        timeline,
+        applicants,
+      };
     }),
 });

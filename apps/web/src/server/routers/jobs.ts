@@ -496,10 +496,72 @@ export const jobsRouter = router({
   incrementView: publicProcedure
     .input(z.object({ id: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
-      await ctx.db
+      const [row] = await ctx.db
         .update(tables.jobs)
         .set({ viewCount: sql`${tables.jobs.viewCount} + 1` })
-        .where(eq(tables.jobs.id, input.id));
+        .where(eq(tables.jobs.id, input.id))
+        .returning({ employerId: tables.jobs.employerId });
+      // Time-series event for the employer analytics dashboard. Non-critical:
+      // a failure here must never break the view counter.
+      if (row) {
+        try {
+          await ctx.db.insert(tables.analyticsEvents).values({
+            eventType: 'job_view',
+            jobId: input.id,
+            employerId: row.employerId,
+            viewerUserId: ctx.session?.user?.id ?? null,
+          });
+        } catch {
+          /* analytics is best-effort */
+        }
+      }
+      return { ok: true as const };
+    }),
+
+  // Fire-and-forget: employer public profile page view.
+  trackProfileView: publicProcedure
+    .input(z.object({ slug: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        const [emp] = await ctx.db
+          .select({ id: tables.employers.id })
+          .from(tables.employers)
+          .where(and(eq(tables.employers.slug, input.slug), isNull(tables.employers.deletedAt)))
+          .limit(1);
+        if (emp) {
+          await ctx.db.insert(tables.analyticsEvents).values({
+            eventType: 'profile_view',
+            employerId: emp.id,
+            viewerUserId: ctx.session?.user?.id ?? null,
+          });
+        }
+      } catch {
+        /* best-effort */
+      }
+      return { ok: true as const };
+    }),
+
+  // Fire-and-forget: seeker clicked the Apply CTA on a job (funnel step).
+  trackApplyCta: publicProcedure
+    .input(z.object({ jobId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        const [job] = await ctx.db
+          .select({ employerId: tables.jobs.employerId })
+          .from(tables.jobs)
+          .where(eq(tables.jobs.id, input.jobId))
+          .limit(1);
+        if (job) {
+          await ctx.db.insert(tables.analyticsEvents).values({
+            eventType: 'apply_cta_click',
+            jobId: input.jobId,
+            employerId: job.employerId,
+            viewerUserId: ctx.session?.user?.id ?? null,
+          });
+        }
+      } catch {
+        /* best-effort */
+      }
       return { ok: true as const };
     }),
 

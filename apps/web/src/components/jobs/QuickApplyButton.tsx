@@ -19,6 +19,7 @@ interface Props {
 export function QuickApplyButton({ jobId, slug, jobTitle, companyName, salaryDisplay, category, authed, isSeeker }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const trackCta = trpc.jobs.trackApplyCta.useMutation();
 
   // Not logged in: prompt sign-in.
   if (!authed) {
@@ -31,7 +32,7 @@ export function QuickApplyButton({ jobId, slug, jobTitle, companyName, salaryDis
 
   return (
     <>
-      <QuickApplyGate jobId={jobId} onOpen={() => setOpen(true)} />
+      <QuickApplyGate jobId={jobId} onOpen={() => { trackCta.mutate({ jobId }); setOpen(true); }} />
       {open && (
         <QuickApplyModal jobId={jobId} jobTitle={jobTitle} companyName={companyName} salaryDisplay={salaryDisplay} category={category} onClose={() => setOpen(false)} onViewApps={() => router.push('/seeker/applications')} />
       )}

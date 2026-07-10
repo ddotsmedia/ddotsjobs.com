@@ -7,6 +7,7 @@ import { auth } from '@/lib/auth';
 import { getServerTrpc } from '@/lib/trpc/server';
 import { Stars } from '@/components/reviews/Stars';
 import { ReviewCard, type ReviewView } from '@/components/reviews/ReviewCard';
+import { TrackProfileView } from '@/components/employer/TrackProfileView';
 import { initials, rupeesPerMonth, titleCase } from '@/lib/format';
 
 export const revalidate = 300; // ISR
@@ -42,6 +43,7 @@ export default async function CompanyPage({ params }: { params: Promise<{ slug: 
 
   return (
     <main style={s.page}>
+      {employer.slug && <TrackProfileView slug={employer.slug} />}
       <div style={s.container}>
         {/* Header */}
         <header style={s.header}>
