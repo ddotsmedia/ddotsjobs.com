@@ -11,6 +11,8 @@ export interface JobFilters {
   categories: string[];
   jobTypes: string[];
   salaryMin?: number; // paise
+  salaryMax?: number; // paise
+  experience: string[]; // entry | mid | senior | lead
   isWalkIn: boolean;
   valuesGulfExperience: boolean;
   salaryDisclosed: boolean;
@@ -36,6 +38,9 @@ export function parseJobFilters(sp: SP): JobFilters {
     sortRaw === 'salary_desc' || sortRaw === 'salary_asc' ? sortRaw : 'latest';
   const salaryRaw = one(sp.salary_min);
   const salaryMin = salaryRaw && /^\d+$/.test(salaryRaw) ? Number(salaryRaw) : undefined;
+  const salaryMaxRaw = one(sp.salary_max);
+  const salaryMax = salaryMaxRaw && /^\d+$/.test(salaryMaxRaw) ? Number(salaryMaxRaw) : undefined;
+  const EXP = ['entry', 'mid', 'senior', 'lead'];
 
   return {
     q: one(sp.q)?.trim() || undefined,
@@ -43,6 +48,8 @@ export function parseJobFilters(sp: SP): JobFilters {
     categories: csv(sp.category),
     jobTypes: csv(sp.job_type),
     salaryMin,
+    salaryMax,
+    experience: csv(sp.experience).filter((x) => EXP.includes(x)),
     isWalkIn: one(sp.is_walk_in) === '1',
     valuesGulfExperience: one(sp.gulf) === '1',
     salaryDisclosed: one(sp.salary_disclosed) === '1',
@@ -58,6 +65,8 @@ export function filtersToQuery(f: JobFilters): string {
   if (f.categories.length) p.set('category', f.categories.join(','));
   if (f.jobTypes.length) p.set('job_type', f.jobTypes.join(','));
   if (f.salaryMin != null) p.set('salary_min', String(f.salaryMin));
+  if (f.salaryMax != null) p.set('salary_max', String(f.salaryMax));
+  if (f.experience.length) p.set('experience', f.experience.join(','));
   if (f.isWalkIn) p.set('is_walk_in', '1');
   if (f.valuesGulfExperience) p.set('gulf', '1');
   if (f.salaryDisclosed) p.set('salary_disclosed', '1');
@@ -70,8 +79,9 @@ export function filtersToQuery(f: JobFilters): string {
 export function activeFilterCount(f: JobFilters): number {
   let n = 0;
   if (f.q) n++;
-  n += f.districts.length + f.categories.length + f.jobTypes.length;
+  n += f.districts.length + f.categories.length + f.jobTypes.length + f.experience.length;
   if (f.salaryMin != null) n++;
+  if (f.salaryMax != null) n++;
   if (f.isWalkIn) n++;
   if (f.valuesGulfExperience) n++;
   if (f.salaryDisclosed) n++;
@@ -87,6 +97,8 @@ export function filtersToInput(f: JobFilters): Omit<JobsListInput, 'cursor' | 'l
     categories: f.categories.length ? f.categories : undefined,
     jobTypes: f.jobTypes.length ? (f.jobTypes as JobsListInput['jobTypes']) : undefined,
     salaryMin: f.salaryMin,
+    salaryMax: f.salaryMax,
+    experience: f.experience.length ? (f.experience as JobsListInput['experience']) : undefined,
     isWalkIn: f.isWalkIn || undefined,
     valuesGulfExperience: f.valuesGulfExperience || undefined,
     salaryDisclosed: f.salaryDisclosed || undefined,

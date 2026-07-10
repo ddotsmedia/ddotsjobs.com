@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { CATEGORIES_UI, DISTRICTS, JOB_TYPES_UI, SALARY_MAX_RUPEES, SALARY_MIN_RUPEES, SALARY_STEP_RUPEES } from '@/lib/constants';
+import { CATEGORIES_UI, DISTRICTS, EXPERIENCE_LEVELS_UI, JOB_TYPES_UI, SALARY_MAX_RUPEES, SALARY_MIN_RUPEES, SALARY_STEP_RUPEES } from '@/lib/constants';
 import { filtersToQuery, type JobFilters } from '@/lib/jobFilters';
 
 export function FilterPanel({
@@ -15,6 +15,9 @@ export function FilterPanel({
   const router = useRouter();
   const [salary, setSalary] = useState<number>(
     initial.salaryMin ? Math.round(initial.salaryMin / 100) : SALARY_MIN_RUPEES,
+  );
+  const [salaryTop, setSalaryTop] = useState<number>(
+    initial.salaryMax ? Math.round(initial.salaryMax / 100) : SALARY_MAX_RUPEES,
   );
 
   function apply(next: JobFilters) {
@@ -62,6 +65,17 @@ export function FilterPanel({
         ))}
       </Section>
 
+      <Section title="Experience level">
+        {EXPERIENCE_LEVELS_UI.map((e) => (
+          <Check
+            key={e.value}
+            label={e.label}
+            checked={initial.experience.includes(e.value)}
+            onChange={() => apply({ ...initial, experience: toggleIn(initial.experience, e.value) })}
+          />
+        ))}
+      </Section>
+
       <Section title="Minimum salary">
         <div style={s.salaryVal}>₹{salary.toLocaleString('en-IN')}/mo</div>
         <input
@@ -78,6 +92,28 @@ export function FilterPanel({
             })
           }
           aria-label="Minimum salary"
+          style={s.slider}
+        />
+      </Section>
+
+      <Section title="Maximum salary">
+        <div style={s.salaryVal}>
+          {salaryTop >= SALARY_MAX_RUPEES ? 'Any' : `₹${salaryTop.toLocaleString('en-IN')}/mo`}
+        </div>
+        <input
+          type="range"
+          min={SALARY_MIN_RUPEES}
+          max={SALARY_MAX_RUPEES}
+          step={SALARY_STEP_RUPEES}
+          value={salaryTop}
+          onChange={(e) => setSalaryTop(Number(e.target.value))}
+          onPointerUp={() =>
+            apply({
+              ...initial,
+              salaryMax: salaryTop >= SALARY_MAX_RUPEES ? undefined : salaryTop * 100,
+            })
+          }
+          aria-label="Maximum salary"
           style={s.slider}
         />
       </Section>
@@ -112,6 +148,7 @@ function emptyFilters(sort: JobFilters['sort']): JobFilters {
     districts: [],
     categories: [],
     jobTypes: [],
+    experience: [],
     isWalkIn: false,
     valuesGulfExperience: false,
     salaryDisclosed: false,

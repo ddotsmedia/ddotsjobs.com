@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
-import { and, asc, count, createNotification, desc, eq, gte, inArray, isNull, ne, or, sql, tables, type SQL } from '@ddotsjobs/db';
+import { and, asc, count, createNotification, desc, eq, gte, inArray, isNull, lt, lte, ne, or, sql, tables, type SQL } from '@ddotsjobs/db';
 import { callAI } from '@ddotsjobs/ai';
 import { jobAutoFillDescriptionPrompt, searchParseNaturalLanguagePrompt, jobSuggestTitlesPrompt, jobSuggestSkillsPrompt, salaryBenchmarkPrompt } from '@ddotsjobs/ai/prompts';
 import { SECTORS } from '@/lib/constants';
@@ -34,6 +34,8 @@ const listInput = z.object({
   categories: z.array(z.string().max(100)).optional(),
   jobTypes: z.array(z.enum(JOB_TYPES)).optional(),
   salaryMin: z.number().int().nonnegative().optional(), // paise
+  salaryMax: z.number().int().nonnegative().optional(), // paise
+  experience: z.array(z.enum(['entry', 'mid', 'senior', 'lead'])).optional(),
   isWalkIn: z.boolean().optional(),
   valuesGulfExperience: z.boolean().optional(),
   salaryDisclosed: z.boolean().optional(),
@@ -72,6 +74,23 @@ function baseConditions(input: z.infer<typeof listInput> | z.infer<typeof countI
   if (input.categories?.length) conds.push(inArray(j.categorySlug, input.categories));
   if (input.jobTypes?.length) conds.push(inArray(j.type, input.jobTypes));
   if (input.salaryMin != null) conds.push(gte(j.salaryMinPaise, input.salaryMin));
+  // Upper bound applies to the job's floor salary (null-safe; undisclosed
+  // salaries are excluded when a range is set).
+  if (input.salaryMax != null) conds.push(lte(j.salaryMinPaise, input.salaryMax));
+  // Experience buckets on min_experience_months (OR within experience, AND with
+  // the rest): entry 0–2yr, mid 2–5yr, senior 5–10yr, lead 10yr+.
+  if (input.experience?.length) {
+    const m = j.minExperienceMonths;
+    const ex: SQL[] = [];
+    for (const lvl of input.experience) {
+      if (lvl === 'entry') ex.push(and(gte(m, 0), lt(m, 24))!);
+      else if (lvl === 'mid') ex.push(and(gte(m, 24), lt(m, 60))!);
+      else if (lvl === 'senior') ex.push(and(gte(m, 60), lt(m, 120))!);
+      else if (lvl === 'lead') ex.push(gte(m, 120));
+    }
+    const orExp = or(...ex);
+    if (orExp) conds.push(orExp);
+  }
   if (input.isWalkIn) conds.push(eq(j.isWalkIn, true));
   if (input.valuesGulfExperience) conds.push(eq(j.valuesGulfExperience, true));
   if (input.salaryDisclosed) conds.push(eq(j.salaryDisclosed, true));

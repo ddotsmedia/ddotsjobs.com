@@ -46,6 +46,15 @@ export const SALARY_MIN_RUPEES = 10_000;
 export const SALARY_MAX_RUPEES = 100_000;
 export const SALARY_STEP_RUPEES = 5_000;
 
+// Experience-level filter buckets (min required experience, in months).
+// Keys match the jobs.list `experience` enum.
+export const EXPERIENCE_LEVELS_UI = [
+  { value: 'entry', label: 'Entry · 0–2 yr' },
+  { value: 'mid', label: 'Mid · 2–5 yr' },
+  { value: 'senior', label: 'Senior · 5–10 yr' },
+  { value: 'lead', label: 'Lead · 10 yr+' },
+] as const;
+
 // Job-post builder options.
 export const JOB_CATEGORIES = [
   { slug: 'nursing', label: 'Nursing' },
