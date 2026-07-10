@@ -13,6 +13,8 @@ import { IncrementView } from '@/components/jobs/IncrementView';
 import { SaveJobButton } from '@/components/jobs/SaveJobButton';
 import { QuickApplyButton } from '@/components/jobs/QuickApplyButton';
 import { MessageEmployerButton } from '@/components/chat/MessageEmployerButton';
+import { ReferralShare } from '@/components/referral/ReferralShare';
+import { ReferralCapture } from '@/components/referral/ReferralCapture';
 import { CompareToggle } from '@/components/jobs/CompareToggle';
 import { ShareButton } from '@/components/jobs/ShareButton';
 import { SegmentJobsPage } from '@/components/SegmentJobsPage';
@@ -236,6 +238,7 @@ export default async function JobDetailPage({ params }: Props) {
       )}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: breadcrumbLd }} />
       <IncrementView jobId={job.id} />
+      <ReferralCapture />
 
       <div style={s.container}>
         {/* Breadcrumb */}
@@ -356,6 +359,7 @@ export default async function JobDetailPage({ params }: Props) {
               <SaveJobButton jobId={job.id} slug={slug} authed={authed} initialSaved={initialSaved} />
               <CompareToggle jobId={job.id} variant="detail" />
               <ShareButton title={`${job.titleEn} at ${job.company}`} />
+              {authed && isSeeker && <ReferralShare jobId={job.id} />}
             </div>
 
             <div style={s.companyCard}>

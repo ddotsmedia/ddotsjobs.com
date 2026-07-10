@@ -10,6 +10,7 @@ import { roleProcedure, router } from '../trpc.js';
 import { rateLimit } from '../rate-limit.js';
 import { assertAiEnabled } from '@/lib/site-settings';
 import { logAction } from '@/lib/audit';
+import { awardReferralOnApply } from '../lib/referral-award.js';
 
 const VOICE_EXT: Record<string, string> = {
   'audio/webm': 'webm',
@@ -255,7 +256,7 @@ export const applicationsRouter = router({
     }),
 
   quickApply: roleProcedure('seeker')
-    .input(z.object({ jobId: z.string().uuid(), coverNote: z.string().max(300).optional() }))
+    .input(z.object({ jobId: z.string().uuid(), coverNote: z.string().max(300).optional(), referralCode: z.string().max(20).optional() }))
     .mutation(async ({ ctx, input }) => {
       await rateLimit(ctx.redis, `apply:${ctx.user.id}`, 20, 86_400);
       const [profile] = await ctx.db
@@ -305,6 +306,9 @@ export const applicationsRouter = router({
       if (!row) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
 
       await ctx.db.update(j).set({ applicationCount: sql`${j.applicationCount} + 1` }).where(eq(j.id, input.jobId));
+
+      // Referral attribution (best-effort — never blocks the application).
+      if (input.referralCode) await awardReferralOnApply(ctx.db, input.referralCode, ctx.user.id, input.jobId);
 
       await createNotification({
         userId: job.ownerUserId,

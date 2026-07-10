@@ -15,6 +15,7 @@ const NAV = [
   { label: 'My Applications', href: '/seeker/applications' },
   { label: 'Messages', href: '/chat' },
   { label: 'Saved Jobs', href: '/seeker/saved-jobs' },
+  { label: 'Referrals', href: '/seeker/referrals' },
   { label: 'Job Alerts', href: '/seeker/alerts' },
   { label: 'PSC Tracker', href: '/seeker/psc/tracker' },
   { label: 'Gulf Return', href: '/seeker/gulf-return/setup' },

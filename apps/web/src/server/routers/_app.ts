@@ -14,6 +14,7 @@ import { itParksRouter } from './it-parks.js';
 import { jobsRouter } from './jobs.js';
 import { notificationsRouter } from './notifications.js';
 import { pravasiRouter } from './pravasi.js';
+import { referralRouter } from './referral.js';
 import { pscRouter } from './psc.js';
 import { postRouter } from './post.js';
 import { assessmentRouter } from './assessment.js';
@@ -44,6 +45,7 @@ export const appRouter = router({
   jobs: jobsRouter,
   notifications: notificationsRouter,
   pravasi: pravasiRouter,
+  referral: referralRouter,
   interview: interviewRouter,
   psc: pscRouter,
   post: postRouter,

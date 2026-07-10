@@ -40,6 +40,9 @@ export const users = pgTable(
     phoneVerifiedAt: timestamp('phone_verified_at', { withTimezone: true }),
     emailVerified: boolean('email_verified').notNull().default(false),
     lastLoginAt: timestamp('last_login_at', { withTimezone: true }),
+    // Seeker premium via referral-credit redemption (0034). null = free.
+    premiumUntil: timestamp('premium_until', { withTimezone: true }),
+    premiumSource: varchar('premium_source', { length: 15 }),
     // Admin moderation (F1).
     isBanned: boolean('is_banned').notNull().default(false),
     banReason: text('ban_reason'),

@@ -88,7 +88,7 @@ function QuickApplyModal({ jobId, jobTitle, companyName, salaryDisplay, category
             <textarea value={note} maxLength={300} onChange={(e) => setNote(e.target.value)} placeholder="e.g. I am interested in this role and available to join immediately." rows={3} style={s.textarea} />
             <div style={s.count}>{note.length}/300{aiNote.data ? ' · AI generated — edit freely' : ''}</div>
             {apply.isError && <p style={s.err}>{apply.error.message}</p>}
-            <button type="button" onClick={() => apply.mutate({ jobId, coverNote: note.trim() || undefined })} disabled={apply.isPending} style={s.confirm}>
+            <button type="button" onClick={() => apply.mutate({ jobId, coverNote: note.trim() || undefined, referralCode: (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('ref') : null) ?? undefined })} disabled={apply.isPending} style={s.confirm}>
               {apply.isPending ? 'Applying…' : 'Confirm Application →'}
             </button>
           </>
