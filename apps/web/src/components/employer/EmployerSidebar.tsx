@@ -19,6 +19,7 @@ const NAV = [
   { label: 'Walk-in Drives', href: '/employer/walkin' },
   { label: 'Talent Pool', href: '/employer/talent', locked: true },
   { label: 'Company Profile', href: '/employer/profile' },
+  { label: 'Branding', href: '/employer/company-profile' },
   { label: 'Email Settings', href: '/employer/preferences' },
   { label: 'Billing', href: '/employer/billing' },
 ] as const;

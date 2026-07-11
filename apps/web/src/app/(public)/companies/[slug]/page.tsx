@@ -8,6 +8,7 @@ import { getServerTrpc } from '@/lib/trpc/server';
 import { Stars } from '@/components/reviews/Stars';
 import { ReviewCard, type ReviewView } from '@/components/reviews/ReviewCard';
 import { TrackProfileView } from '@/components/employer/TrackProfileView';
+import { CompanyProfileSections } from '@/components/company/CompanyProfileSections';
 import { initials, rupeesPerMonth, titleCase } from '@/lib/format';
 
 export const revalidate = 300; // ISR
@@ -37,13 +38,32 @@ export default async function CompanyPage({ params }: { params: Promise<{ slug: 
 
   const { employer, reviews, stats, womenFriendlyBadge, jobs } = data;
   const trpcClient = await getServerTrpc();
-  const breakdown = await trpcClient.reviews.breakdown({ employerId: employer.id });
+  const [breakdown, profile] = await Promise.all([
+    trpcClient.reviews.breakdown({ employerId: employer.id }),
+    trpcClient.company.getPublicProfile({ slug }).catch(() => null),
+  ]);
   const isAuthed = Boolean(session?.user);
   const avg = stats.avgOverall ?? 0;
+
+  const orgJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: employer.name,
+    ...(employer.logoUrl ? { logo: employer.logoUrl } : {}),
+    ...(profile?.bio ? { description: profile.bio } : {}),
+    url: `https://ddotsjobs.com/companies/${employer.slug}`,
+    ...(employer.websiteUrl ? { sameAs: [employer.websiteUrl] } : {}),
+    ...(employer.district ? { address: { '@type': 'PostalAddress', addressLocality: titleCase(employer.district), addressRegion: 'Kerala', addressCountry: 'IN' } } : {}),
+  };
 
   return (
     <main style={s.page}>
       {employer.slug && <TrackProfileView slug={employer.slug} />}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(orgJsonLd) }} />
+      {profile?.banner && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={profile.banner} alt="" style={s.banner} />
+      )}
       <div style={s.container}>
         {/* Header */}
         <header style={s.header}>
@@ -67,6 +87,8 @@ export default async function CompanyPage({ params }: { params: Promise<{ slug: 
             {womenFriendlyBadge && <span style={s.womenBadge}>Women-friendly workplace ✓</span>}
           </div>
         </header>
+
+        <CompanyProfileSections profile={profile} />
 
         {/* Stats row */}
         <section style={s.statsRow}>
@@ -141,6 +163,7 @@ export default async function CompanyPage({ params }: { params: Promise<{ slug: 
 
 const s: Record<string, React.CSSProperties> = {
   page: { background: 'var(--color-neutral)', minHeight: '100dvh', paddingBottom: 'var(--space-5)' },
+  banner: { width: '100%', maxHeight: 240, objectFit: 'cover', display: 'block' },
   container: { width: '100%', maxWidth: 760, margin: '0 auto', padding: 'var(--space-3) var(--space-2)', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' },
   header: { display: 'flex', gap: 'var(--space-2)', alignItems: 'flex-start' },
   logo: { flex: '0 0 64px', width: 64, height: 64, borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },

@@ -58,6 +58,11 @@ export const employers = pgTable(
     companySize: varchar('company_size', { length: 20 }),
     benefitsOffered: text('benefits_offered').array(),
     socialLinks: jsonb('social_links').$type<Record<string, string>>().notNull().default({}),
+    // Branding (0037).
+    mission: text('mission'),
+    vision: text('vision'),
+    culture: text('culture'),
+    bannerR2Key: text('banner_r2_key'),
     subscriptionTier: subscriptionTier('subscription_tier').notNull().default('free'),
     jobsPostedThisPeriod: integer('jobs_posted_this_period').notNull().default(0),
     jobsLimitThisPeriod: integer('jobs_limit_this_period').notNull().default(3),
@@ -137,4 +142,36 @@ export const employerSeekerContacts = pgTable(
       .on(t.employerId, t.seekerUserId, t.jobId)
       .where(sql`deleted_at IS NULL`),
   ],
+);
+
+// Company media gallery — banner + team/office photos (0037).
+export const companyMedia = pgTable(
+  'company_media',
+  {
+    id: pk(),
+    employerId: uuid('employer_id')
+      .notNull()
+      .references(() => employers.id, { onDelete: 'cascade' }),
+    type: varchar('type', { length: 15 }).notNull(), // banner | photo
+    storagePath: text('storage_path').notNull(),
+    uploadedAt: timestamp('uploaded_at', { withTimezone: true }).notNull().default(sql`now()`),
+  },
+  (t) => [index('company_media_employer_idx').on(t.employerId)],
+);
+
+// Culture stories shown on the public company profile (0037).
+export const companyCultureStories = pgTable(
+  'company_culture_stories',
+  {
+    id: pk(),
+    employerId: uuid('employer_id')
+      .notNull()
+      .references(() => employers.id, { onDelete: 'cascade' }),
+    title: varchar('title', { length: 200 }).notNull(),
+    story: text('story').notNull(),
+    photoPath: text('photo_path'),
+    authorName: varchar('author_name', { length: 120 }),
+    publishedAt: timestamp('published_at', { withTimezone: true }).notNull().default(sql`now()`),
+  },
+  (t) => [index('company_stories_employer_idx').on(t.employerId, t.publishedAt)],
 );

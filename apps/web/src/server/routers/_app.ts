@@ -5,6 +5,7 @@ import { alertsRouter } from './alerts.js';
 import { billingRouter } from './billing.js';
 import { applicationsRouter } from './applications.js';
 import { chatRouter } from './chat.js';
+import { companyRouter } from './company.js';
 import { authRouter } from './auth.js';
 import { employerRouter } from './employer.js';
 import { employerDashboardRouter } from './employer-dashboard.js';
@@ -37,6 +38,7 @@ export const appRouter = router({
   billing: billingRouter,
   applications: applicationsRouter,
   chat: chatRouter,
+  company: companyRouter,
   auth: authRouter,
   employer: employerRouter,
   employerDashboard: employerDashboardRouter,
