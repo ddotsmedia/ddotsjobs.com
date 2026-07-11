@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
 import { and, asc, createNotification, desc, eq, tables, type Database } from '@ddotsjobs/db';
 import { callAI } from '@ddotsjobs/ai';
-import { interviewGenerateQuestionsPrompt } from '@ddotsjobs/ai/prompts';
+import { interviewGenerateQuestionsPrompt, interviewAnalysisPrompt } from '@ddotsjobs/ai/prompts';
 import { protectedProcedure, roleProcedure, router } from '../trpc.js';
 import { rateLimit } from '../rate-limit.js';
 import { assertAiEnabled } from '@/lib/site-settings';
@@ -143,7 +143,7 @@ export const interviewRouter = router({
     .query(async ({ ctx, input }) => {
       const vi = tables.videoInterviews;
       const [iv] = await ctx.db
-        .select({ id: vi.id, status: vi.status, interviewerId: vi.interviewerId, submittedAt: vi.submittedAt, jobTitle: tables.jobs.titleEn, candidateName: tables.users.nameEn })
+        .select({ id: vi.id, status: vi.status, interviewerId: vi.interviewerId, submittedAt: vi.submittedAt, aiAnalysis: vi.aiAnalysis, jobTitle: tables.jobs.titleEn, candidateName: tables.users.nameEn })
         .from(vi)
         .innerJoin(tables.jobs, eq(tables.jobs.id, vi.jobId))
         .innerJoin(tables.users, eq(tables.users.id, vi.candidateId))
@@ -158,12 +158,57 @@ export const interviewRouter = router({
           order: tables.interviewQuestions.order,
           storagePath: tables.interviewVideos.storagePath,
           duration: tables.interviewVideos.duration,
+          transcript: tables.interviewVideos.transcript,
         })
         .from(tables.interviewQuestions)
         .leftJoin(tables.interviewVideos, eq(tables.interviewVideos.questionId, tables.interviewQuestions.id))
         .where(eq(tables.interviewQuestions.interviewId, input.interviewId))
         .orderBy(asc(tables.interviewQuestions.order));
-      return { status: iv.status, jobTitle: iv.jobTitle, candidateName: iv.candidateName, submittedAt: iv.submittedAt, questions: rows };
+      return { status: iv.status, jobTitle: iv.jobTitle, candidateName: iv.candidateName, submittedAt: iv.submittedAt, aiAnalysis: iv.aiAnalysis, questions: rows };
+    }),
+
+  // Save the transcript for one answer (manual entry until ASR is wired).
+  saveTranscript: emp
+    .input(z.object({ questionId: z.string().uuid(), interviewId: z.string().uuid(), transcript: z.string().max(8000) }))
+    .mutation(async ({ ctx, input }) => {
+      const vi = tables.videoInterviews;
+      const [iv] = await ctx.db.select({ interviewerId: vi.interviewerId }).from(vi).where(eq(vi.id, input.interviewId)).limit(1);
+      if (!iv || iv.interviewerId !== ctx.user.id) throw new TRPCError({ code: 'FORBIDDEN' });
+      await ctx.db
+        .update(tables.interviewVideos)
+        .set({ transcript: input.transcript })
+        .where(and(eq(tables.interviewVideos.interviewId, input.interviewId), eq(tables.interviewVideos.questionId, input.questionId)));
+      return { ok: true as const };
+    }),
+
+  // Analyse the interview transcripts with AI (sentiment/engagement/score/…).
+  analyzeInterview: emp
+    .input(z.object({ interviewId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const vi = tables.videoInterviews;
+      const [iv] = await ctx.db
+        .select({ interviewerId: vi.interviewerId, jobTitle: tables.jobs.titleEn })
+        .from(vi)
+        .innerJoin(tables.jobs, eq(tables.jobs.id, vi.jobId))
+        .where(eq(vi.id, input.interviewId))
+        .limit(1);
+      if (!iv || iv.interviewerId !== ctx.user.id) throw new TRPCError({ code: 'FORBIDDEN', message: 'Not your interview' });
+
+      const rows = await ctx.db
+        .select({ question: tables.interviewQuestions.questionText, order: tables.interviewQuestions.order, transcript: tables.interviewVideos.transcript })
+        .from(tables.interviewQuestions)
+        .leftJoin(tables.interviewVideos, eq(tables.interviewVideos.questionId, tables.interviewQuestions.id))
+        .where(eq(tables.interviewQuestions.interviewId, input.interviewId))
+        .orderBy(asc(tables.interviewQuestions.order));
+      const qa = rows.filter((r) => r.transcript && r.transcript.trim()).map((r) => ({ question: r.question, answer: r.transcript!.trim() }));
+      if (qa.length === 0) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Add at least one answer transcript before analysing.' });
+
+      await assertAiEnabled();
+      await rateLimit(ctx.redis, `interview-ai:${ctx.user.id}`, 50, 86_400);
+      const spec = interviewAnalysisPrompt({ jobTitle: iv.jobTitle, qa });
+      const { data } = await callAI({ task: spec.task, prompt: spec.prompt, system: spec.system, schema: spec.schema });
+      await ctx.db.update(vi).set({ aiAnalysis: data }).where(eq(vi.id, input.interviewId));
+      return data;
     }),
 
   markReviewed: emp

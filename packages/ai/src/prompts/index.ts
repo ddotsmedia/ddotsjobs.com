@@ -75,6 +75,34 @@ export function applicantScreeningPrompt(input: {
   };
 }
 
+// ── Video interview analysis (Haiku tier — on transcripts) ──────────────
+export const interviewAnalysisSchema = z.object({
+  sentiment: z.enum(['positive', 'neutral', 'negative']),
+  engagement: z.number().int().min(0).max(100),
+  topics: z.array(z.string()),
+  score: z.number().int().min(0).max(100),
+  summary: z.string(),
+});
+export type InterviewAnalysisOutput = z.infer<typeof interviewAnalysisSchema>;
+
+export function interviewAnalysisPrompt(input: {
+  jobTitle: string;
+  qa: { question: string; answer: string }[];
+}): PromptSpec<InterviewAnalysisOutput> {
+  return {
+    task: 'summarize',
+    version: 1,
+    system:
+      'You analyse a candidate\'s async video-interview answers (given as transcript text). ' +
+      'Return: sentiment (overall tone of the answers), engagement 0-100 (how thorough/energetic/' +
+      'specific the answers are), topics (key themes the candidate covered), score 0-100 (overall ' +
+      'interview performance for the role — be strict, evidence-based), and a 2-3 sentence summary ' +
+      'an employer can read. Base everything ONLY on the transcript; do not invent facts.',
+    prompt: JSON.stringify(input),
+    schema: interviewAnalysisSchema,
+  };
+}
+
 // ── Gulf/local job title normalization (Haiku) ──────────────────────────
 export const titleTranslationSchema = z.object({
   canonical: bilingual,
