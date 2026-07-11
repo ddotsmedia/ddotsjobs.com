@@ -52,6 +52,10 @@ export const applications = pgTable(
       .notNull()
       .default([]),
     employerNote: text('employer_note'),
+    // ATS pipeline (0041).
+    stage: varchar('stage', { length: 30 }).notNull().default('applied'),
+    stagedAt: timestamp('staged_at', { withTimezone: true }),
+    notesByEmployer: jsonb('notes_by_employer').$type<{ note: string; at: string }[]>().notNull().default([]),
     appliedAt: timestamp('applied_at', { withTimezone: true }).notNull().default(sql`now()`),
     statusChangedAt: timestamp('status_changed_at', { withTimezone: true }),
     statusUpdatedAt: timestamp('status_updated_at', { withTimezone: true }),

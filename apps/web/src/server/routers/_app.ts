@@ -5,6 +5,7 @@ import { alertsRouter } from './alerts.js';
 import { billingRouter } from './billing.js';
 import { applicationsRouter } from './applications.js';
 import { apiKeysRouter } from './api-keys.js';
+import { atsRouter } from './ats.js';
 import { chatRouter } from './chat.js';
 import { companyRouter } from './company.js';
 import { authRouter } from './auth.js';
@@ -40,6 +41,7 @@ export const appRouter = router({
   billing: billingRouter,
   applications: applicationsRouter,
   apiKeys: apiKeysRouter,
+  ats: atsRouter,
   chat: chatRouter,
   company: companyRouter,
   auth: authRouter,

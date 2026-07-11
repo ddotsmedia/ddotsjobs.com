@@ -73,7 +73,7 @@ export function ApplicantScreening({ jobId }: { jobId: string }) {
         <div>
           <Link href="/employer/jobs" style={s.back}>← My jobs</Link>
           <h1 style={s.h1}>Applicants{q.data?.jobTitle ? ` · ${q.data.jobTitle}` : ''}</h1>
-          <p style={s.sub}>AI-ranked by fit. Scores are on-demand.</p>
+          <p style={s.sub}>AI-ranked by fit. Scores are on-demand. <Link href={`/employer/jobs/${jobId}/ats`} style={s.back}>Open pipeline →</Link></p>
         </div>
       </header>
 
