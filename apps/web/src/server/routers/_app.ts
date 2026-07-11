@@ -4,6 +4,7 @@ import { adminRouter } from './admin.js';
 import { alertsRouter } from './alerts.js';
 import { billingRouter } from './billing.js';
 import { applicationsRouter } from './applications.js';
+import { apiKeysRouter } from './api-keys.js';
 import { chatRouter } from './chat.js';
 import { companyRouter } from './company.js';
 import { authRouter } from './auth.js';
@@ -38,6 +39,7 @@ export const appRouter = router({
   alerts: alertsRouter,
   billing: billingRouter,
   applications: applicationsRouter,
+  apiKeys: apiKeysRouter,
   chat: chatRouter,
   company: companyRouter,
   auth: authRouter,
