@@ -3,6 +3,7 @@ import { Geist, Geist_Mono, Instrument_Serif } from 'next/font/google';
 import type { ReactNode } from 'react';
 import { SessionProvider } from 'next-auth/react';
 import { TRPCProvider } from '@/lib/trpc/client';
+import { TenantBranding } from '@/components/TenantBranding';
 import { Analytics } from '@/components/Analytics';
 import './globals.css';
 
@@ -52,7 +53,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         {/* refetchOnWindowFocus off — public pages don't need a session refetch
             every time the tab regains focus; cuts background network + INP work. */}
         <SessionProvider refetchOnWindowFocus={false}>
-          <TRPCProvider>{children}</TRPCProvider>
+          <TRPCProvider>
+            <TenantBranding>{children}</TenantBranding>
+          </TRPCProvider>
         </SessionProvider>
         <Analytics />
       </body>

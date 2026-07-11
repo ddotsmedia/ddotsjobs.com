@@ -26,6 +26,7 @@ import { screeningRouter } from './screening.js';
 import { seekerRouter } from './seeker.js';
 import { seekerDashboardRouter } from './seeker-dashboard.js';
 import { talentPoolRouter } from './talent-pool.js';
+import { tenantRouter } from './tenant.js';
 import { verificationRouter } from './verification.js';
 import { walkinRouter } from './walkin.js';
 
@@ -59,6 +60,7 @@ export const appRouter = router({
   seeker: seekerRouter,
   seekerDashboard: seekerDashboardRouter,
   talentPool: talentPoolRouter,
+  tenant: tenantRouter,
   verification: verificationRouter,
   walkin: walkinRouter,
 });

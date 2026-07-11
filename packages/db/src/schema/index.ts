@@ -23,3 +23,4 @@ export * from './email.js';
 export * from './referral.js';
 export * from './screening.js';
 export * from './interviews.js';
+export * from './tenants.js';
