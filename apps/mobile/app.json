@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "ddotsjobs",
+    "slug": "ddotsjobs-mobile",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "ddotsjobs",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.ddotsmedia.ddotsjobs"
+    },
+    "android": {
+      "package": "com.ddotsmedia.ddotsjobs",
+      "adaptiveIcon": { "backgroundColor": "#0F1A1B" }
+    },
+    "extra": {
+      "apiUrl": "https://ddotsjobs.com"
+    },
+    "plugins": ["expo-secure-store"]
+  }
+}

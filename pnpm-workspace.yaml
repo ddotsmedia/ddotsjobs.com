@@ -1,3 +1,7 @@
 packages:
   - "apps/*"
   - "packages/*"
+  # apps/mobile is an isolated Expo/React Native project — deliberately NOT part
+  # of the pnpm workspace so `pnpm install --frozen-lockfile` and the web/worker
+  # turbo build stay unaffected. Install/run it separately (see apps/mobile/README).
+  - "!apps/mobile"

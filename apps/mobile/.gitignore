@@ -1,0 +1,22 @@
+# Expo / React Native
+node_modules/
+.expo/
+dist/
+web-build/
+*.orig.*
+
+# Native
+ios/
+android/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro / misc
+.metro-health-check*
+npm-debug.*
+yarn-error.*
+.DS_Store
+expo-env.d.ts
