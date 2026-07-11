@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { trpc } from '@/lib/trpc/client';
 import { formatDate, titleCase } from '@/lib/format';
@@ -39,11 +39,25 @@ function AnswerBlock({ interviewId, x, i }: { interviewId: string; x: { question
 }
 
 export function InterviewPlayback({ interviewId }: { interviewId: string }) {
-  const q = trpc.interview.getPlayback.useQuery({ interviewId });
   const utils = trpc.useUtils();
+  const [analyzing, setAnalyzing] = useState(false);
+  const beforeRef = useRef('');
+  // While analysis is running in the worker, poll for the stored result.
+  const q = trpc.interview.getPlayback.useQuery({ interviewId }, { refetchInterval: analyzing ? 2500 : false });
   const markReviewed = trpc.interview.markReviewed.useMutation({ onSuccess: () => void utils.interview.getPlayback.invalidate({ interviewId }) });
-  const analyze = trpc.interview.analyzeInterview.useMutation({ onSuccess: () => void utils.interview.getPlayback.invalidate({ interviewId }) });
+  const analyze = trpc.interview.analyzeInterview.useMutation();
   const [aiErr, setAiErr] = useState<string | null>(null);
+
+  const analysisJson = JSON.stringify(q.data?.aiAnalysis ?? null);
+  useEffect(() => {
+    if (analyzing && analysisJson !== beforeRef.current) setAnalyzing(false); // new result landed
+  }, [analyzing, analysisJson]);
+  // Safety: stop polling after ~40s even if nothing changed.
+  useEffect(() => {
+    if (!analyzing) return;
+    const t = setTimeout(() => setAnalyzing(false), 40_000);
+    return () => clearTimeout(t);
+  }, [analyzing]);
 
   if (q.isLoading) return <p style={s.muted}>Loading…</p>;
   if (q.isError || !q.data) {
@@ -57,8 +71,16 @@ export function InterviewPlayback({ interviewId }: { interviewId: string }) {
 
   const onAnalyze = () => {
     setAiErr(null);
-    analyze.mutate({ interviewId }, { onError: (e) => setAiErr(/transcript/i.test(e.message) ? 'Add at least one answer transcript first.' : /budget|circuit/i.test(e.message) ? 'AI temporarily unavailable.' : 'Analysis failed. Try again.') });
+    beforeRef.current = JSON.stringify(d.aiAnalysis ?? null);
+    analyze.mutate(
+      { interviewId },
+      {
+        onSuccess: () => setAnalyzing(true),
+        onError: (e) => setAiErr(/transcript/i.test(e.message) ? 'Add at least one answer transcript first.' : /budget|circuit/i.test(e.message) ? 'AI temporarily unavailable.' : 'Analysis failed. Try again.'),
+      },
+    );
   };
+  const busy = analyze.isPending || analyzing;
 
   return (
     <>
@@ -81,13 +103,13 @@ export function InterviewPlayback({ interviewId }: { interviewId: string }) {
       <section style={s.aiCard}>
         <div style={s.aiHead}>
           <h2 style={s.aiTitle}>AI analysis</h2>
-          <button type="button" onClick={onAnalyze} disabled={analyze.isPending || !hasTranscript} style={{ ...s.analyzeBtn, ...(hasTranscript ? {} : s.analyzeDisabled) }}>
-            {analyze.isPending ? 'Analysing…' : ai ? 'Re-analyse' : 'Analyse transcripts'}
+          <button type="button" onClick={onAnalyze} disabled={busy || !hasTranscript} style={{ ...s.analyzeBtn, ...(hasTranscript && !busy ? {} : s.analyzeDisabled) }}>
+            {busy ? 'Analysing…' : ai ? 'Re-analyse' : 'Analyse transcripts'}
           </button>
         </div>
         {aiErr && <p style={s.err}>{aiErr}</p>}
         {!ai ? (
-          <p style={s.muted}>{hasTranscript ? 'Not analysed yet.' : 'Add answer transcripts below, then analyse.'}</p>
+          <p style={s.muted}>{busy ? 'Analysing transcripts…' : hasTranscript ? 'Not analysed yet.' : 'Add answer transcripts below, then analyse.'}</p>
         ) : (
           <>
             <div style={s.metrics}>
@@ -99,6 +121,16 @@ export function InterviewPlayback({ interviewId }: { interviewId: string }) {
               </div>
             </div>
             <p style={s.summary}>{ai.summary}</p>
+            {(ai.strengths.length > 0 || ai.gaps.length > 0) && (
+              <div style={s.sg}>
+                {ai.strengths.length > 0 && (
+                  <div style={s.sgCol}><span style={s.sgLabel}>Strengths</span>{ai.strengths.map((x) => <span key={x} style={{ ...s.sgItem, ...s.sgGood }}>✓ {x}</span>)}</div>
+                )}
+                {ai.gaps.length > 0 && (
+                  <div style={s.sgCol}><span style={s.sgLabel}>Gaps</span>{ai.gaps.map((x) => <span key={x} style={{ ...s.sgItem, ...s.sgBad }}>△ {x}</span>)}</div>
+                )}
+              </div>
+            )}
             {ai.topics.length > 0 && (
               <div style={s.topics}>{ai.topics.map((tp) => <span key={tp} style={s.topic}>{tp}</span>)}</div>
             )}
@@ -140,6 +172,12 @@ const s: Record<string, React.CSSProperties> = {
   summary: { fontSize: 14, color: '#3a3a34', lineHeight: 1.5, margin: 0 },
   topics: { display: 'flex', flexWrap: 'wrap', gap: 6 },
   topic: { fontSize: 12, fontWeight: 600, color: '#55554f', background: '#f1f1ec', padding: '4px 10px', borderRadius: 'var(--radius-pill)' },
+  sg: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 12 },
+  sgCol: { display: 'flex', flexDirection: 'column', gap: 6 },
+  sgLabel: { fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#8a8a83' },
+  sgItem: { fontSize: 13, padding: '6px 10px', borderRadius: 8, lineHeight: 1.35 },
+  sgGood: { color: '#1d7a3a', background: '#e6f5ea' },
+  sgBad: { color: '#c0392b', background: '#fdecea' },
   tLabel: { fontSize: 12, fontWeight: 700, color: '#8a8a83', textTransform: 'uppercase', marginTop: 4 },
   tArea: { border: '1px solid #e2e2da', borderRadius: 8, padding: '10px 12px', fontSize: 14, fontFamily: 'inherit', resize: 'vertical', lineHeight: 1.4 },
   saveT: { alignSelf: 'flex-start', background: '#fff', color: TEAL, border: `1px solid ${TEAL}`, borderRadius: 'var(--radius-pill)', padding: '7px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer' },

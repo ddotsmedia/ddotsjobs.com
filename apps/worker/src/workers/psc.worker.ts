@@ -9,6 +9,7 @@ import { queues, QUEUE_NAMES } from '../queues.js';
 import { runGulfTranslate } from './gulf.worker.js';
 import { runKnmcVerify } from './knmc.worker.js';
 import { runFitExplain } from './fit-explain.worker.js';
+import { runInterviewAnalysis } from './interview.worker.js';
 
 const PSC_URL = 'https://www.keralapsc.gov.in/notifications';
 const LAST_HASH_KEY = 'psc:last_hash'; // -> ddotsjobs:psc:last_hash
@@ -35,6 +36,8 @@ export async function aiQueueProcessor(job: Job): Promise<unknown> {
       return runKnmcVerify(job.data);
     case 'fit.explain_score':
       return runFitExplain(job.data);
+    case 'analyze_interview':
+      return runInterviewAnalysis(job.data as { interviewId: string });
     case 'fit.recompute':
       // Bulk fit-score recomputation consumer lands in a later phase.
       console.log(`[ai] fit.recompute queued for ${JSON.stringify(job.data)}`);

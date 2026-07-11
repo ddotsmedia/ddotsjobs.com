@@ -1,11 +1,12 @@
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
-import { and, asc, createNotification, desc, eq, tables, type Database } from '@ddotsjobs/db';
+import { and, asc, createNotification, desc, eq, sql, tables, type Database } from '@ddotsjobs/db';
 import { callAI } from '@ddotsjobs/ai';
-import { interviewGenerateQuestionsPrompt, interviewAnalysisPrompt } from '@ddotsjobs/ai/prompts';
+import { interviewGenerateQuestionsPrompt } from '@ddotsjobs/ai/prompts';
 import { protectedProcedure, roleProcedure, router } from '../trpc.js';
 import { rateLimit } from '../rate-limit.js';
 import { assertAiEnabled } from '@/lib/site-settings';
+import { aiQueue } from '../queue.js';
 
 const emp = roleProcedure('employer');
 
@@ -181,34 +182,37 @@ export const interviewRouter = router({
       return { ok: true as const };
     }),
 
-  // Analyse the interview transcripts with AI (sentiment/engagement/score/…).
+  // Kick off AI analysis of the interview transcripts. Async: enqueues the
+  // 'analyze_interview' job on the ai queue (worker runs the model call + stores
+  // the result); the UI polls getInterviewAnalysis / getPlayback for it.
   analyzeInterview: emp
     .input(z.object({ interviewId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
       const vi = tables.videoInterviews;
-      const [iv] = await ctx.db
-        .select({ interviewerId: vi.interviewerId, jobTitle: tables.jobs.titleEn })
-        .from(vi)
-        .innerJoin(tables.jobs, eq(tables.jobs.id, vi.jobId))
-        .where(eq(vi.id, input.interviewId))
-        .limit(1);
+      const [iv] = await ctx.db.select({ interviewerId: vi.interviewerId }).from(vi).where(eq(vi.id, input.interviewId)).limit(1);
       if (!iv || iv.interviewerId !== ctx.user.id) throw new TRPCError({ code: 'FORBIDDEN', message: 'Not your interview' });
 
-      const rows = await ctx.db
-        .select({ question: tables.interviewQuestions.questionText, order: tables.interviewQuestions.order, transcript: tables.interviewVideos.transcript })
-        .from(tables.interviewQuestions)
-        .leftJoin(tables.interviewVideos, eq(tables.interviewVideos.questionId, tables.interviewQuestions.id))
-        .where(eq(tables.interviewQuestions.interviewId, input.interviewId))
-        .orderBy(asc(tables.interviewQuestions.order));
-      const qa = rows.filter((r) => r.transcript && r.transcript.trim()).map((r) => ({ question: r.question, answer: r.transcript!.trim() }));
-      if (qa.length === 0) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Add at least one answer transcript before analysing.' });
+      const [hasT] = await ctx.db
+        .select({ id: tables.interviewVideos.id })
+        .from(tables.interviewVideos)
+        .where(and(eq(tables.interviewVideos.interviewId, input.interviewId), sql`length(trim(coalesce(${tables.interviewVideos.transcript}, ''))) > 0`))
+        .limit(1);
+      if (!hasT) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Add at least one answer transcript before analysing.' });
 
       await assertAiEnabled();
       await rateLimit(ctx.redis, `interview-ai:${ctx.user.id}`, 50, 86_400);
-      const spec = interviewAnalysisPrompt({ jobTitle: iv.jobTitle, qa });
-      const { data } = await callAI({ task: spec.task, prompt: spec.prompt, system: spec.system, schema: spec.schema });
-      await ctx.db.update(vi).set({ aiAnalysis: data }).where(eq(vi.id, input.interviewId));
-      return data;
+      await aiQueue.add('analyze_interview', { interviewId: input.interviewId }, { removeOnComplete: true, attempts: 2 });
+      return { queued: true as const };
+    }),
+
+  // Poll target for the async analysis result.
+  getInterviewAnalysis: emp
+    .input(z.object({ interviewId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      const vi = tables.videoInterviews;
+      const [iv] = await ctx.db.select({ interviewerId: vi.interviewerId, aiAnalysis: vi.aiAnalysis }).from(vi).where(eq(vi.id, input.interviewId)).limit(1);
+      if (!iv || iv.interviewerId !== ctx.user.id) throw new TRPCError({ code: 'NOT_FOUND', message: 'Interview not found' });
+      return { analysis: iv.aiAnalysis };
     }),
 
   markReviewed: emp

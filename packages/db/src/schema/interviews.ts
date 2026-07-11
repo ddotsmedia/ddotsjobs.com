@@ -8,6 +8,8 @@ export interface InterviewAnalysis {
   sentiment: 'positive' | 'neutral' | 'negative';
   engagement: number; // 0-100
   topics: string[];
+  strengths: string[];
+  gaps: string[];
   score: number; // 0-100
   summary: string;
 }

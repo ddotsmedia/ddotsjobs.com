@@ -80,6 +80,8 @@ export const interviewAnalysisSchema = z.object({
   sentiment: z.enum(['positive', 'neutral', 'negative']),
   engagement: z.number().int().min(0).max(100),
   topics: z.array(z.string()),
+  strengths: z.array(z.string()),
+  gaps: z.array(z.string()),
   score: z.number().int().min(0).max(100),
   summary: z.string(),
 });
@@ -95,7 +97,8 @@ export function interviewAnalysisPrompt(input: {
     system:
       'You analyse a candidate\'s async video-interview answers (given as transcript text). ' +
       'Return: sentiment (overall tone of the answers), engagement 0-100 (how thorough/energetic/' +
-      'specific the answers are), topics (key themes the candidate covered), score 0-100 (overall ' +
+      'specific the answers are), topics (key themes the candidate covered), strengths (what the ' +
+      'candidate did well), gaps (weaknesses or missing evidence for the role), score 0-100 (overall ' +
       'interview performance for the role — be strict, evidence-based), and a 2-3 sentence summary ' +
       'an employer can read. Base everything ONLY on the transcript; do not invent facts.',
     prompt: JSON.stringify(input),
