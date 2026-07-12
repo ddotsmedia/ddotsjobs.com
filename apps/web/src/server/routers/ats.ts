@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
 import { and, createNotification, desc, eq, inArray, isNull, sql, tables, type Database } from '@ddotsjobs/db';
 import { roleProcedure, router } from '../trpc.js';
+import { emitWebhookEvent } from '@/lib/webhooks';
 
 const emp = roleProcedure('employer');
 const DEFAULT_STAGES = ['applied', 'screening', 'interview', 'offer', 'hired', 'rejected'];
@@ -79,6 +80,7 @@ export const atsRouter = router({
       const app = await loadOwned(ctx.db, (await employerId(ctx.db, ctx.user.id))!, input.applicationId);
       await ctx.db.update(tables.applications).set({ stage: input.newStage, stagedAt: new Date(), statusHistory: appendHistory(input.newStage) }).where(eq(tables.applications.id, input.applicationId));
       await notifyStage(app.seekerUserId, app.jobTitle, input.newStage);
+      await emitWebhookEvent(app.employerId, 'application_stage_changed', { applicationId: input.applicationId, jobId: app.jobId, stage: input.newStage });
       return { ok: true as const };
     }),
 
@@ -117,6 +119,7 @@ export const atsRouter = router({
       if (input.reason) set.notesByEmployer = sql`${tables.applications.notesByEmployer} || ${JSON.stringify([{ note: `Rejected: ${input.reason}`, at: new Date().toISOString() }])}::jsonb`;
       await ctx.db.update(tables.applications).set(set).where(eq(tables.applications.id, input.applicationId));
       await notifyStage(app.seekerUserId, app.jobTitle, 'not selected');
+      await emitWebhookEvent(app.employerId, 'application_rejected', { applicationId: input.applicationId, jobId: app.jobId, reason: input.reason ?? null });
       return { ok: true as const };
     }),
 
@@ -151,6 +154,7 @@ export const atsRouter = router({
         body: `${input.salary}${input.startDate ? ` · starts ${input.startDate}` : ''}. View it in your applications.`,
         actionUrl: '/seeker/applications',
       }).catch(() => {});
+      await emitWebhookEvent(app.employerId, 'offer_sent', { applicationId: input.applicationId, jobId: app.jobId, position: input.position, salary: input.salary });
       return { ok: true as const };
     }),
 

@@ -10,6 +10,7 @@ import { rateLimit } from '../rate-limit.js';
 import { notifyGoogleIndexing } from '@/lib/google-indexing';
 import { assertAiEnabled, isEnabled } from '@/lib/site-settings';
 import { alertsQueue, searchSyncQueue } from '../queue.js';
+import { emitWebhookEvent } from '@/lib/webhooks';
 import { protectedProcedure, publicProcedure, roleProcedure, router } from '../trpc.js';
 
 const DISTRICTS = [
@@ -801,6 +802,8 @@ export const jobsRouter = router({
       entityType: 'job',
       entityId: row.id,
     });
+
+    await emitWebhookEvent(emp.id, 'job_posted', { jobId: row.id, title: input.title, url: `https://ddotsjobs.com/jobs/${slug}` });
 
     if (status === 'active') {
       await createNotification({

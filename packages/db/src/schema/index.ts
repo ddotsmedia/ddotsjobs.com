@@ -26,3 +26,4 @@ export * from './interviews.js';
 export * from './tenants.js';
 export * from './api-keys.js';
 export * from './ats.js';
+export * from './webhooks.js';

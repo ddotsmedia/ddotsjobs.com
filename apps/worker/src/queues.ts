@@ -31,6 +31,7 @@ export const QUEUE_NAMES = {
   fitScore: 'fit-score',
   notification: 'notification',
   email: 'email', // transactional email notifications (Phase 3.7)
+  webhook: 'webhook', // employer webhook delivery (Phase 4.6)
 } as const;
 
 export type QueueName = (typeof QUEUE_NAMES)[keyof typeof QUEUE_NAMES];
@@ -61,6 +62,12 @@ export interface JobPayloads {
     userId: string; // recipient
     context: Record<string, unknown>;
   };
+  [QUEUE_NAMES.webhook]: {
+    webhookId: string;
+    event: string;
+    timestamp: string;
+    data: Record<string, unknown>;
+  };
 }
 
 export const queues = {
@@ -74,6 +81,7 @@ export const queues = {
   fitScore: new Queue<JobPayloads['fit-score']>(QUEUE_NAMES.fitScore, baseQueueOptions),
   notification: new Queue<JobPayloads['notification']>(QUEUE_NAMES.notification, baseQueueOptions),
   email: new Queue<JobPayloads['email']>(QUEUE_NAMES.email, baseQueueOptions),
+  webhook: new Queue<JobPayloads['webhook']>(QUEUE_NAMES.webhook, baseQueueOptions),
 } as const;
 
 export { baseQueueOptions, bullPrefix };

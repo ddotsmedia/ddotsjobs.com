@@ -22,6 +22,7 @@ const NAV = [
   { label: 'Branding', href: '/employer/company-profile' },
   { label: 'Email Settings', href: '/employer/preferences' },
   { label: 'API Keys', href: '/employer/api-keys' },
+  { label: 'Webhooks', href: '/employer/webhooks' },
   { label: 'Billing', href: '/employer/billing' },
 ] as const;
 

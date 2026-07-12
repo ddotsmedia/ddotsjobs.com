@@ -99,7 +99,7 @@ export default function ApiDocsPage() {
             </div>
           ))}
         </div>
-        <p style={s.note}>Webhooks (job status changes) are planned — not available yet.</p>
+        <p style={s.note}>Prefer push over polling? Subscribe to job &amp; application events with <a href="/docs/webhooks" style={{ color: 'var(--color-accent)', fontWeight: 600 }}>webhooks</a>.</p>
       </div>
     </main>
   );

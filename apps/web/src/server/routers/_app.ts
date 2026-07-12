@@ -31,6 +31,7 @@ import { talentPoolRouter } from './talent-pool.js';
 import { tenantRouter } from './tenant.js';
 import { verificationRouter } from './verification.js';
 import { walkinRouter } from './walkin.js';
+import { webhookRouter } from './webhook.js';
 
 // Root tRPC router. Feature routers merge here.
 export const appRouter = router({
@@ -67,6 +68,7 @@ export const appRouter = router({
   tenant: tenantRouter,
   verification: verificationRouter,
   walkin: walkinRouter,
+  webhook: webhookRouter,
 });
 
 export type AppRouter = typeof appRouter;

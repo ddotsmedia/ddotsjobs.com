@@ -16,6 +16,10 @@ export const searchSyncQueue = new Queue('search-sync', { connection, prefix });
 // email.worker. Payload: { eventType, userId (recipient), context }.
 export const emailQueue = new Queue('email', { connection, prefix });
 
+// Employer webhook delivery (Phase 4.6). Consumed by apps/worker's
+// webhook.worker. Payload: { webhookId, event, timestamp, data }.
+export const webhookQueue = new Queue('webhook', { connection, prefix });
+
 export interface EmailJob {
   eventType: 'chat_message' | 'endorsement' | 'job_expiry' | 'application';
   userId: string;
