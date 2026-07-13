@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { and, eq, isNull, tables } from '@ddotsjobs/db';
 import { protectedProcedure, publicProcedure, roleProcedure, router } from '../trpc.js';
+import { logAction } from '@/lib/audit';
 
 const DISTRICTS = [
   'thiruvananthapuram', 'kollam', 'pathanamthitta', 'alappuzha', 'kottayam',
@@ -110,6 +111,8 @@ export const seekerRouter = router({
 
       // Profile changed — invalidate cached fit scores so they recompute.
       await ctx.db.delete(tables.fitScores).where(eq(tables.fitScores.seekerUserId, uid));
+
+      await logAction(ctx, 'profile.updated', 'user', uid, { fields: Object.keys({ ...userSet, ...profSet }) });
 
       return { completionPct: pct };
     }),

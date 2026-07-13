@@ -4,6 +4,7 @@ import { and, count, createNotification, desc, eq, inArray, isNull, ne, or, sql,
 import { protectedProcedure, router } from '../trpc.js';
 import { rateLimit } from '../rate-limit.js';
 import { enqueueEmail } from '../queue.js';
+import { logAction } from '@/lib/audit';
 
 // Canonical participant ordering so a pair maps to exactly one conversation.
 function orderPair(a: string, b: string): [string, string] {
@@ -200,6 +201,8 @@ export const chatRouter = router({
         userId: peerId,
         context: { senderName: me?.name ?? 'Someone', preview, conversationId: input.conversationId },
       });
+
+      await logAction(ctx, 'message.sent', 'conversation', input.conversationId, {});
 
       return { id: msg!.id, mine: true as const, content: msg!.content, deleted: false as const, readAt: null, createdAt: msg!.createdAt };
     }),

@@ -14,6 +14,7 @@ import { fitScoreProcessor } from './workers/fit-score.worker.js';
 import { notificationProcessor } from './workers/notification.worker.js';
 import { emailProcessor, registerJobExpiryCron } from './workers/email.worker.js';
 import { webhookProcessor } from './workers/webhook.worker.js';
+import { gdprProcessor } from './workers/gdpr.worker.js';
 
 // Single fork process hosting every BullMQ worker (PM2 ddotsjobs-worker).
 const CONCURRENCY = Number(process.env.WORKER_CONCURRENCY ?? 5);
@@ -121,6 +122,7 @@ const workers: Worker[] = [
   makeWorker(QUEUE_NAMES.notification, notificationProcessor as Processor),
   makeWorker(QUEUE_NAMES.email, emailProcessor as Processor),
   makeWorker(QUEUE_NAMES.webhook, webhookProcessor as Processor),
+  makeWorker(QUEUE_NAMES.gdpr, gdprProcessor as Processor),
 ];
 
 // Register repeatable crons (idempotent — keyed by jobId).

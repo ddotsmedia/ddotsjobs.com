@@ -20,6 +20,10 @@ export const emailQueue = new Queue('email', { connection, prefix });
 // webhook.worker. Payload: { webhookId, event, timestamp, data }.
 export const webhookQueue = new Queue('webhook', { connection, prefix });
 
+// GDPR async jobs (Phase 4.8). Consumed by apps/worker's gdpr.worker.
+// Payload: { kind: 'export'|'deletion', exportId?|deletionId?, userId }.
+export const gdprQueue = new Queue('gdpr', { connection, prefix });
+
 export interface EmailJob {
   eventType: 'chat_message' | 'endorsement' | 'job_expiry' | 'application';
   userId: string;
