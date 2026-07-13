@@ -4,6 +4,7 @@ import { and, count, createNotification, desc, eq, sql, tables, type Database } 
 import { protectedProcedure, publicProcedure, roleProcedure, router } from '../trpc.js';
 import { rateLimit } from '../rate-limit.js';
 import { enqueueEmail } from '../queue.js';
+import { cached, TTL } from '@/lib/cache';
 
 const seekerProc = roleProcedure('seeker');
 
@@ -140,19 +141,22 @@ export const endorsementRouter = router({
       return rows.map((r) => r.skillName);
     }),
 
-  // Top endorsed skills across the platform (leaderboard).
+  // Top endorsed skills across the platform (leaderboard). Cached 6h — heavy
+  // platform-wide aggregate, eventual consistency is fine.
   getTopSkills: publicProcedure.query(async ({ ctx }) => {
     const uss = tables.userSkillSummary;
-    return ctx.db
-      .select({
-        skillName: uss.skillName,
-        totalEndorsements: sql<number>`sum(${uss.endorsementCount})::int`,
-        userCount: count(),
-      })
-      .from(uss)
-      .where(sql`${uss.endorsementCount} > 0`)
-      .groupBy(uss.skillName)
-      .orderBy(desc(sql`sum(${uss.endorsementCount})`))
-      .limit(10);
+    return cached('leaderboard', 'top-skills', TTL.referralLeaderboard, () =>
+      ctx.db
+        .select({
+          skillName: uss.skillName,
+          totalEndorsements: sql<number>`sum(${uss.endorsementCount})::int`,
+          userCount: count(),
+        })
+        .from(uss)
+        .where(sql`${uss.endorsementCount} > 0`)
+        .groupBy(uss.skillName)
+        .orderBy(desc(sql`sum(${uss.endorsementCount})`))
+        .limit(10),
+    );
   }),
 });

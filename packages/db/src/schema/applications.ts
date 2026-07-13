@@ -72,5 +72,7 @@ export const applications = pgTable(
     index('applications_status_idx').on(t.status),
     index('applications_employer_idx').on(t.employerId),
     index('applications_status_code_idx').on(t.statusCode),
+    // ATS pipeline grouping (0045).
+    index('applications_job_stage_idx').on(t.jobId, t.stage),
   ],
 );

@@ -103,6 +103,9 @@ export const jobs = pgTable(
     index('jobs_category_idx').on(t.categorySlug),
     index('jobs_published_at_idx').on(t.publishedAt),
     index('jobs_values_gulf_idx').on(t.valuesGulfExperience),
+    // Composite hot-path indexes (0045).
+    index('jobs_category_district_salary_idx').on(t.categorySlug, t.district, t.salaryMinPaise, t.salaryMaxPaise),
+    index('jobs_status_published_idx').on(t.status, t.publishedAt),
     uniqueIndex('jobs_slug_uq')
       .on(t.slug)
       .where(sql`slug IS NOT NULL AND deleted_at IS NULL`),

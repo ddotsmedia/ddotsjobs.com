@@ -4,6 +4,7 @@ import { TRPCError } from '@trpc/server';
 import { and, count, desc, eq, ilike, isNull, sql, tables, type Database } from '@ddotsjobs/db';
 import { uploadFile } from '@ddotsjobs/storage';
 import { publicProcedure, roleProcedure, router } from '../trpc.js';
+import { cached, invalidate, TTL } from '@/lib/cache';
 
 const emp = roleProcedure('employer');
 const IMG_EXT: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
@@ -16,6 +17,12 @@ async function ownEmployer(db: Database, userId: string) {
     .where(and(eq(tables.employers.ownerUserId, userId), isNull(tables.employers.deletedAt)))
     .limit(1);
   return row ?? null;
+}
+
+// Bust the 24h branding cache for an employer after any branding edit.
+async function invalidateBranding(db: Database, employerId: string): Promise<void> {
+  const [row] = await db.select({ slug: tables.employers.slug }).from(tables.employers).where(eq(tables.employers.id, employerId)).limit(1);
+  if (row?.slug) await invalidate('branding', row.slug);
 }
 
 function keyToUrl(key: string | null): string | null {
@@ -41,53 +48,57 @@ export const companyRouter = router({
   getPublicProfile: publicProcedure
     .input(z.object({ slug: z.string().min(1) }))
     .query(async ({ ctx, input }) => {
-      const e = tables.employers;
-      const [row] = await ctx.db
-        .select({
-          id: e.id,
-          slug: e.slug,
-          name: e.displayNameEn,
-          nameMl: e.displayNameMl,
-          type: e.employerTypeCode,
-          district: e.district,
-          website: e.websiteUrl,
-          logoR2Key: e.logoR2Key,
-          bio: e.companyDescription,
-          description: e.descriptionEn,
-          founded: e.yearEstablished,
-          size: e.companySize,
-          benefits: e.benefitsOffered,
-          social: e.socialLinks,
-          mission: e.mission,
-          vision: e.vision,
-          culture: e.culture,
-          verified: e.verificationStatus,
-        })
-        .from(e)
-        .where(and(eq(e.slug, input.slug), isNull(e.deletedAt)))
-        .limit(1);
-      if (!row) return null;
+      // Employer branding is read-heavy and changes rarely — cache 24h, busted by
+      // the branding mutations below (invalidateBranding).
+      return cached('branding', input.slug, TTL.employerBranding, async () => {
+        const e = tables.employers;
+        const [row] = await ctx.db
+          .select({
+            id: e.id,
+            slug: e.slug,
+            name: e.displayNameEn,
+            nameMl: e.displayNameMl,
+            type: e.employerTypeCode,
+            district: e.district,
+            website: e.websiteUrl,
+            logoR2Key: e.logoR2Key,
+            bio: e.companyDescription,
+            description: e.descriptionEn,
+            founded: e.yearEstablished,
+            size: e.companySize,
+            benefits: e.benefitsOffered,
+            social: e.socialLinks,
+            mission: e.mission,
+            vision: e.vision,
+            culture: e.culture,
+            verified: e.verificationStatus,
+          })
+          .from(e)
+          .where(and(eq(e.slug, input.slug), isNull(e.deletedAt)))
+          .limit(1);
+        if (!row) return null;
 
-      const media = await ctx.db
-        .select({ id: tables.companyMedia.id, type: tables.companyMedia.type, path: tables.companyMedia.storagePath })
-        .from(tables.companyMedia)
-        .where(eq(tables.companyMedia.employerId, row.id))
-        .orderBy(desc(tables.companyMedia.uploadedAt));
-      const stories = await ctx.db
-        .select({ id: tables.companyCultureStories.id, title: tables.companyCultureStories.title, story: tables.companyCultureStories.story, photoPath: tables.companyCultureStories.photoPath, authorName: tables.companyCultureStories.authorName })
-        .from(tables.companyCultureStories)
-        .where(eq(tables.companyCultureStories.employerId, row.id))
-        .orderBy(desc(tables.companyCultureStories.publishedAt))
-        .limit(20);
+        const media = await ctx.db
+          .select({ id: tables.companyMedia.id, type: tables.companyMedia.type, path: tables.companyMedia.storagePath })
+          .from(tables.companyMedia)
+          .where(eq(tables.companyMedia.employerId, row.id))
+          .orderBy(desc(tables.companyMedia.uploadedAt));
+        const stories = await ctx.db
+          .select({ id: tables.companyCultureStories.id, title: tables.companyCultureStories.title, story: tables.companyCultureStories.story, photoPath: tables.companyCultureStories.photoPath, authorName: tables.companyCultureStories.authorName })
+          .from(tables.companyCultureStories)
+          .where(eq(tables.companyCultureStories.employerId, row.id))
+          .orderBy(desc(tables.companyCultureStories.publishedAt))
+          .limit(20);
 
-      const { logoR2Key, ...rest } = row;
-      return {
-        ...rest,
-        logoUrl: keyToUrl(logoR2Key),
-        banner: keyToUrl(media.find((m) => m.type === 'banner')?.path ?? null),
-        gallery: media.filter((m) => m.type === 'photo').map((m) => ({ id: m.id, url: keyToUrl(m.path)! })),
-        stories: stories.map((s) => ({ ...s, photoUrl: keyToUrl(s.photoPath) })),
-      };
+        const { logoR2Key, ...rest } = row;
+        return {
+          ...rest,
+          logoUrl: keyToUrl(logoR2Key),
+          banner: keyToUrl(media.find((m) => m.type === 'banner')?.path ?? null),
+          gallery: media.filter((m) => m.type === 'photo').map((m) => ({ id: m.id, url: keyToUrl(m.path)! })),
+          stories: stories.map((s) => ({ ...s, photoUrl: keyToUrl(s.photoPath) })),
+        };
+      });
     }),
 
   // Directory of companies with a public profile.
@@ -144,6 +155,7 @@ export const companyRouter = router({
       if (input.benefits !== undefined) set.benefitsOffered = input.benefits;
       if (input.social !== undefined) set.socialLinks = input.social;
       await ctx.db.update(tables.employers).set(set).where(eq(tables.employers.id, e.id));
+      await invalidateBranding(ctx.db, e.id);
       return { success: true as const };
     }),
 
@@ -206,6 +218,7 @@ export const companyRouter = router({
         await ctx.db.update(tables.employers).set({ bannerR2Key: url }).where(eq(tables.employers.id, e.id));
       }
       const [row] = await ctx.db.insert(cm).values({ employerId: e.id, type: input.type, storagePath: url }).returning({ id: cm.id });
+      await invalidateBranding(ctx.db, e.id);
       return { id: row!.id, url: keyToUrl(url)! };
     }),
 
@@ -215,6 +228,7 @@ export const companyRouter = router({
       const e = await ownEmployer(ctx.db, ctx.user.id);
       if (!e) throw new TRPCError({ code: 'NOT_FOUND' });
       await ctx.db.delete(tables.companyMedia).where(and(eq(tables.companyMedia.id, input.mediaId), eq(tables.companyMedia.employerId, e.id)));
+      await invalidateBranding(ctx.db, e.id);
       return { ok: true as const };
     }),
 
@@ -229,6 +243,7 @@ export const companyRouter = router({
         .insert(tables.companyCultureStories)
         .values({ employerId: e.id, title: input.title, story: input.story, authorName: input.authorName ?? null, photoPath })
         .returning({ id: tables.companyCultureStories.id });
+      await invalidateBranding(ctx.db, e.id);
       return { id: row!.id };
     }),
 
@@ -238,6 +253,7 @@ export const companyRouter = router({
       const e = await ownEmployer(ctx.db, ctx.user.id);
       if (!e) throw new TRPCError({ code: 'NOT_FOUND' });
       await ctx.db.delete(tables.companyCultureStories).where(and(eq(tables.companyCultureStories.id, input.id), eq(tables.companyCultureStories.employerId, e.id)));
+      await invalidateBranding(ctx.db, e.id);
       return { ok: true as const };
     }),
 });

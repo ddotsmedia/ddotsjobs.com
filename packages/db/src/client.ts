@@ -23,10 +23,33 @@ function getPool(): Pool {
   }
   _pool = new Pool({
     connectionString,
-    max: Number(process.env.DB_POOL_MAX ?? 10),
+    max: Number(process.env.DB_POOL_MAX ?? 20),
+    min: Number(process.env.DB_POOL_MIN ?? 5),
     idleTimeoutMillis: 30_000,
     connectionTimeoutMillis: 10_000,
   });
+
+  // Slow-query monitoring: log any statement over the threshold (default 500ms).
+  const slowMs = Number(process.env.DB_SLOW_QUERY_MS ?? 500);
+  const origQuery = _pool.query.bind(_pool) as (...args: unknown[]) => Promise<unknown>;
+  _pool.query = ((...args: unknown[]) => {
+    const started = Date.now();
+    const result = origQuery(...args) as Promise<unknown> & { then?: unknown };
+    if (result && typeof (result as Promise<unknown>).then === 'function') {
+      void (result as Promise<unknown>).then(
+        () => {
+          const ms = Date.now() - started;
+          if (ms >= slowMs) {
+            const text = typeof args[0] === 'string' ? args[0] : (args[0] as { text?: string })?.text;
+            console.warn(`[slow-query] ${ms}ms: ${String(text ?? '').slice(0, 200)}`);
+          }
+        },
+        () => {},
+      );
+    }
+    return result;
+  }) as typeof _pool.query;
+
   return _pool;
 }
 

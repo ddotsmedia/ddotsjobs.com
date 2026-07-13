@@ -49,6 +49,7 @@ const nextConfig: NextConfig = {
       "base-uri 'self'",
       "form-action 'self'",
     ].join('; ');
+    const immutable = { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' };
     return [
       {
         source: '/(.*)',
@@ -62,6 +63,10 @@ const nextConfig: NextConfig = {
           { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains' },
         ],
       },
+      // Hashed build assets are already immutable via Next; this covers static
+      // public files (fonts, images, icons) served from /public.
+      { source: '/:all*(svg|jpg|jpeg|png|webp|avif|gif|ico|woff|woff2|ttf|otf)', headers: [immutable] },
+      { source: '/fonts/:path*', headers: [immutable] },
     ];
   },
   eslint: { ignoreDuringBuilds: false },
