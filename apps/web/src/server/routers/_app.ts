@@ -2,6 +2,7 @@ import { publicProcedure, router } from '../trpc.js';
 import { accountRouter } from './account.js';
 import { adminRouter } from './admin.js';
 import { alertsRouter } from './alerts.js';
+import { analyticsRouter } from './analytics.js';
 import { billingRouter } from './billing.js';
 import { applicationsRouter } from './applications.js';
 import { apiKeysRouter } from './api-keys.js';
@@ -39,6 +40,7 @@ export const appRouter = router({
   account: accountRouter,
   admin: adminRouter,
   alerts: alertsRouter,
+  analytics: analyticsRouter,
   billing: billingRouter,
   applications: applicationsRouter,
   apiKeys: apiKeysRouter,
