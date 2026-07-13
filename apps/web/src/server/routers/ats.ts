@@ -3,6 +3,7 @@ import { TRPCError } from '@trpc/server';
 import { and, createNotification, desc, eq, inArray, isNull, sql, tables, type Database } from '@ddotsjobs/db';
 import { roleProcedure, router } from '../trpc.js';
 import { emitWebhookEvent } from '@/lib/webhooks';
+import { emitIntegrationEvent } from '@/lib/integrations';
 
 const emp = roleProcedure('employer');
 const DEFAULT_STAGES = ['applied', 'screening', 'interview', 'offer', 'hired', 'rejected'];
@@ -155,6 +156,7 @@ export const atsRouter = router({
         actionUrl: '/seeker/applications',
       }).catch(() => {});
       await emitWebhookEvent(app.employerId, 'offer_sent', { applicationId: input.applicationId, jobId: app.jobId, position: input.position, salary: input.salary });
+      await emitIntegrationEvent(app.employerId, 'offer_sent', { applicationId: input.applicationId, jobId: app.jobId, position: input.position, salary: input.salary });
       return { ok: true as const };
     }),
 

@@ -5,7 +5,8 @@
   "type": "module",
   "exports": {
     "./models": "./src/models.ts",
-    "./universal-prompt-law": "./src/universal-prompt-law.ts"
+    "./universal-prompt-law": "./src/universal-prompt-law.ts",
+    "./crypto": "./src/crypto.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

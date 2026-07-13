@@ -28,3 +28,4 @@ export * from './api-keys.js';
 export * from './ats.js';
 export * from './webhooks.js';
 export * from './gdpr.js';
+export * from './integrations.js';

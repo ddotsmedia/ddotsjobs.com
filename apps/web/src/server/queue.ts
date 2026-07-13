@@ -24,6 +24,10 @@ export const webhookQueue = new Queue('webhook', { connection, prefix });
 // Payload: { kind: 'export'|'deletion', exportId?|deletionId?, userId }.
 export const gdprQueue = new Queue('gdpr', { connection, prefix });
 
+// External integration push (Phase 4.9). Consumed by apps/worker's
+// integration.worker. Payload: { integrationId, event, data }.
+export const integrationQueue = new Queue('integration', { connection, prefix });
+
 export interface EmailJob {
   eventType: 'chat_message' | 'endorsement' | 'job_expiry' | 'application';
   userId: string;

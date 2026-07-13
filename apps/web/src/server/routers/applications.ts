@@ -12,6 +12,7 @@ import { assertAiEnabled } from '@/lib/site-settings';
 import { logAction } from '@/lib/audit';
 import { awardReferralOnApply } from '../lib/referral-award.js';
 import { emitWebhookEvent } from '@/lib/webhooks';
+import { emitIntegrationEvent } from '@/lib/integrations';
 
 const VOICE_EXT: Record<string, string> = {
   'audio/webm': 'webm',
@@ -311,6 +312,7 @@ export const applicationsRouter = router({
       // Referral attribution (best-effort — never blocks the application).
       if (input.referralCode) await awardReferralOnApply(ctx.db, input.referralCode, ctx.user.id, input.jobId);
       await emitWebhookEvent(job.employerId, 'application_received', { applicationId: row.id, jobId: input.jobId, candidateName: profile?.name ?? null });
+      await emitIntegrationEvent(job.employerId, 'application_received', { applicationId: row.id, jobId: input.jobId, candidateName: profile?.name ?? null });
 
       await createNotification({
         userId: job.ownerUserId,

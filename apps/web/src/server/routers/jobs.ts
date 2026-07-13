@@ -11,6 +11,7 @@ import { notifyGoogleIndexing } from '@/lib/google-indexing';
 import { assertAiEnabled, isEnabled } from '@/lib/site-settings';
 import { alertsQueue, searchSyncQueue } from '../queue.js';
 import { emitWebhookEvent } from '@/lib/webhooks';
+import { emitIntegrationEvent } from '@/lib/integrations';
 import { protectedProcedure, publicProcedure, roleProcedure, router } from '../trpc.js';
 
 const DISTRICTS = [
@@ -804,6 +805,7 @@ export const jobsRouter = router({
     });
 
     await emitWebhookEvent(emp.id, 'job_posted', { jobId: row.id, title: input.title, url: `https://ddotsjobs.com/jobs/${slug}` });
+    await emitIntegrationEvent(emp.id, 'job_posted', { jobId: row.id, title: input.title, url: `https://ddotsjobs.com/jobs/${slug}` });
 
     if (status === 'active') {
       await createNotification({

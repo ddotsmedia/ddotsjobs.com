@@ -15,6 +15,7 @@ import { employerDashboardRouter } from './employer-dashboard.js';
 import { endorsementRouter } from './endorsement.js';
 import { fitScoreRouter } from './fit-score.js';
 import { gdprRouter } from './gdpr.js';
+import { integrationsRouter } from './integrations.js';
 import { itParksRouter } from './it-parks.js';
 import { jobsRouter } from './jobs.js';
 import { notificationsRouter } from './notifications.js';
@@ -54,6 +55,7 @@ export const appRouter = router({
   endorsement: endorsementRouter,
   fitScore: fitScoreRouter,
   gdpr: gdprRouter,
+  integrations: integrationsRouter,
   itParks: itParksRouter,
   jobs: jobsRouter,
   notifications: notificationsRouter,

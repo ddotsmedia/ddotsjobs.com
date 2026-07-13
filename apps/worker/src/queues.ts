@@ -33,6 +33,7 @@ export const QUEUE_NAMES = {
   email: 'email', // transactional email notifications (Phase 3.7)
   webhook: 'webhook', // employer webhook delivery (Phase 4.6)
   gdpr: 'gdpr', // GDPR data-export generation + deletion processing (Phase 4.8)
+  integration: 'integration', // external integration push (Slack/Zapier/Airtable/HubSpot) (Phase 4.9)
 } as const;
 
 export type QueueName = (typeof QUEUE_NAMES)[keyof typeof QUEUE_NAMES];
@@ -72,6 +73,11 @@ export interface JobPayloads {
   [QUEUE_NAMES.gdpr]:
     | { kind: 'export'; exportId: string; userId: string }
     | { kind: 'deletion'; deletionId: string; userId: string };
+  [QUEUE_NAMES.integration]: {
+    integrationId: string;
+    event: string;
+    data: Record<string, unknown>;
+  };
 }
 
 export const queues = {
@@ -87,6 +93,7 @@ export const queues = {
   email: new Queue<JobPayloads['email']>(QUEUE_NAMES.email, baseQueueOptions),
   webhook: new Queue<JobPayloads['webhook']>(QUEUE_NAMES.webhook, baseQueueOptions),
   gdpr: new Queue<JobPayloads['gdpr']>(QUEUE_NAMES.gdpr, baseQueueOptions),
+  integration: new Queue<JobPayloads['integration']>(QUEUE_NAMES.integration, baseQueueOptions),
 } as const;
 
 export { baseQueueOptions, bullPrefix };

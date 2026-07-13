@@ -7,6 +7,7 @@ import { stripHtml, sanitizeHtml } from '@/lib/sanitize';
 import { alertsQueue, searchSyncQueue } from '@/server/queue';
 import { notifyGoogleIndexing } from '@/lib/google-indexing';
 import { emitWebhookEvent } from '@/lib/webhooks';
+import { emitIntegrationEvent } from '@/lib/integrations';
 
 const DISTRICTS = [
   'thiruvananthapuram', 'kollam', 'pathanamthitta', 'alappuzha', 'kottayam', 'idukki', 'ernakulam',
@@ -101,6 +102,7 @@ export async function createJobViaApi(employerId: string, ownerUserId: string, i
   }
   await db.insert(tables.auditLog).values({ actorUserId: ownerUserId, action: 'job.created_api', entityType: 'job', entityId: row.id }).catch(() => {});
   await emitWebhookEvent(employerId, 'job_posted', { jobId: row.id, title: input.title, url: `https://ddotsjobs.com/jobs/${slug}` });
+  await emitIntegrationEvent(employerId, 'job_posted', { jobId: row.id, title: input.title, url: `https://ddotsjobs.com/jobs/${slug}` });
 
   return { ok: true, jobId: row.id, status, slug };
 }
