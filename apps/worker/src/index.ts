@@ -16,6 +16,7 @@ import { emailProcessor, registerJobExpiryCron } from './workers/email.worker.js
 import { webhookProcessor } from './workers/webhook.worker.js';
 import { gdprProcessor } from './workers/gdpr.worker.js';
 import { integrationProcessor } from './workers/integration.worker.js';
+import { pushProcessor } from './workers/push.worker.js';
 
 // Single fork process hosting every BullMQ worker (PM2 ddotsjobs-worker).
 const CONCURRENCY = Number(process.env.WORKER_CONCURRENCY ?? 5);
@@ -125,6 +126,7 @@ const workers: Worker[] = [
   makeWorker(QUEUE_NAMES.webhook, webhookProcessor as Processor),
   makeWorker(QUEUE_NAMES.gdpr, gdprProcessor as Processor),
   makeWorker(QUEUE_NAMES.integration, integrationProcessor as Processor),
+  makeWorker(QUEUE_NAMES.push, pushProcessor as Processor),
 ];
 
 // Register repeatable crons (idempotent — keyed by jobId).

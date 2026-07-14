@@ -3,14 +3,14 @@ import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import { getServerTrpc } from '@/lib/trpc/server';
 import { SeekerSidebar } from '@/components/seeker/SeekerSidebar';
-import { EmailPreferences } from '@/components/settings/EmailPreferences';
+import { PushPreferences } from '@/components/settings/PushPreferences';
 
-export const metadata: Metadata = { title: 'Email preferences — ddotsjobs.com' };
+export const metadata: Metadata = { title: 'Push notifications — ddotsjobs.com' };
 export const dynamic = 'force-dynamic';
 
-export default async function SeekerPreferencesPage() {
+export default async function NotificationsPage() {
   const session = await auth();
-  if (!session?.user) redirect('/login?redirect=/seeker/preferences');
+  if (!session?.user) redirect('/login?redirect=/seeker/preferences/notifications');
   const trpc = await getServerTrpc();
   const profile = await trpc.seeker.getProfile().catch(() => null);
 
@@ -18,10 +18,8 @@ export default async function SeekerPreferencesPage() {
     <div style={s.shell}>
       <SeekerSidebar name={profile?.fullName ?? ''} />
       <main style={s.main}>
-        <h1 style={s.h1}>Preferences</h1>
-        <EmailPreferences audience="seeker" />
-        <a href="/seeker/preferences/notifications" style={s.privacyLink}>Push notifications (mobile app) →</a>
-        <a href="/seeker/preferences/privacy" style={s.privacyLink}>Privacy &amp; data (export / delete account) →</a>
+        <h1 style={s.h1}>Push notifications</h1>
+        <PushPreferences />
       </main>
     </div>
   );
@@ -31,5 +29,4 @@ const s: Record<string, React.CSSProperties> = {
   shell: { display: 'flex', alignItems: 'flex-start', background: 'var(--color-neutral)', minHeight: '100dvh' },
   main: { flex: 1, minWidth: 0, padding: 'var(--space-3) var(--space-2)', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', maxWidth: 720 },
   h1: { fontFamily: 'var(--font-display)', fontStyle: 'italic', fontSize: '1.9rem', margin: 0, color: 'var(--color-dark)' },
-  privacyLink: { color: '#3A9EA5', fontWeight: 600, fontSize: 14 },
 };

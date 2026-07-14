@@ -13,6 +13,7 @@ import { logAction } from '@/lib/audit';
 import { awardReferralOnApply } from '../lib/referral-award.js';
 import { emitWebhookEvent } from '@/lib/webhooks';
 import { emitIntegrationEvent } from '@/lib/integrations';
+import { emitPush } from '@/lib/push';
 
 const VOICE_EXT: Record<string, string> = {
   'audio/webm': 'webm',
@@ -321,6 +322,7 @@ export const applicationsRouter = router({
         body: `${profile?.name ?? 'A candidate'} applied to ${job.title}`,
         actionUrl: '/employer/applications',
       });
+      await emitPush(job.ownerUserId, 'applications', 'New application', `${profile?.name ?? 'A candidate'} applied to ${job.title}`, '/employer/applications');
       await createNotification({
         userId: ctx.user.id,
         type: 'application.submitted',

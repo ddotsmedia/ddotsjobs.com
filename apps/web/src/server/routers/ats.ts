@@ -4,6 +4,7 @@ import { and, createNotification, desc, eq, inArray, isNull, sql, tables, type D
 import { roleProcedure, router } from '../trpc.js';
 import { emitWebhookEvent } from '@/lib/webhooks';
 import { emitIntegrationEvent } from '@/lib/integrations';
+import { emitPush } from '@/lib/push';
 
 const emp = roleProcedure('employer');
 const DEFAULT_STAGES = ['applied', 'screening', 'interview', 'offer', 'hired', 'rejected'];
@@ -41,6 +42,7 @@ async function notifyStage(userId: string, jobTitle: string, stage: string): Pro
     body: `Update on your application for ${jobTitle}.`,
     actionUrl: '/seeker/applications',
   }).catch(() => {});
+  await emitPush(userId, 'applications', `Application update: ${stage}`, `Your application for ${jobTitle} moved to ${stage}.`, '/seeker/applications');
 }
 
 export const atsRouter = router({

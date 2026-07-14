@@ -151,6 +151,19 @@ export async function matchJobAlerts(data: MatchJob): Promise<{ recipients: numb
       },
       { attempts: 5, backoff: { type: 'exponential', delay: 10_000 } },
     );
+
+    // Mobile push for the matched alert (worker handles pref/quiet/rate/FCM).
+    await queues.push.add(
+      'job_alerts',
+      {
+        userId: r.user_id,
+        category: 'job_alerts' as const,
+        title: 'New job match',
+        body: `${jobRow.titleEn}${companyName ? ` at ${companyName}` : ''}`,
+        actionUrl: '/seeker/alerts',
+      },
+      { attempts: 2, backoff: { type: 'exponential', delay: 3000 }, removeOnComplete: true },
+    );
     dispatched++;
   }
 

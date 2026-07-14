@@ -28,6 +28,10 @@ export const gdprQueue = new Queue('gdpr', { connection, prefix });
 // integration.worker. Payload: { integrationId, event, data }.
 export const integrationQueue = new Queue('integration', { connection, prefix });
 
+// FCM mobile push (Phase 5.1). Consumed by apps/worker's push.worker.
+// Payload: { userId, category, title, body, actionUrl? }.
+export const pushQueue = new Queue('push', { connection, prefix });
+
 export interface EmailJob {
   eventType: 'chat_message' | 'endorsement' | 'job_expiry' | 'application';
   userId: string;
