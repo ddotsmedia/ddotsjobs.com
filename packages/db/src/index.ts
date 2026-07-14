@@ -2,6 +2,7 @@
 export { db, pool, schema, type Database } from './client.js';
 export * as tables from './schema/index.js';
 export { createNotification, type CreateNotificationArgs } from './notifications.js';
+export * from './analytics.js';
 
 // Drizzle query helpers re-exported for convenience at call sites.
 export {

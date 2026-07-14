@@ -5,6 +5,7 @@ import { queues } from '../queues.js';
 import { logger } from '../lib/logger.js';
 import { runAlertDigest } from './alert-digest.worker.js';
 import { runJobExpiryCheck } from './email.worker.js';
+import { runScheduledReports } from './reports.worker.js';
 
 const CRON_JOB_ID = 'itpark-stats-cron';
 const JOB_NAME = 'itpark.stats';
@@ -36,6 +37,8 @@ export async function maintenanceQueueProcessor(job: Job): Promise<unknown> {
   if (job.name === 'alert_digest_daily') return runAlertDigest('daily_digest');
   if (job.name === 'alert_digest_weekly') return runAlertDigest('weekly');
   if (job.name === 'job_expiry_check') return runJobExpiryCheck();
+  if (job.name === 'scheduled_reports_weekly') return runScheduledReports('weekly');
+  if (job.name === 'scheduled_reports_monthly') return runScheduledReports('monthly');
   logger.warn({ job: job.name }, '[maintenance] unhandled job');
   return { skipped: true };
 }

@@ -22,6 +22,7 @@ import { notificationsRouter } from './notifications.js';
 import { pravasiRouter } from './pravasi.js';
 import { pushRouter } from './push.js';
 import { referralRouter } from './referral.js';
+import { reportsRouter } from './reports.js';
 import { pscRouter } from './psc.js';
 import { postRouter } from './post.js';
 import { assessmentRouter } from './assessment.js';
@@ -63,6 +64,7 @@ export const appRouter = router({
   pravasi: pravasiRouter,
   push: pushRouter,
   referral: referralRouter,
+  reports: reportsRouter,
   interview: interviewRouter,
   psc: pscRouter,
   post: postRouter,

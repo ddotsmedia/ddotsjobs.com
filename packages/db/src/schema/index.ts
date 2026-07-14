@@ -30,3 +30,4 @@ export * from './webhooks.js';
 export * from './gdpr.js';
 export * from './integrations.js';
 export * from './push.js';
+export * from './reports.js';

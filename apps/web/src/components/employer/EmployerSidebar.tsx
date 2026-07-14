@@ -13,6 +13,7 @@ const NAV = [
   { label: 'Dashboard', href: '/employer/dashboard' },
   { label: 'Analytics', href: '/employer/analytics' },
   { label: 'Hiring Funnel', href: '/employer/analytics/funnel' },
+  { label: 'Reports', href: '/employer/reports' },
   { label: 'Post a Job', href: '/employer/jobs/new' },
   { label: 'My Jobs', href: '/employer/jobs' },
   { label: 'Applicants', href: '/employer/applicants' },

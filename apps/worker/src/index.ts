@@ -13,6 +13,7 @@ import { pscScrapeProcessor } from './workers/psc-scrape.worker.js';
 import { fitScoreProcessor } from './workers/fit-score.worker.js';
 import { notificationProcessor } from './workers/notification.worker.js';
 import { emailProcessor, registerJobExpiryCron } from './workers/email.worker.js';
+import { registerScheduledReportCrons } from './workers/reports.worker.js';
 import { webhookProcessor } from './workers/webhook.worker.js';
 import { gdprProcessor } from './workers/gdpr.worker.js';
 import { integrationProcessor } from './workers/integration.worker.js';
@@ -145,6 +146,9 @@ registerAlertDigestCrons()
 registerJobExpiryCron()
   .then(() => logger.info('[maintenance] job expiry cron registered (0 4 * * *)'))
   .catch((err: unknown) => logger.error({ err }, '[maintenance] job expiry cron registration failed'));
+registerScheduledReportCrons()
+  .then(() => logger.info('[maintenance] scheduled report crons registered (weekly 30 3 * * 1, monthly 30 3 1 * *)'))
+  .catch((err: unknown) => logger.error({ err }, '[maintenance] scheduled report cron registration failed'));
 
 logger.info({ queues: workers.length, concurrency: CONCURRENCY }, 'ddotsjobs-worker up');
 
